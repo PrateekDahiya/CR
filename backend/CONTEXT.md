@@ -63,4 +63,9 @@ npm start
 - Authoritative loop at 10–20Hz broadcasting snapshots; 60fps interpolation happens client-side (frontend Canvas).
 - Keep tick deterministic, validate all client inputs, persist results to Postgres, ephemeral state in Redis.
 
-(End — Phase 1 scaffolding, 2026-10-16)
+## 9. Phase 3 update (2026-10-17 — backend server, feature/phase-3-backend-server)
+- Authoritative engine @ 10Hz (`src/game/engine.ts` + `src/net/rooms.ts` TICK_MS=100, canonical `state:update`).
+- Tests: 33/33 PASS (16 engine + 17 validation) per docs/TEST_REPORT_phase-3-backend.md.
+- Run: `Set-Location backend; npm test` (plus `npx tsc --noEmit` clean).
+
+(End — Phase 1 scaffolding, 2026-10-16; Phase 3 update appended 2026-10-17)
