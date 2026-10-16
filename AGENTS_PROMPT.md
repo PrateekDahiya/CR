@@ -219,3 +219,91 @@
 - **Outputs**: 43561B/619 lines + types additive, drafts deleted (Task ses_eb91a25f...).
 - **Branch/worktree**: `feature/phase-2-game-design`
 - **Status**: done
+
+## PROMPT-020 - 2026-10-17 - coder - phase-3-engine
+- **Requirement**: Authoritative 10Hz engine under backend/src/game/ only.
+- **Goals**: cards.ts 12 cards, arena.ts 18x32/towers/deploy, engine.ts createGame/tickGame/playCard + elixir/win/validation; pure TS deterministic.
+- **Prompt (verbatim condensed)**: "Read MEMORY#15 + GAME_DESIGN + types + backend CONTEXT/index/matchmaking; only game/ (cards/arena/engine), no socket/redis, no commit, verify node --check."
+- **Inputs**: MEMORY.md, docs/GAME_DESIGN.md, shared/types.ts
+- **Constraints**: backend/src/game/ only; other agents on net/tests - do NOT touch (MEMORY#16 pending formalization, observed via disjoint paths).
+- **Done criteria**: 3 files valid syntax.
+- **Outputs**: cards 9KB + arena 5KB + engine 25KB, tsc strict PASS + runtime 8 rejects verified (Task ses_eb9178bc...).
+- **Branch/worktree**: `feature/phase-3-backend-server`
+- **Status**: done
+
+## PROMPT-021 - 2026-10-17 - coder - phase-3-net
+- **Requirement**: Net layer rooms/validation/redis + index/matchmaking wiring.
+- **Goals**: rooms 10Hz broadcast state:update, validation 8 codes, redis fallback, tryMatch pairing, index twins; import engine, no duplication.
+- **Prompt (verbatim condensed)**: "Read MEMORY + GAME_DESIGN protocol + types + index/matchmaking; only net/ + index/matchmaking edits, never game/tests."
+- **Inputs**: MEMORY.md, docs/GAME_DESIGN.md, backend/src/index.ts
+- **Constraints**: backend/src/net/ + index/matchmaking only.
+- **Done criteria**: 3 new + 2 edited, tsc scope PASS.
+- **Outputs**: rooms/validation/redis + wiring, 24 smoke PASS incl real engine (Task ses_eb9178bb...; noted engine:598 typo - later proven absent).
+- **Branch/worktree**: `feature/phase-3-backend-server`
+- **Status**: done
+
+## PROMPT-022 - 2026-10-17 - coder - phase-3-tests
+- **Requirement**: Unit tests under backend/tests/ only.
+- **Goals**: engine.test 16 tests + validation.test 17 tests (node:test, no jest), README, package.json test script tsx --test.
+- **Prompt (verbatim condensed)**: "Read MEMORY + GAME_DESIGN + types + package.json; only tests/ + package.json test line, no other edits."
+- **Inputs**: MEMORY.md, docs/GAME_DESIGN.md, backend/package.json
+- **Constraints**: backend/tests/ + package.json test script only.
+- **Done criteria**: 33 tests runnable npm test.
+- **Outputs**: 33 pass / 0 fail (Task ses_eb9178ba...; adapted to real engine API).
+- **Branch/worktree**: `feature/phase-3-backend-server`
+- **Status**: done
+
+## PROMPT-023 - 2026-10-17 - reviewer - phase-3-engine
+- **Requirement**: Review engine + tests, no edits.
+- **Goals**: Cards/arena/tick/king/win/codes/coverage; write docs/ISSUES_phase-3-engine.md.
+- **Prompt (verbatim condensed)**: "Read MEMORY + GAME_DESIGN + game/*.ts + tests; no edit, only engine issues file."
+- **Inputs**: MEMORY.md, backend/src/game/, backend/tests/
+- **Constraints**: docs/ISSUES_phase-3-engine.md only; other reviewers on net - do NOT touch.
+- **Done criteria**: file with checks.
+- **Outputs**: pass-with-issues 1maj/7min + 8 PASS, 33/33 pass, tsc clean, :598 typo NOT present (Task ses_eb91229d...).
+- **Branch/worktree**: `feature/phase-3-backend-server`
+- **Status**: done
+
+## PROMPT-024 - 2026-10-17 - reviewer - phase-3-net
+- **Requirement**: Review net, no edits.
+- **Goals**: 10Hz, tryMatch, 8 codes, twins, redis fallback, no duplication; write docs/ISSUES_phase-3-net.md.
+- **Prompt (verbatim condensed)**: "Read MEMORY + GAME_DESIGN + net/*.ts + index/matchmaking + types; no edit, only net issues file."
+- **Inputs**: MEMORY.md, backend/src/net/
+- **Constraints**: docs/ISSUES_phase-3-net.md only.
+- **Done criteria**: file exists.
+- **Outputs**: PASS 0blk/0maj/4min (Task ses_eb91229d...).
+- **Branch/worktree**: `feature/phase-3-backend-server`
+- **Status**: done
+
+## PROMPT-025 - 2026-10-17 - tester - phase-3-static
+- **Requirement**: Static + unit (no live yet - pre MEMORY#17).
+- **Goals**: node --check, npm test 33/33, tsc --noEmit, 10Hz/elixir/win, compose config; write docs/TEST_REPORT_phase-3-backend.md.
+- **Prompt (verbatim condensed)**: "Read MEMORY + GAME_DESIGN + package.json; run checks, only write TEST_REPORT, no edits."
+- **Inputs**: MEMORY.md, backend/package.json
+- **Constraints**: docs/TEST_REPORT_phase-3-backend.md only.
+- **Done criteria**: 7/7 table.
+- **Outputs**: 7/7 PASS (Task ses_eb91229d...).
+- **Branch/worktree**: `feature/phase-3-backend-server`
+- **Status**: done
+
+## PROMPT-026 - 2026-10-17 - fixer - phase-3-minors
+- **Requirement**: Fix cheap safe minors (MEMORY#16 parallel clause included).
+- **Goals**: rooms.ts MAX_LIVE_UNITS 40 cap + stringify guards (ISS-N3-001/004), backend/CONTEXT.md §9 Phase 3 note; defer coverage/tuning.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: other agents finished, you are only fixer - do NOT touch ISSUES/TEST_REPORT/MEMORY/index/matchmaking; read MEMORY#11/15/16 + ISSUES + engine/rooms/CONTEXT; only rooms.ts + backend/CONTEXT.md."
+- **Inputs**: MEMORY.md, docs/ISSUES_phase-3-*.md, backend/src/net/rooms.ts
+- **Constraints**: backend/src/net/rooms.ts + backend/CONTEXT.md only (MEMORY#16 compliant).
+- **Done criteria**: cap present, node --check PASS.
+- **Outputs**: fixed N3-001/004 + deferred list (Task ses_eb910140...).
+- **Branch/worktree**: `feature/phase-3-backend-server`
+- **Status**: done
+
+## PROMPT-027 - 2026-10-17 - live-tester - phase-3-live (MEMORY#17 first run)
+- **Requirement**: Live API test - run servers + hit all cases (MEMORY#17).
+- **Goals**: Backend 4100: health, TCP, 404, socket handshake, ping, deck valid/invalid, queue join/leave/match twins, card:play 6 rejects + valid + NO_ELIXIR/RATE_LIMITED, emote + throttle, sync, legacy leave; AI 8100: health, bot/move easy/med/hard/invalid/missing + range, balance, 404/405; write docs/TEST_REPORT_phase-3-live.md; kill servers.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: you are only live tester - do NOT touch game/net/tests/ISSUES; read MEMORY#15-17 + GAME_DESIGN + index/package + ai main; run backend 4100 + ai 8100 jobs, hit 39 cases, write live report, cleanup ports."
+- **Inputs**: MEMORY.md, docs/GAME_DESIGN.md, backend/src/index.ts, ai-service/main.py
+- **Constraints**: docs/TEST_REPORT_phase-3-live.md only; no commits; ephemeral ports 4100/8100.
+- **Done criteria**: 10+ cases logged, ports freed.
+- **Outputs**: 39/39 PASS, PIDs killed, netstat empty (Task ses_eb90ee02...).
+- **Branch/worktree**: `feature/phase-3-backend-server`
+- **Status**: done
