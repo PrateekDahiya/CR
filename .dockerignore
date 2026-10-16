@@ -1,0 +1,34 @@
+# .dockerignore (repo root) — Phase 1 stub
+# Keeps `docker build` contexts small. Does NOT replace .gitignore (untouched).
+
+node_modules
+.pnp
+.pnp.js
+.next
+out
+build
+dist
+coverage
+
+__pycache__
+*.py[cod]
+.venv
+venv
+
+.git
+.gitignore
+.worktrees
+infra/worktrees
+
+.env
+.env.local
+.env*.local
+infra/.env
+
+*.log
+npm-debug.log*
+
+.DS_Store
+Thumbs.db
+.vscode
+.idea

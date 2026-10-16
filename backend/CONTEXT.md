@@ -1,0 +1,66 @@
+# backend/CONTEXT.md — Authoritative Game Server (Phase 1 Stub)
+
+> Purpose, tech, structure, run/test, conventions. Keep updated at end of every phase (MEMORY.md rule 2).
+
+## 1. Purpose
+- Authoritative realtime game server for CR Clone (Clash Royale-like 1v1 card battler).
+- Responsibilities (current stub → future):
+  - `GET /health` liveness probe → `{ ok: true, service: "backend" }`.
+  - Socket.io connection/disconnect logging + `ping` → `pong` stub.
+  - In-memory matchmaking queue stub (`src/matchmaking.ts`: `joinQueue` / `leaveQueue`).
+  - Future (Phase 3): authoritative tick loop @ 10–20Hz, movement/combat resolution, elixir regen, action validation/anti-cheat, Redis pubsub for matchmaking/ephemeral state, Postgres (via Prisma) for persistence.
+
+## 2. Tech
+- Node.js 20 + Express 4 + Socket.io 4 + CORS + dotenv + redis (client dep, unwired until Phase 3).
+- Dev: TypeScript 5 + tsx (watch). Build: `tsc` → `dist/`. Run: `node dist/index.js`.
+- Container: `node:20-alpine`, `npm ci` + `npm run build`, `EXPOSE 4000`, `CMD ["npm", "start"]`.
+
+## 3. Structure
+```
+backend/
+  package.json      # express, socket.io, cors, dotenv, redis | dev: typescript, tsx, @types/*
+  tsconfig.json     # commonjs, ES2022, outDir dist, rootDir src, strict
+  src/
+    index.ts        # express app + http server + socket.io, /health, ping/pong
+    matchmaking.ts  # in-memory FIFO queue stub (join/leave/size/clear)
+  .env.example      # PORT=4000, REDIS_URL=redis://redis:6379
+  Dockerfile        # node:20-alpine build
+  .dockerignore
+  CONTEXT.md        # this file
+```
+
+## 4. How to run / test
+```powershell
+Set-Location backend
+Copy-Item .env.example .env   # then edit PORT / REDIS_URL if needed
+npm install                   # NOT run during Phase 1 scaffold (per prompt)
+npm run dev                   # -> http://localhost:4000 (tsx watch src/index.ts)
+# build + prod:
+npm run build
+npm start
+# health check:
+# curl http://localhost:4000/health  -> {"ok":true,"service":"backend"}
+# docker (from repo root, Phase 1+ compose):
+# docker compose -f infra/docker-compose.yml up --build backend
+```
+
+## 5. Key files
+- `src/index.ts`: single entrypoint. Creates `express()` app, `http.createServer`, `new Server(httpServer, { cors })`. No game logic yet.
+- `src/matchmaking.ts`: pure in-memory queue, no I/O, safe to unit-test. Redis-backed in Phase 3.
+
+## 6. Conventions
+- Port `4000` (socket on same port). Env via `PORT`, `REDIS_URL`.
+- JSON APIs + Socket.io events only; no view layer.
+- Strict TS, `esModuleInterop`, `commonjs` modules (matches `tsc` + `node dist/`).
+- Logging: `console.log` stubs for now; structured logger in Phase 3+.
+- Validation: none yet — Phase 3 adds server-side action validation (positions, elixir costs, cooldowns).
+
+## 7. Socket protocol (stub → Phase 3 expansion)
+- Current: `connection`, `disconnect`, `ping` (client→server, any payload) → `pong` `{ received, serverTime }`.
+- Planned: `queue:join`, `queue:leave`, `match:found`, `match:state` @ 10–20Hz, `action:playCard` (validated), `match:end`. Full spec lands in `docs/GAME_DESIGN.md` (Phase 2).
+
+## 8. Future tick (Phase 3)
+- Authoritative loop at 10–20Hz broadcasting snapshots; 60fps interpolation happens client-side (frontend Canvas).
+- Keep tick deterministic, validate all client inputs, persist results to Postgres, ephemeral state in Redis.
+
+(End — Phase 1 scaffolding, 2026-10-16)

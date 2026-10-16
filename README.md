@@ -6,7 +6,7 @@
 ## 1. What this is
 Realtime 1v1 card battler (Clash Royale-like): deploy troops/spells with elixir, destroy towers, win crowns. Monorepo from scratch (no reference to sibling `CRclone/`).
 
-**Chosen stack (to be confirmed once, then locked):**
+**Chosen stack (LOCKED 2026-10-16, user confirmed):**
 - Frontend: Next.js (React) + TailwindCSS + TypeScript + Canvas battle renderer + Socket.io-client
 - Game server: Node.js + Express + Socket.io (authoritative 10-20Hz tick), Redis for matchmaking/pubsub
 - AI service: Python + FastAPI (rule-based bots, difficulty levels, balance analytics)
@@ -16,14 +16,17 @@ Realtime 1v1 card battler (Clash Royale-like): deploy troops/spells with elixir,
 ## 2. Prerequisites
 - Node 24+, npm, Python 3.12+, Docker 29+, Git 2.54+
 
-## 3. Quickstart (Phase 0 — scaffolding lands in Phase 1)
+## 3. Quickstart (Phase 1 COMPLETE — scaffolding + docker config PASS)
 ```powershell
-# clone (after Phase 0 push)
+# clone
 git clone https://github.com/PrateekDahiya/CR.git
 Set-Location CR
 git checkout main
 
-# Phase 1+ run (all services):
+# Phase 1 verified:
+docker compose -f infra/docker-compose.yml config  # -> exit 0, 5 services
+
+# Phase 1+ run (all services, needs npm install fix already applied via npm install in Dockerfiles):
 docker compose -f infra/docker-compose.yml up --build
 
 # Frontend dev (Phase 4+):
