@@ -1,0 +1,18 @@
+{
+  "name": "@cr/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared types/protocol between frontend and backend (Phase 1 stub — expanded in Phase 2/3)",
+  "type": "module",
+  "types": "./types.ts",
+  "files": [
+    "types.ts",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}

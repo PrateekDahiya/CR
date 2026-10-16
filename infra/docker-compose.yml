@@ -1,0 +1,93 @@
+# CR Clone — dev compose (Phase 1 scaffolding stub)
+#
+# Location: infra/docker-compose.yml
+# Run from repo root:  docker compose -f infra/docker-compose.yml up --build
+# Build contexts are relative to THIS file (infra/), so services point at ../frontend etc.
+# Dockerfiles themselves land via other Phase-1 agents (frontend/backend/ai-service).
+# Do NOT run `docker compose up` until those Dockerfiles exist.
+#
+# Services (5): frontend, backend, ai-service, postgres, redis. Network: cr-net.
+
+name: cr
+
+services:
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-http://localhost:4000}
+      - BACKEND_URL=${BACKEND_URL:-http://backend:4000}
+    networks:
+      - cr-net
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - PORT=4000
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - AI_URL=${AI_URL:-http://ai-service:8000}
+      - POSTGRES_USER=${POSTGRES_USER:-cr}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-crpass}
+      - POSTGRES_DB=${POSTGRES_DB:-crdb}
+    networks:
+      - cr-net
+    restart: unless-stopped
+
+  ai-service:
+    build:
+      context: ../ai-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - BACKEND_URL=${BACKEND_URL:-http://backend:4000}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+    networks:
+      - cr-net
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cr}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crpass}
+      POSTGRES_DB: ${POSTGRES_DB:-crdb}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - cr-net
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - cr-net
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  cr-net:
+    driver: bridge

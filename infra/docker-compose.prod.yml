@@ -1,0 +1,96 @@
+# CR Clone — prod compose STUB (Phase 1; full hardening in Phase 9)
+#
+# Location: infra/docker-compose.prod.yml
+# Usage (Phase 9+): docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d --build
+# Differences vs dev compose:
+#   - restart: always on every service (container host / VM expectation).
+#   - Intentionally NO bind-mount volumes for code (only named volumes pgdata/redisdata).
+#     Do not add `./../frontend:/app`-style mounts here.
+#   - Phase 9 will pin image tags / registry, add healthchecks, resource limits, secrets.
+# Build contexts are relative to THIS file (infra/), same as dev compose.
+
+name: cr-prod
+
+services:
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-http://localhost:4000}
+      - BACKEND_URL=${BACKEND_URL:-http://backend:4000}
+      - NODE_ENV=production
+    networks:
+      - cr-net
+    restart: always
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - AI_URL=${AI_URL:-http://ai-service:8000}
+      - POSTGRES_USER=${POSTGRES_USER:-cr}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-crpass}
+      - POSTGRES_DB=${POSTGRES_DB:-crdb}
+    networks:
+      - cr-net
+    restart: always
+
+  ai-service:
+    build:
+      context: ../ai-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - BACKEND_URL=${BACKEND_URL:-http://backend:4000}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+    networks:
+      - cr-net
+    restart: always
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cr}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crpass}
+      POSTGRES_DB: ${POSTGRES_DB:-crdb}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - cr-net
+    restart: always
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - cr-net
+    restart: always
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  cr-net:
+    driver: bridge
