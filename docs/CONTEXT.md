@@ -9,6 +9,7 @@ and templates that keep the 6-step execution pipeline (MEMORY.md §11) auditable
 ## Tech
 - Markdown only (GitHub-flavored). No build step; preview in any editor or `github.com`.
 - Normative game spec: `docs/GAME_DESIGN.md` (Phase 2+). This phase only ships the stub.
+- Source of truth (Phase 3+): `docs/GAME_DESIGN.md` is the normative spec (cards/balance, arena/towers/elixir/tick/win, protocol). All Phase 3+ server/client work implements it; DRAFT_*.md working files removed.
 
 ## Structure
 - `GAME_DESIGN_STUB.md` — placeholder headings for Phase 2 (overview, win conditions, cards,

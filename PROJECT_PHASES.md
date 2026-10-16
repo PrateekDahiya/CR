@@ -4,15 +4,15 @@
 > Repo: https://github.com/PrateekDahiya/CR.git | Branch: `main` | Feature branches: `feature/phase-<n>-<slug>`
 
 ## DONE
-- [x] Phase 0 - Foundation & Operating System (2026-10-16): MEMORY.md, PROJECT_PHASES.md, SUGGESTIONS.md, AGENTS_PROMPT.md, README skeleton, .gitignore, branching strategy defined. Tech stack LOCKED (user confirmed 2026-10-16): Next.js+Tailwind+TS frontend, Express+Socket.io+Redis+Postgres backend, FastAPI AI, Docker Compose. Pushed to `main`.
-- [x] Phase 1 - Monorepo Scaffolding + Docker + Context Files (2026-10-16): `frontend/` (Next.js14+Tailwind3+TS), `backend/` (Express+Socket.io stub + matchmaking), `ai-service/` (FastAPI + tests), `shared/` (types.ts Card/Tower/GameState/SocketEvents), `infra/docker-compose.yml` (5 services) + prod + .env.example, per-dir CONTEXT.md (6/6), docs/ (GAME_DESIGN_STUB + 4 ISSUES + 2 TEST_REPORTS). Pipeline: 4 coders (PROMPT-001..004) -> 4 reviewers (005..008) -> 2 testers (009..010) -> 2 fixers (011..012: npm install fix, emote:send typo, pycache cleanup). `docker compose config` PASS. All prompts logged in AGENTS_PROMPT.md.
+- [x] Phase 0 - Foundation & Operating System (2026-10-16): MEMORY.md, PROJECT_PHASES.md, SUGGESTIONS.md, AGENTS_PROMPT.md, README skeleton, .gitignore, branching strategy defined. Tech stack LOCKED (user confirmed 2026-10-16): Next.js+Tailwind+TS frontend, Express+Socket.io+Redis+Postgres backend, FastAPI AI, Docker Compose. Pushed to `main` as a0be095.
+- [x] Phase 1 - Monorepo Scaffolding + Docker + Context Files (2026-10-16): `frontend/` (Next.js14+Tailwind3+TS), `backend/` (Express+Socket.io stub + matchmaking), `ai-service/` (FastAPI + tests), `shared/` (types.ts Card/Tower/GameState/SocketEvents), `infra/docker-compose.yml` (5 services) + prod + .env.example, per-dir CONTEXT.md (6/6), docs/ (GAME_DESIGN_STUB + 4 ISSUES + 2 TEST_REPORTS). Pipeline: 4 coders (PROMPT-001..004) -> 4 reviewers (005..008) -> 2 testers (009..010) -> 2 fixers (011..012). `docker compose config` PASS. Merged to `main` as 9fa59fb, pushed.
+- [x] Memory update 2026-10-17: MEMORY.md rule 15 added (auto-continue across phases, no per-phase confirmation) per user instruction. Rides with Phase 2 merge.
+- [x] Phase 2 - Game Design Spec (2026-10-17): `docs/GAME_DESIGN.md` 43KB/619 lines (12 cards, arena 18x32, towers 1400/2400, elixir 1/2.8s + double, 3min+60s OT, 10Hz tick, protocol state:update + REST + sequence) + `shared/types.ts` additive (CardStats/DeployRequest/ServerTick via Omit, emote:send kept) + `docs/CONTEXT.md` source-of-truth note. Pipeline: 3 coders (PROMPT-013..015 DRAFT_*.md) -> 2 reviewers (016..017: 7maj/8min + 2maj/5min) -> 1 tester (018: 6/6 PASS) -> 1 merger (019: fixes Archers/King/Giant/pocket/avg + 10 bonus, deletes drafts). Auto-continued per MEMORY#15.
 
 ## CURRENTLY IN PROGRESS
-- [ ] Phase 1 - final step: review changes, merge `feature/phase-1-scaffolding` --no-ff into `main`, push. Then Phase 2 starts.
+- [ ] Phase 2 - final step: review changes, merge `feature/phase-2-game-design` --no-ff into `main`, push. Auto-continue to Phase 3 immediately after (MEMORY#15, no confirmation).
 
 ## NEXT (Planned)
-- [ ] Phase 1 - Monorepo Scaffolding + Docker + Context Files: `frontend/` (Next.js+Tailwind), `backend/` (Express+Socket.io), `ai-service/` (FastAPI), `shared/`, `infra/docker-compose.yml`, per-dir CONTEXT.md, README run instructions, `docker compose up` verified.
-- [ ] Phase 2 - Game Design Spec: cards, elixir, arenas, towers, win conditions, tick rate, protocol (socket events), balance numbers in `docs/GAME_DESIGN.md`.
 - [ ] Phase 3 - Backend Game Server: matchmaking queue, authoritative tick loop (10-20Hz), movement/combat, elixir regen, validation/anti-cheat, Redis pubsub, unit+integration tests.
 - [ ] Phase 4 - Frontend Shell: Next.js app, Tailwind, menu/lobby/deck-builder, auth stub, lobby→match flow, REST+Socket client.
 - [ ] Phase 5 - Realtime Battle Client: Canvas renderer, 60fps interpolation, card deploy UX, SFX/animations, lag compensation, spectator stub.
@@ -25,4 +25,5 @@
 | Phase | Branch | Main merge commit | Date | Notes |
 |-------|--------|-------------------|------|-------|
 | 0 | `feature/phase-0-foundation` | a0be095 (init, fast-forward bootstrap) | 2026-10-16 | init operating files, pushed |
-| 1 | `feature/phase-1-scaffolding` | pending (merge --no-ff next) | 2026-10-16 | scaffolding + reviews/tests/fixes, config PASS |
+| 1 | `feature/phase-1-scaffolding` | 9fa59fb (merge --no-ff) | 2026-10-16 | scaffolding + reviews/tests/fixes, config PASS, pushed |
+| 2 | `feature/phase-2-game-design` | pending | 2026-10-17 | started, auto-continued per MEMORY#15 |
