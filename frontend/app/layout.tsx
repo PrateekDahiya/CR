@@ -13,7 +13,23 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <nav className="flex items-center gap-4 border-b border-slate-800 bg-slate-900 px-4 py-2 text-sm text-slate-200">
+          <a href="/" className="font-bold tracking-tight hover:text-white">
+            CR Clone
+          </a>
+          <a href="/" className="hover:text-white">
+            Menu
+          </a>
+          <a href="/lobby" className="hover:text-white">
+            Lobby
+          </a>
+          <a href="/deck" className="hover:text-white">
+            Deck
+          </a>
+        </nav>
+        {children}
+      </body>
     </html>
   );
 }

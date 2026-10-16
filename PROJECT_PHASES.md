@@ -9,14 +9,13 @@
 - [x] Memory update 2026-10-17: MEMORY.md rule 15 added (auto-continue across phases, no per-phase confirmation) per user instruction. Rides with Phase 2 merge.
 - [x] Phase 2 - Game Design Spec (2026-10-17): `docs/GAME_DESIGN.md` 43KB/619 lines (12 cards, arena 18x32, towers 1400/2400, elixir 1/2.8s + double, 3min+60s OT, 10Hz tick, protocol state:update + REST + sequence) + `shared/types.ts` additive (CardStats/DeployRequest/ServerTick via Omit, emote:send kept) + `docs/CONTEXT.md` source-of-truth note. Pipeline: 3 coders (PROMPT-013..015 DRAFT_*.md) -> 2 reviewers (016..017: 7maj/8min + 2maj/5min) -> 1 tester (018: 6/6 PASS) -> 1 merger (019: fixes Archers/King/Giant/pocket/avg + 10 bonus, deletes drafts). Merged to `main` as cf00bdb, pushed. Auto-continued per MEMORY#15.
 - [x] Memory updates 2026-10-17: MEMORY#16 parallel-agent awareness + #17 live API + Playwright Chromium UI testing (per user). Ride with Phase 3 merge.
-- [x] Phase 3 - Backend Game Server (2026-10-17): `backend/src/game/` (cards/arena/engine 10Hz, elixir 5/10/2.8s/1.4s, win/OT) + `backend/src/net/` (rooms 10Hz broadcast, validation 8 codes, redis fallback, tryMatch, index wiring) + `backend/tests/` (33 tests: 16 engine + 17 validation) + `backend/package-lock.json`. Pipeline: 3 coders (PROMPT-020..022) -> 2 reviewers (023..024: 1maj/7min + 0maj/4min) -> 1 static tester (025: 7/7 PASS tsc+npm test+config) -> 1 fixer (026: 40-unit cap + stringify guard + CONTEXT §9) -> 1 live tester (027: 39/39 PASS backend 4100 + AI 8100, servers cleaned) with MEMORY#16 parallel clause + #17 live procedure.
+- [x] Phase 3 - Backend Game Server (2026-10-17): `backend/src/game/` (cards/arena/engine 10Hz, elixir 5/10/2.8s/1.4s, win/OT) + `backend/src/net/` (rooms 10Hz broadcast, validation 8 codes, redis fallback, tryMatch, index wiring) + `backend/tests/` (33 tests: 16 engine + 17 validation) + `backend/package-lock.json`. Pipeline: 3 coders (PROMPT-020..022) -> 2 reviewers (023..024: 1maj/7min + 0maj/4min) -> 1 static tester (025: 7/7 PASS tsc+npm test+config) -> 1 fixer (026: 40-unit cap + stringify guard + CONTEXT §9) -> 1 live tester (027: 39/39 PASS backend 4100 + AI 8100, servers cleaned) with MEMORY#16 parallel clause + #17 live procedure. Merged to `main` as bdf3d17, pushed. Auto-continued per MEMORY#15.
+- [x] Phase 4 - Frontend Shell (2026-10-17): `/` menu + `/lobby` + `/deck` + nav, `lib/cards.ts` 12 cards + validateDeck, `lib/socket.ts` (queue/deck/card/emote + twins + serverTimeMs) + `lib/api.ts`, `playwright.config.ts` Chromium + `tests/shell.spec.ts` 3 tests. Pipeline: 3 coders (028..030) -> 2 reviewers (031 FAIL 1blk/4maj/5min + 032 pass-with-issues 2maj/5min) -> 1 static (033 FAIL 5/9 missing testids) -> 1 fixer (034: card-slot + player-id-input + key cr-clone-deck-v1 + validateDeck + nav testids + playwright config) -> 1 live UI (035: Playwright 1.64.1 Chromium 156, 8/8 PASS 3 UI + 5 API, screenshots 3, servers cleaned) with MEMORY#16 + #17. Frontend CONTEXT §Phase 4 updated.
 
 ## CURRENTLY IN PROGRESS
-- [ ] Phase 3 - final step: log prompts PROMPT-020..027, review, merge `feature/phase-3-backend-server` --no-ff into `main`, push. Auto-continue to Phase 4 immediately (MEMORY#15, no confirmation).
+- [ ] Phase 4 - final step: log prompts PROMPT-028..035, review, merge `feature/phase-4-frontend-shell` --no-ff into `main`, push. Auto-continue to Phase 5 immediately (MEMORY#15, no confirmation).
 
 ## NEXT (Planned)
-- [ ] Phase 3 - Backend Game Server: matchmaking queue, authoritative tick loop (10-20Hz), movement/combat, elixir regen, validation/anti-cheat, Redis pubsub, unit+integration tests.
-- [ ] Phase 4 - Frontend Shell: Next.js app, Tailwind, menu/lobby/deck-builder, auth stub, lobby→match flow, REST+Socket client.
 - [ ] Phase 5 - Realtime Battle Client: Canvas renderer, 60fps interpolation, card deploy UX, SFX/animations, lag compensation, spectator stub.
 - [ ] Phase 6 - Python AI Service: FastAPI bot (rule-based + difficulty levels), single-player mode, balance analytics endpoint.
 - [ ] Phase 7 - Persistence & Meta: Postgres+Prisma (users/decks/matches/leaderboard), auth, profiles, leaderboard UI, season stub.
@@ -29,4 +28,5 @@
 | 0 | `feature/phase-0-foundation` | a0be095 (init, fast-forward bootstrap) | 2026-10-16 | init operating files, pushed |
 | 1 | `feature/phase-1-scaffolding` | 9fa59fb (merge --no-ff) | 2026-10-16 | scaffolding + reviews/tests/fixes, config PASS, pushed |
 | 2 | `feature/phase-2-game-design` | cf00bdb (merge --no-ff) | 2026-10-17 | GAME_DESIGN 43KB + types + reviews/tests, pushed, auto-continued |
-| 3 | `feature/phase-3-backend-server` | pending | 2026-10-17 | started, auto-continued per MEMORY#15 |
+| 3 | `feature/phase-3-backend-server` | bdf3d17 (merge --no-ff) | 2026-10-17 | engine + net + 33 unit + 39 live PASS, pushed, auto-continued |
+| 4 | `feature/phase-4-frontend-shell` | pending | 2026-10-17 | started, auto-continued per MEMORY#15 |

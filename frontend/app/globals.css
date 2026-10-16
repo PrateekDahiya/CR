@@ -9,3 +9,9 @@
 body {
   @apply bg-slate-950 text-slate-100 antialiased;
 }
+
+@layer components {
+  .btn {
+    @apply transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+}
