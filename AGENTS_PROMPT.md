@@ -307,3 +307,91 @@
 - **Outputs**: 39/39 PASS, PIDs killed, netstat empty (Task ses_eb90ee02...).
 - **Branch/worktree**: `feature/phase-3-backend-server`
 - **Status**: done
+
+## PROMPT-028 - 2026-10-17 - coder - phase-4-shell
+- **Requirement**: App shell + routing (MEMORY#16 clause).
+- **Goals**: app/page menu (Play vs AI/1v1/Deck + health dot), app/lobby (playerId + deck preview + Join/Leave), layout nav, globals .btn; write app/* only.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: deck agent on components/deck+lib, net agent on lib/socket+lobby... do NOT touch their paths; read MEMORY#15-17 + GAME_DESIGN§12 + CONTEXT + page/layout + types; only app/page,lobby,layout,globals."
+- **Inputs**: MEMORY.md, docs/GAME_DESIGN.md, frontend/app/page.tsx, shared/types.ts
+- **Constraints**: frontend/app/* only; deck/lib/tests forbidden.
+- **Done criteria**: shell pages exist.
+- **Outputs**: page+lobby+nav+btn (Task ses_eb90ad0d...; TODO socket wiring).
+- **Branch/worktree**: `feature/phase-4-frontend-shell`
+- **Status**: done
+
+## PROMPT-029 - 2026-10-17 - coder - phase-4-deck-lib
+- **Requirement**: Deck builder + card lib.
+- **Goals**: lib/cards.ts 12 cards + validateDeck, CardTile, DeckBuilder 8 slots max2spells localStorage, app/deck/page; pure TSX no socket.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: shell on app/* + net on lib/socket + tests; do NOT touch app/*, socket, tests; read MEMORY + GAME_DESIGN§§1-4 + types; only components/deck + lib/cards + app/deck."
+- **Inputs**: MEMORY.md, docs/GAME_DESIGN.md, shared/types.ts
+- **Constraints**: frontend/components/deck/ + lib/cards.ts + app/deck/page only.
+- **Done criteria**: 4 files, node --check cards PASS.
+- **Outputs**: 12 cards avg 3.375 valid, no socket import (Task ses_eb90ad0c...).
+- **Branch/worktree**: `feature/phase-4-frontend-shell`
+- **Status**: done
+
+## PROMPT-030 - 2026-10-17 - coder - phase-4-net-tests
+- **Requirement**: Socket client + api + Playwright setup (MEMORY#17).
+- **Goals**: lib/socket.ts (queue/deck/card/emote + twins + serverTimeMs), lib/api.ts (health/bot/balance), tests/shell.spec.ts 3 Chromium tests, tests/README, package.json +@playwright/test + test:e2e.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: shell + deck agents... do NOT touch app/*, deck; read MEMORY#17 + GAME_DESIGN§12 + types + backend index + package; only lib/socket,api + tests + package.json."
+- **Inputs**: MEMORY.md, shared/types.ts, backend/src/index.ts
+- **Constraints**: frontend/lib/socket.ts,api.ts + tests/ + package.json only.
+- **Done criteria**: net scaffolds + 3 specs.
+- **Outputs**: socket 278 lines + api + spec (noted data-testid contracts needed) (Task ses_eb90ad0b...).
+- **Branch/worktree**: `feature/phase-4-frontend-shell`
+- **Status**: done
+
+## PROMPT-031 - 2026-10-17 - reviewer - phase-4-shell-deck
+- **Requirement**: Review shell + deck (MEMORY#16).
+- **Goals**: Routing, Tailwind, 8 slots, starter 3.375, data-testid contracts, localStorage keys, spec button vs link; write docs/ISSUES_phase-4-shell.md.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: other reviewer on net/tests... do NOT touch net issues/reports; read MEMORY + GAME_DESIGN + app/deck/components/lib/cards + types; only shell issues file."
+- **Inputs**: MEMORY.md, frontend/app/, frontend/components/
+- **Constraints**: docs/ISSUES_phase-4-shell.md only.
+- **Done criteria**: file with checks.
+- **Outputs**: FAIL 1blk/4maj/5min (missing testids, key mismatch, button/link, missing playwright config) + 10 PASS (Task ses_eb9094c6...).
+- **Branch/worktree**: `feature/phase-4-frontend-shell`
+- **Status**: done
+
+## PROMPT-032 - 2026-10-17 - reviewer - phase-4-net
+- **Requirement**: Review net + Playwright (MEMORY#16).
+- **Goals**: Events vs backend, REST, chromium-only, baseURL, 3 specs; write docs/ISSUES_phase-4-net.md.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: shell reviewer + tester running... do NOT touch shell issues/reports; read MEMORY#17 + GAME_DESIGN§12 + socket/api/spec + backend index + types; only net issues file."
+- **Inputs**: MEMORY.md, frontend/lib/, backend/src/index.ts
+- **Constraints**: docs/ISSUES_phase-4-net.md only.
+- **Done criteria**: file exists.
+- **Outputs**: pass-with-issues 0blk/2maj/5min (missing config, onMatched double-fire) (Task ses_eb9094c5...).
+- **Branch/worktree**: `feature/phase-4-frontend-shell`
+- **Status**: done
+
+## PROMPT-033 - 2026-10-17 - tester - phase-4-static
+- **Requirement**: Static checks (MEMORY#16).
+- **Goals**: node --check lib, package.json, routes, 8 slots, validateDeck, 3 specs, data-testid scan; write docs/TEST_REPORT_phase-4-static.md.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: reviewers writing ISSUES... do NOT touch ISSUES; read MEMORY + package + app/lib/spec; only static TEST_REPORT."
+- **Inputs**: MEMORY.md, frontend/package.json
+- **Constraints**: docs/TEST_REPORT_phase-4-static.md only.
+- **Done criteria**: 9 checks table.
+- **Outputs**: FAIL 5/9 (0 testids, button/link mismatch) (Task ses_eb9094c5...).
+- **Branch/worktree**: `feature/phase-4-frontend-shell`
+- **Status**: done
+
+## PROMPT-034 - 2026-10-17 - fixer - phase-4-blockers
+- **Requirement**: Fix e2e contract blockers (MEMORY#16).
+- **Goals**: DeckBuilder data-testid card-slot, lobby player-id-input + key cr-clone-deck-v1 + validateDeck, page nav-play/lobby/deck testids (keep Links), create playwright.config.ts chromium; defer N4-002 + minors.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: you are only fixer... do NOT touch ISSUES/static report; read MEMORY#16-17 + ISSUES + DeckBuilder/lobby/page/spec/package; only DeckBuilder + lobby + page + playwright.config."
+- **Inputs**: MEMORY.md, docs/ISSUES_phase-4-*.md
+- **Constraints**: DeckBuilder + lobby/page + page + playwright.config only.
+- **Done criteria**: testids present.
+- **Outputs**: fixed F4-001..005/N4-001, deferred N4-002 + spec link update (Task ses_eb907e86...).
+- **Branch/worktree**: `feature/phase-4-frontend-shell`
+- **Status**: done
+
+## PROMPT-035 - 2026-10-17 - live-tester - phase-4-ui (MEMORY#17 Playwright Chromium)
+- **Requirement**: Live UI + API sanity with Playwright Chromium (MEMORY#17).
+- **Goals**: npm install + playwright install chromium, run backend 4100 + frontend 3100, fix spec additively (button->link/nav-*), run playwright --project=chromium 3 tests, API ping/join/deck/leave, screenshots home/deck/lobby, write docs/TEST_REPORT_phase-4-ui.md, kill jobs.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: fixer finished, you are only live tester... do NOT touch ISSUES/static; allowed spec additive + README + ui report + screenshots; read MEMORY#17 + GAME_DESIGN + config/spec/page + backend index; run 3100+4100, 8 cases, cleanup."
+- **Inputs**: MEMORY.md, frontend/playwright.config.ts, backend/src/index.ts
+- **Constraints**: shell.spec.ts (additive) + tests/README + TEST_REPORT_phase-4-ui.md + screenshots only; ports 3100/4100.
+- **Done criteria**: 3 UI + API PASS, ports freed.
+- **Outputs**: PASS 8/8 (3 UI + 5 API), Playwright 1.64.1 Chromium 156.0.8078.4, screenshots 3 (Task ses_eb906eeb...).
+- **Branch/worktree**: `feature/phase-4-frontend-shell`
+- **Status**: done

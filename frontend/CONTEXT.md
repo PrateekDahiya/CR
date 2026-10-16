@@ -72,3 +72,8 @@ docker run -p 3000:3000 cr-frontend
 ## Notes / TODO
 - `npm ci` in Docker requires `package-lock.json` — run `npm install` locally once and commit the lockfile before `docker build`.
 - No backend wiring yet; status dot is static yellow `stub` by design.
+
+## Phase 4 update (2026-10-17, branch feature/phase-4-frontend-shell)
+- Routes: `/` menu (Play vs AI / 1v1 / Deck links + backend health dot), `/lobby` (playerId + deck preview + Join/Leave stubs), `/deck` (DeckBuilder 8 slots max2spells localStorage `cr-clone-deck-v1`).
+- Lib: `lib/cards.ts` (12 cards + validateDeck), `lib/socket.ts` (queue/deck/card/emote + twins + serverTimeMs), `lib/api.ts` (health/bot/balance fetch).
+- Tests: `tests/shell.spec.ts` Playwright Chromium (3 tests PASS live), `playwright.config.ts` chromium project, `npm run test:e2e`. Live UI 8/8 PASS (3100+4100). See docs/TEST_REPORT_phase-4-ui.md.
