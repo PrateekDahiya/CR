@@ -1,0 +1,48 @@
+# deps
+node_modules/
+.pnp
+.pnp.js
+
+# next
+frontend/.next/
+frontend/out/
+frontend/build/
+backend/dist/
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+ai-service/.venv/
+
+# env
+.env
+.env.local
+.env*.local
+infra/.env
+
+# db
+*.db
+*.sqlite
+
+# docker
+docker-compose.override.yml
+
+# worktrees (agents isolated) - keep dir but ignore contents except .gitkeep
+.worktrees/*
+!.worktrees/.gitkeep
+infra/worktrees/*
+
+# os/ide
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# logs
+*.log
+npm-debug.log*
+
+# prisma
+*.db-journal
