@@ -87,3 +87,74 @@ export interface SocketEvents {
   'match:end': { matchId: string; winner: PlayerSide | 'draw'; crowns: Record<PlayerSide, number> };
   'error:game': { code: string; message: string };
 }
+
+// --- Phase 2 additions (GAME_DESIGN.md normative; additive only — nothing above renamed/removed) ---
+
+/** Normative per-card stat block (fills Phase-1 stub optionals; all new keys optional at use site). */
+export interface CardStats {
+  hitPoints: number;
+  damage: number;
+  dps?: number; // damage / hitSpeed convenience
+  range: number; // tiles; melee ≈ 0.8-1.2
+  sightRange: number; // aggro distance
+  moveSpeed: number; // tiles/sec
+  hitSpeed: number; // sec per attack
+  elixirCost?: number;
+  radius?: number; // splash / spawn radius
+  count?: number; // troops spawned
+  durationMs?: number; // spells/buildings (Cannon lifetime 30s lives here)
+  targets?: 'ground' | 'air+ground' | 'buildings';
+  stunMs?: number; // Zap 0.5s lives here
+  deathBurst?: number; // Rock Golem 280 lives here
+}
+
+/** Card with optional normative stats — old `Card` imports still compile. */
+export interface CardWithStats extends Card {
+  stats?: CardStats;
+  elixirCost: number; // re-declared, still 1-10
+  arena?: { minX: number; maxX: number; minY: number; maxY: number };
+}
+
+/** Canonical `card:play` deploy intent (handIndex authoritative; cardId/at back-compat). */
+export interface DeployRequest {
+  matchId: string;
+  playerId: string;
+  handIndex: number; // 0..3
+  x: number; // [0,18]
+  y: number; // [0,32]
+  cardId?: string; // back-compat echo of Card.id
+  at?: Vec2; // back-compat alias for {x,y}
+  clientTick?: number; // for server reconciliation / stale rejection
+}
+
+/** Canonical `state:update` snapshot (goal shorthand resolved: tick/entities/elixir). */
+export interface ServerTick extends GameState {
+  // tick     -> GameState.tick
+  // entities -> GameState.towers + GameState.units
+  // elixir   -> GameState.elixir
+}
+export type EntitiesSnapshot = Pick<GameState, 'towers' | 'units'>;
+
+/** Refined card:play payload (intersection keeps legacy shape assignable). */
+export type CardPlayPayload = DeployRequest & { cardId?: string; at?: Vec2 };
+
+/** Socket map extension — every key in SocketEvents is kept (Omit avoids conflicting overrides). */
+export interface SocketEventsV2 extends Omit<SocketEvents, 'card:play' | 'state:update'> {
+  // client -> server (new canonical)
+  'queue:join': { playerId: string; deck: string[] };
+  'queue:leave': { playerId: string };
+  'deck:select': { playerId: string; deck: string[] };
+  // server -> client (new canonical)
+  'queue:matched': { matchId: string; opponentId: string; side: PlayerSide; serverTimeMs: number };
+  'error': { code: string; message: string; matchId?: string };
+  // refined payloads
+  'card:play': CardPlayPayload;
+  'state:update': ServerTick;
+}
+
+/** Synchronous ack for client→server intents (async failures use error/error:game twins). */
+export interface Ack {
+  ok: boolean;
+  position?: number;
+  error?: { code: string; message: string };
+}

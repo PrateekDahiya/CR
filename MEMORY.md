@@ -1,7 +1,7 @@
 # MEMORY - Persistent Project Instructions (NEVER FORGET)
 
 > This file is the source of truth for operating rules. It must stay in context for every phase, every agent, every commit.
-> Last updated: 2026-10-16 | Project: CR Clone (Clash Royale clone) | Workspace: `D:\Documents\Projects\CR` | Repo: https://github.com/PrateekDahiya/CR.git
+> Last updated: 2026-10-17 | Project: CR Clone (Clash Royale clone) | Workspace: `D:\Documents\Projects\CR` | Repo: https://github.com/PrateekDahiya/CR.git
 
 ## 0. Origin
 User instruction dated 2026-10-16: "PUT THIS INTO YOUR MEMORY SO EVEN IF THE CONTEXT WINDOW OVER YOU SHOULD REMEMBER ALL THIS" — all points below are mandatory and persistent.
@@ -74,3 +74,10 @@ User instruction dated 2026-10-16: "PUT THIS INTO YOUR MEMORY SO EVEN IF THE CON
 ## 14. How This File Stays In Context
 - All coding/review/test/fix agents must be instructed (via their prompt in AGENTS_PROMPT.md) to read `MEMORY.md`, relevant `CONTEXT.md`, `PROJECT_PHASES.md`, `README.md` first.
 - At phase boundaries, re-read all four files before planning next phase.
+
+## 15. Auto-Continue Across Phases (added 2026-10-17 per user)
+- DO NOT stop after each phase. If a phase is done (reviewed, merged to `main`, pushed), immediately move to the next phase with no confirmation prompt.
+- No per-phase gate: no question tool, no "shall I proceed?" — proceed autonomously through PROJECT_PHASES.md NEXT list.
+- Still obey rules 4,5,8,12: review→commit (feature branch)→merge --no-ff to main→push, update PHASES/README/CONTEXTs/AGENTS_PROMPT per phase.
+- Only stop for: missing credentials/blocked push, unrecoverable docker/build failure after fix cycle, or explicit user `stop/pause` instruction. Otherwise keep chaining phases.
+- Log auto-continuation in PROJECT_PHASES.md Phase Log (e.g. "auto-continued to Phase N").
