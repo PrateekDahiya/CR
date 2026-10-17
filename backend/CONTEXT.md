@@ -80,3 +80,9 @@ npm start
 - Prod: `npm install @prisma/client prisma pg && npx prisma migrate dev` + DATABASE_URL enables Postgres (docker `postgres` service already in compose). Dev/preview runs memory fallback (db:false).
 
 (End — Phase 1 scaffolding, 2026-10-16; Phase 3 update appended 2026-10-17)
+
+## 12. Phase 10 update (2026-10-17, branch feature/phase-10-authentic-content, MEMORY#22 + #20)
+- Content store: src/mysql.ts (Aiven MySQL cr via mysql2 optional dynamic import + local fallback, SSL per DB_SSL, O(1) pool + O(c)/O(m) reads with Big-O comments) + src/content.ts (GET /content/cards|/sprites|/menus|/status) mounted in index.ts. Deps: mysql2 installed for live path.
+- Data: infra/mysql/schema.sql (cards/sprites/menus/users/decks/matches) + infra/mysql/seed.py (12 same-name CR cards/stats + 7 menus + 12 sprite metadata rows, original placeholders only). Live verified: cards source:mysql count 12, menus 7, sprites 12.
+- Secrets: real creds env-only (infra/.env, gitignored); .env.example placeholders. No .env tracked.
+- Tests: tests/content.test.ts 3 suites; full npm test 38/38 PASS; tsc --noEmit clean.

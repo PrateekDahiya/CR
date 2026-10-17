@@ -571,3 +571,13 @@
 - **Branch/worktree**: `feature/phase-9-deployment`
 - **Status**: done
 
+## PROMPT-052 - 2026-10-17 - builder/tester - phase-10-authentic-content (main-agent, no subagents)
+- **Requirement**: Same CR cards/menus/naming (original art only) + Aiven MySQL store (MEMORY#22/#20).
+- **Goals**: infra/mysql/schema.sql + seed.py (12 cards/7 menus/12 sprite meta), backend mysql.ts (optional mysql2 + fallback, SSL, O(1)/O(c)) + content.ts 4 routes, content.test.ts 3 suites, frontend api getContentCards/getContentMenus, live MySQL verify, no-secrets scan.
+- **Prompt (verbatim condensed)**: N/A - main-agent direct (subagent infra deprecated). Only infra/mysql + backend mysql/content/tests + frontend api + 2 docs + CONTEXTs.
+- **Inputs**: MEMORY.md, docs/GAME_DESIGN.md, backend/src/game/cards.ts
+- **Constraints**: listed paths only; real creds in gitignored infra/.env; previews :3000/:8000 untouched, :4000 restarted with DB_* env (MEMORY#19).
+- **Done criteria**: 38/38 + 11/11 live (source:mysql) + docs.
+- **Outputs**: 6 tables + SEED_OK 12/12/7; fixed Pool bracket + restart latch; 38/38 PASS + 11/11 live; ISS-C10-001..003 + TEST_REPORT_phase-10.
+- **Branch/worktree**: feature/phase-10-authentic-content
+- **Status**: done

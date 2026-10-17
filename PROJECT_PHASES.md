@@ -18,12 +18,14 @@
 - [x] Phase 7 - Persistence & Meta (2026-10-17): Prisma schema (User/Deck/Match) + db.ts (Prisma-or-memory) + auth + meta 6 routes + leaderboard UI. npm test 35/35 + live :4000 7/7. Merged b71be37, previews restarted :3000/:4000/:8000 live.
 - [x] Phase 8 - Testing & Hardening (2026-10-17): full gate - backend 35/35 + ai 12/12 + bot.py self-check (fixed ISS-H8-001 medium skeletons expectation) + compose config PASS + secrets scan clean + perf (tick 0.04ms, AI 0.05ms, snapshot 6105B@40u note) + previews live. ISSUES_phase-8-hardening.md + TEST_REPORT_phase-8-e2e.md. Pipeline: main-agent PROMPT-050. Merged d7538d2.
 - [x] Phase 9 - Deployment (2026-10-17): prod overlay hardened (restart always, healthchecks, healthy dep, DATABASE_URL+SEASON+CORS_ORIGIN) + .env.example + README + CONTEXT. Dev + prod compose config PASS. Pipeline: main-agent PROMPT-051. Merged 9da2d5d. Tagged v0.1.0. GAME DONE + TESTED per MEMORY#21.
+- [x] Phase 10 - Authentic CR Content + Aiven MySQL (2026-10-17): same 12-card roster/naming/stats + 7 menus (original art metadata only, no binaries) in Aiven MySQL cr (6 tables, SEED_OK 12/12/7) + backend mysql.ts (mysql2 optional + fallback, SSL) + /content/cards|sprites|menus|status (live source:mysql) + frontend api getContentCards/getContentMenus. Secrets env-only (infra/.env gitignored). npm test 38/38 + live 11/11. ISSUES_phase-10 + TEST_REPORT_phase-10. Pipeline: main-agent PROMPT-052.
+- [x] Memory update 2026-10-17: MEMORY#22 authentic CR content (same cards/UI/menus/naming, educational, original art only - no ripped binaries) + Aiven MySQL (env-only creds, schema + seed + /content endpoints). New Phase 10 scoped.
 
 ## CURRENTLY IN PROGRESS
-- (none - all phases 0-9 DONE, v0.1.0 released. Follow-ups via SUGGESTIONS.md.)
+- [ ] Phase 10 - Authentic CR Content + Aiven MySQL (started 2026-10-17, branch `feature/phase-10-authentic-content`): same 12-card roster/naming/stats + menu labels/structure as CR (original art only), MySQL `cr` store (cards/sprites-meta/menus + users/decks/matches mirror), `infra/mysql/schema.sql` + seed, `backend/src/mysql.ts` (optional import + fallback, SSL per DB_SSL, O(1)) + `/content/*` endpoints, frontend same-name cards/menus via /content with fallback. Secrets env-only (gitignored `infra/.env`), examples placeholders. Pipeline: main-agent (subagents deprecated) + live MySQL verify + no-secrets scan. Run-to-completion per MEMORY#21.
 
 ## NEXT (Planned)
-- (none - all phases 0-9 complete; see SUGGESTIONS.md parking lot for future ideas)
+- (none - v0.2.0 closes authentic-content scope; future ideas via SUGGESTIONS.md)
 
 ## Phase Log
 | Phase | Branch | Main merge commit | Date | Notes |
@@ -38,3 +40,4 @@
 | 7 | `feature/phase-7-persistence` | b71be37 (merge --no-ff) | 2026-10-17 | prisma + auth + leaderboard 35/35 + 7 live PASS, previews restarted |
 | 8 | `feature/phase-8-hardening` | d7538d2 (merge --no-ff) | 2026-10-17 | full gate 47/47 + compose + perf + security PASS |
 | 9 | `feature/phase-9-deployment` | 9da2d5d (merge --no-ff) + tag v0.1.0 | 2026-10-17 | prod hardened + env + docs, dev+prod config PASS, GAME DONE |
+| 10 | `feature/phase-10-authentic-content` | pending | 2026-10-17 | started, MEMORY#22 authentic CR + Aiven MySQL |
