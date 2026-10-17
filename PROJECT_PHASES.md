@@ -16,14 +16,14 @@
 - [x] Phase 5 - Exact-CR Battle Client (2026-10-17): `/battle` portrait + ArenaCanvas (18x32, river/bridges, towers HP/crown/explosion, units interp, spells, damage numbers, offscreen blit, DPR cap 2) + ElixirBar (10 pips + shake) + Hand (rarity borders + Next) + BattleTopBar (timer m:ss + OT + mute/emote) + useBattle (serverTimeMs clock, 60fps interp, elixir extrap, pocket-4, flat setState) + sfx WebAudio + battle.spec 4 tests. Pipeline: 3 coders (036..038) -> 2 reviewers (039 pass-with-issues 1maj/7min; 040 pass-with-issues 1blk/5maj/6min) -> 1 static (041 conditional pass, testid drift) -> 1 merger (042 contract reconciliation, OT/pocket/setState, OR-locators) -> 1 perf (043 MEMORY#20: tick 0.034-0.046ms ~100x headroom, snapshot 6105B@40u/3979B@22u, 33/33 PASS) -> 1 live UI (044: Playwright Chromium 4/4 PASS + mobile/desktop screenshots, preview :3000/ 404 flagged stale). Merged to `main` as 30bf44c, pushed. Preview restarted from merge (200s).
 - [x] Phase 6 - Python AI Service (2026-10-17): `bot.py` easy O(h)/medium O(h+t)/hard O(h+t+u) + `analytics.py` ring-buffer + `main.py` lazy brain + handIndex resolve + balance 12 cards. Subagents FAILED -> main-agent recovery PROMPT-045..048. pytest 12/12 + live 8100 9/9. Merged f19ba5e, preview :8000 started. Auto-continued per MEMORY#21.
 - [x] Phase 7 - Persistence & Meta (2026-10-17): Prisma schema (User/Deck/Match) + db.ts (Prisma-or-memory) + auth + meta 6 routes + leaderboard UI. npm test 35/35 + live :4000 7/7. Merged b71be37, previews restarted :3000/:4000/:8000 live.
-- [x] Phase 8 - Testing & Hardening (2026-10-17): full gate - backend 35/35 + ai 12/12 + bot.py self-check (fixed ISS-H8-001 medium skeletons expectation) + compose config PASS + secrets scan clean + perf (tick 0.04ms, AI 0.05ms, snapshot 6105B@40u note) + previews live. ISSUES_phase-8-hardening.md (1maj fixed, 2min accepted) + TEST_REPORT_phase-8-e2e.md. Pipeline: main-agent PROMPT-050. Merged d7538d2.
-- [x] Phase 9 - Deployment (2026-10-17): prod overlay hardened (restart always, healthchecks pg/redis/backend/ai, healthy dep, DATABASE_URL+SEASON+CORS_ORIGIN wired) + .env.example (DATABASE_URL, NEXT_PUBLIC_AI_URL, SEASON, CORS_ORIGIN) + README deploy/run/test refresh + infra CONTEXT Phase 9 note. Dev + prod `compose config` PASS. Pipeline: main-agent PROMPT-051.
+- [x] Phase 8 - Testing & Hardening (2026-10-17): full gate - backend 35/35 + ai 12/12 + bot.py self-check (fixed ISS-H8-001 medium skeletons expectation) + compose config PASS + secrets scan clean + perf (tick 0.04ms, AI 0.05ms, snapshot 6105B@40u note) + previews live. ISSUES_phase-8-hardening.md + TEST_REPORT_phase-8-e2e.md. Pipeline: main-agent PROMPT-050. Merged d7538d2.
+- [x] Phase 9 - Deployment (2026-10-17): prod overlay hardened (restart always, healthchecks, healthy dep, DATABASE_URL+SEASON+CORS_ORIGIN) + .env.example + README + CONTEXT. Dev + prod compose config PASS. Pipeline: main-agent PROMPT-051. Merged 9da2d5d. Tagged v0.1.0. GAME DONE + TESTED per MEMORY#21.
 
 ## CURRENTLY IN PROGRESS
-- [ ] Phase 9 - final step: commit, merge `feature/phase-9-deployment` --no-ff into `main`, push, tag `v0.1.0`, push tag, verify previews. GAME DONE + TESTED per MEMORY#21.
+- (none - all phases 0-9 DONE, v0.1.0 released. Follow-ups via SUGGESTIONS.md.)
 
 ## NEXT (Planned)
-- (none - all phases 0-9 complete after v0.1.0; follow-ups via SUGGESTIONS.md)
+- (none - all phases 0-9 complete; see SUGGESTIONS.md parking lot for future ideas)
 
 ## Phase Log
 | Phase | Branch | Main merge commit | Date | Notes |
@@ -37,4 +37,4 @@
 | 6 | `feature/phase-6-ai-service` | f19ba5e (merge --no-ff) | 2026-10-17 | bot + analytics 12/12 + 9 live PASS, preview :8000 live |
 | 7 | `feature/phase-7-persistence` | b71be37 (merge --no-ff) | 2026-10-17 | prisma + auth + leaderboard 35/35 + 7 live PASS, previews restarted |
 | 8 | `feature/phase-8-hardening` | d7538d2 (merge --no-ff) | 2026-10-17 | full gate 47/47 + compose + perf + security PASS |
-| 9 | `feature/phase-9-deployment` | pending | 2026-10-17 | started, run-to-completion per MEMORY#21 |
+| 9 | `feature/phase-9-deployment` | 9da2d5d (merge --no-ff) + tag v0.1.0 | 2026-10-17 | prod hardened + env + docs, dev+prod config PASS, GAME DONE |
