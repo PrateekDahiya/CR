@@ -53,10 +53,20 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
   test("collection /collection lists cards with filters", async ({ page }) => {
     await page.goto(`${BASE}/collection`);
     await expect(page.getByTestId("collection-grid")).toBeVisible({ timeout: 15000 });
+    // Wait for catalog to load (Found: 108/N badge in the header).
+    await expect(page.getByText(/Found:\s*108/)).toBeVisible({ timeout: 15000 });
     const count = await page.locator('[data-testid^="collection-card-"]').count();
-    expect(count).toBeGreaterThanOrEqual(12);
+    expect(count).toBeGreaterThanOrEqual(100);
     await expect(page.getByTestId("filter-rarity-rare")).toBeVisible();
     await expect(page.getByTestId("filter-cost-3")).toBeVisible();
+    // Real card art: every <img> with /cards/ prefix should load (no broken state).
+    const imgs = page.locator('.card-art img[src^="/cards/"]');
+    const total = await imgs.count();
+    const loaded = await imgs.evaluateAll((els: HTMLImageElement[]) =>
+      els.filter((el) => el.naturalWidth > 0).length,
+    );
+    expect(total).toBeGreaterThanOrEqual(100);
+    expect(loaded).toBe(total);
   });
 
   test("shop /shop has Daily Deals + Trader", async ({ page }) => {

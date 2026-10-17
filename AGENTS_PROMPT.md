@@ -592,3 +592,14 @@
 - **Outputs**: 6 components, 4 routes, 12 screenshots, ISS-UI11-001..003 (1 fixed, 1 fixed, 1 accepted) + TEST_REPORT. 11/11 Playwright PASS.
 - **Branch/worktree**: feature/phase-11-exact-ui
 - **Status**: done
+
+## PROMPT-054 - 2026-10-17 - builder/tester - phase-12-real-art (main-agent, no subagents)
+- **Requirement**: Use real CR card art from deckshop.pro per user request (MEMORY#18 + #23).
+- **Goals**: 124 PNG files downloaded to gitignored frontend/public/cards/, CardArt layers real art over fallback, Playwright asserts all 108 imgs load, 11/11 tests PASS.
+- **Prompt (verbatim condensed)**: N/A - main-agent direct. Subagents deprecated.
+- **Inputs**: MEMORY.md, deckshop.pro/card/list + /card/tower-troops pages, frontend/components/ui/CardArt.tsx
+- **Constraints**: gitignored public/cards/ (MEMORY#23); no fetched rips committed; only CardArt.tsx + globals.css + shell.spec.ts + fetch script + 3 screenshots in tracked repo.
+- **Done criteria**: 124/124 art loaded, 11/11 tests, build clean.
+- **Outputs**: frontend/scripts/fetch_card_art.py (idempotent 2-source fetcher), 3 phase-12 screenshots, ISSUES + TEST_REPORT.
+- **Branch/worktree**: feature/phase-12-real-art
+- **Status**: done

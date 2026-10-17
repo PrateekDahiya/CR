@@ -14,4 +14,15 @@ body {
   .btn {
     @apply transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 disabled:cursor-not-allowed disabled:opacity-50;
   }
+  .card-art .card-art-fallback {
+    /* Hidden once the real art image loads successfully. */
+    transition: opacity 120ms ease-out;
+  }
+  .card-art .card-art-img:not([style*="display: none"]) ~ .card-art-fallback {
+    /* If image renders anything non-broken, dim the fallback to ~12% so art shines through. */
+    opacity: 0.12;
+  }
+  .card-art .card-art-img[style*="display: none"] ~ .card-art-fallback {
+    opacity: 1;
+  }
 }
