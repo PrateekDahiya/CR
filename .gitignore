@@ -8,6 +8,7 @@ frontend/.next/
 frontend/out/
 frontend/build/
 backend/dist/
+*.tsbuildinfo
 
 # python
 __pycache__/

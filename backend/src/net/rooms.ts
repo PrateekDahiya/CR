@@ -83,6 +83,14 @@ export interface Room {
   queues: Record<PlayerSide, string[]>;
   timer: ReturnType<typeof setInterval> | null;
   startedAtMs: number;
+  /**
+   * PERF (MEMORY#20 stringify-once-per-room): validation JSON cached per
+   * mutation; invalidated by syncWire, recomputed at most once per tick in
+   * broadcastState. Fan-out itself is a single room emit (O(1) + socket.io
+   * room fan-out, NOT per-client stringify).
+   */
+  lastBroadcastJson?: string;
+  lastBroadcastTick?: number;
 }
 
 export interface PlayOutcome {
@@ -236,6 +244,11 @@ function buildInitialState(matchId: string): GameState {
 export const MAX_LIVE_UNITS = 40;
 
 /** Map authoritative sim state onto the wire snapshot (flat x/y → position). */
+// O(u+t) time single-pass, u<=40 units, t=6 towers; O(1) amortized space.
+// PERF: in-place reuse of state arrays + nested objects (no .map/.slice/
+// spread per tick — was ~30 object allocs/tick/room). Backing arrays grow
+// only when unit count exceeds the previous high-water mark. Towers are
+// fixed 6 and never truncated (§9 cap applies to units only).
 function syncWire(room: Room): void {
   const sim = room.sim;
   if (sim === null) {
@@ -245,38 +258,90 @@ function syncWire(room: Room): void {
   s.matchId = room.matchId;
   s.tick = sim.tick;
   s.serverTimeMs = sim.serverTimeMs;
-  s.elixir = { blue: sim.elixir.blue, red: sim.elixir.red };
-  s.towers = sim.towers.map((t) => ({
-    id: t.id,
-    kind: t.kind,
-    owner: t.owner,
-    hitPoints: t.hp,
-    maxHitPoints: t.maxHp,
-    position: { x: t.x, y: t.y },
-    destroyed: t.destroyed,
-  }));
-  // ISS-N3-001: enforce §9 live-units cap N=40 on the broadcast path (towers untouched).
-  let liveUnits = sim.units;
-  if (sim.units.length > MAX_LIVE_UNITS) {
-    console.warn(
-      `[rooms] truncating units ${sim.units.length}->${MAX_LIVE_UNITS} for ${room.matchId} (§9 N=40 cap, ISS-N3-001)`,
-    );
-    liveUnits = sim.units.slice(0, MAX_LIVE_UNITS);
+  s.elixir.blue = sim.elixir.blue; // reuse elixir object (no alloc)
+  s.elixir.red = sim.elixir.red;
+  // Towers: fixed 6 — update nested objects in place.
+  const simT = sim.towers;
+  for (let i = 0; i < simT.length; i++) {
+    const st = simT[i];
+    let wt = s.towers[i];
+    if (wt === undefined) {
+      wt = {
+        id: st.id,
+        kind: st.kind,
+        owner: st.owner,
+        hitPoints: st.hp,
+        maxHitPoints: st.maxHp,
+        position: { x: st.x, y: st.y },
+        destroyed: st.destroyed,
+      };
+      s.towers[i] = wt;
+    } else {
+      wt.id = st.id;
+      wt.kind = st.kind;
+      wt.owner = st.owner;
+      wt.hitPoints = st.hp;
+      wt.maxHitPoints = st.maxHp;
+      wt.position.x = st.x;
+      wt.position.y = st.y;
+      wt.destroyed = st.destroyed;
+    }
   }
-  s.units = liveUnits.map((u) => ({
-    id: u.id,
-    cardId: u.cardId,
-    owner: u.owner,
-    hitPoints: u.hp,
-    maxHitPoints: u.maxHp,
-    position: { x: u.x, y: u.y },
-    ...(u.targetId !== undefined ? { targetId: u.targetId } : {}),
-  }));
-  s.crowns = { blue: sim.crowns.blue, red: sim.crowns.red };
+  s.towers.length = simT.length;
+  // ISS-N3-001: enforce §9 live-units cap N=40 on the broadcast path (towers untouched).
+  const simU = sim.units;
+  let n = simU.length;
+  if (n > MAX_LIVE_UNITS) {
+    console.warn(
+      `[rooms] truncating units ${simU.length}->${MAX_LIVE_UNITS} for ${room.matchId} (§9 N=40 cap, ISS-N3-001)`,
+    );
+    n = MAX_LIVE_UNITS;
+  }
+  for (let i = 0; i < n; i++) {
+    const su = simU[i];
+    let wu = s.units[i];
+    if (wu === undefined) {
+      wu = {
+        id: su.id,
+        cardId: su.cardId,
+        owner: su.owner,
+        hitPoints: su.hp,
+        maxHitPoints: su.maxHp,
+        position: { x: su.x, y: su.y },
+      };
+      s.units[i] = wu;
+    } else {
+      wu.id = su.id;
+      wu.cardId = su.cardId;
+      wu.owner = su.owner;
+      wu.hitPoints = su.hp;
+      wu.maxHitPoints = su.maxHp;
+      wu.position.x = su.x;
+      wu.position.y = su.y;
+    }
+    if (su.targetId !== undefined) wu.targetId = su.targetId;
+    else delete wu.targetId;
+  }
+  s.units.length = n;
+  s.crowns.blue = sim.crowns.blue; // reuse crowns object (no alloc)
+  s.crowns.red = sim.crowns.red;
   s.winner = sim.winner;
   s.endsAtMs = sim.endsAtMs;
-  room.hands = { blue: [...sim.hands.blue], red: [...sim.hands.red] };
-  room.queues = { blue: [...sim.queue.blue], red: [...sim.queue.red] };
+  // Hands/queues: fixed small arrays — copy in place (no spread allocs).
+  const hb = sim.hands.blue;
+  const hr = sim.hands.red;
+  const qb = sim.queue.blue;
+  const qr = sim.queue.red;
+  for (let i = 0; i < hb.length; i++) room.hands.blue[i] = hb[i];
+  room.hands.blue.length = hb.length;
+  for (let i = 0; i < hr.length; i++) room.hands.red[i] = hr[i];
+  room.hands.red.length = hr.length;
+  for (let i = 0; i < qb.length; i++) room.queues.blue[i] = qb[i];
+  room.queues.blue.length = qb.length;
+  for (let i = 0; i < qr.length; i++) room.queues.red[i] = qr[i];
+  room.queues.red.length = qr.length;
+  // Invalidate the stringify-once cache: next broadcastState re-validates once.
+  room.lastBroadcastJson = undefined;
 }
 
 // --- Registry ---
@@ -359,6 +424,8 @@ export function removeRoom(matchId: string): boolean {
 }
 
 export function getRoomForPlayer(playerId: string): Room | undefined {
+  // O(rooms) linear scan; rooms<=concurrent matches (small). PERF: early-out
+  // on first hit; no alloc (for..of over Map values, no spread).
   for (const room of rooms.values()) {
     if (room.players.some((p) => p.playerId === playerId)) {
       return room;
@@ -372,6 +439,7 @@ export function getSide(room: Room, playerId: string): PlayerSide | null {
 }
 
 /** Authoritative hand: engine sim wins when present, else the STUB mirror. */
+// O(1) time/space (direct indexed access, no copy).
 export function getHand(room: Room, side: PlayerSide): string[] {
   return room.sim !== null ? room.sim.hands[side] : room.hands[side];
 }
@@ -380,14 +448,23 @@ export function getHand(room: Room, side: PlayerSide): string[] {
  * Pocket/deploy extension (§5.3): a side's pocket lane opens once it destroys
  * the enemy princess on that lane (x<9 left, x>=9 right).
  */
+// O(t) time single-pass, t=6 towers; O(1) space.
+// PERF: was 2x Array.find with closures; now one indexed loop, hoisted id.
 export function getPocketFor(room: Room, side: PlayerSide): { left: boolean; right: boolean } {
   const enemy: PlayerSide = side === "blue" ? "red" : "blue";
-  const destroyed = (id: string): boolean =>
-    room.state.towers.find((t) => t.id === id)?.destroyed === true;
-  return {
-    left: destroyed(`${enemy}-princess-left`),
-    right: destroyed(`${enemy}-princess-right`),
-  };
+  const towers = room.state.towers;
+  const leftId = `${enemy}-princess-left`;
+  const rightId = `${enemy}-princess-right`;
+  let left = false;
+  let right = false;
+  for (let i = 0; i < towers.length; i++) {
+    const t = towers[i];
+    if (t.destroyed !== true) continue;
+    if (t.id === leftId) left = true;
+    else if (t.id === rightId) right = true;
+    if (left && right) break;
+  }
+  return { left, right };
 }
 
 // --- Tick + broadcast (10Hz, GAME_DESIGN.md §9) ---
@@ -395,6 +472,9 @@ export function getPocketFor(room: Room, side: PlayerSide): { left: boolean; rig
 export const TICK_MS = 100;
 
 /** Advance one tick via engine.tickGame, else tick-counter STUB. */
+// O(1) registry work + O(u*(u+t)) engine tick (see engine.tickGame) + O(u+t)
+// syncWire + one redis publish (stringify lives in redis.publishState).
+// PERF: syncWire is zero-alloc steady-state; no per-tick maps/filters.
 export function stepRoom(room: Room): "running" | "ended" {
   if (room.state.winner !== undefined || room.sim?.over === true) {
     return "ended";
@@ -420,6 +500,7 @@ export function stepRoom(room: Room): "running" | "ended" {
     // movement/combat/elixir stay in backend/src/game/).
     room.state.tick += 1;
     room.state.serverTimeMs = Date.now();
+    room.lastBroadcastJson = undefined; // PERF: invalidate stringify cache
   }
   // ISS-N3-004: publishState's JSON.stringify can throw synchronously (e.g.
   // circular/BigInt), which `.catch()` on the promise would not catch. Guard
@@ -433,16 +514,28 @@ export function stepRoom(room: Room): "running" | "ended" {
 }
 
 /** Canonical snapshot broadcast: full GameState on `state:update` (§9). */
+// O(1) validation amortized + O(1) emit + socket.io room fan-out O(clients);
+// fan-out across matches is O(rooms) (one emit per room per tick, 10Hz).
+// PERF (MEMORY#20 stringify-once-per-room): the JSON validation string is
+// cached per mutation (syncWire invalidates) — repeat broadcasts of the same
+// mutated state stringify once, NOT per-client and NOT per-call.
 export function broadcastState(io: Server, room: Room): void {
   // ISS-N3-004: socket.io serializes via JSON — fail closed on unserializable
   // state instead of throwing out of the 10Hz loop.
-  try {
-    JSON.stringify(room.state);
-  } catch (err) {
-    console.warn(`[rooms] skipping broadcastState stringify failed for ${room.matchId}: ${String(err)} (ISS-N3-004)`);
-    return;
+  if (room.lastBroadcastJson === undefined || room.lastBroadcastTick !== room.state.tick) {
+    try {
+      room.lastBroadcastJson = JSON.stringify(room.state);
+    } catch (err) {
+      console.warn(`[rooms] skipping broadcastState stringify failed for ${room.matchId}: ${String(err)} (ISS-N3-004)`);
+      return;
+    }
+    room.lastBroadcastTick = room.state.tick;
   }
-  io.to(room.matchId).emit("state:update", room.state);
+  try {
+    io.to(room.matchId).emit("state:update", room.state);
+  } catch (err) {
+    console.warn(`[rooms] broadcastState emit failed for ${room.matchId}: ${String(err)} (ISS-N3-004)`);
+  }
 }
 
 /** Start the 10Hz setInterval loop; idempotent per match. */
@@ -548,5 +641,6 @@ export function applyEnginePlay(
     room.queues[side].push(cardId);
   }
   room.state.serverTimeMs = Date.now();
+  room.lastBroadcastJson = undefined; // PERF: invalidate stringify cache
   return { ok: true, stub: true };
 }

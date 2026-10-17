@@ -77,3 +77,8 @@ docker run -p 3000:3000 cr-frontend
 - Routes: `/` menu (Play vs AI / 1v1 / Deck links + backend health dot), `/lobby` (playerId + deck preview + Join/Leave stubs), `/deck` (DeckBuilder 8 slots max2spells localStorage `cr-clone-deck-v1`).
 - Lib: `lib/cards.ts` (12 cards + validateDeck), `lib/socket.ts` (queue/deck/card/emote + twins + serverTimeMs), `lib/api.ts` (health/bot/balance fetch).
 - Tests: `tests/shell.spec.ts` Playwright Chromium (3 tests PASS live), `playwright.config.ts` chromium project, `npm run test:e2e`. Live UI 8/8 PASS (3100+4100). See docs/TEST_REPORT_phase-4-ui.md.
+
+## Perf (MEMORY#20 — Phase 5 perf pass, branch feature/phase-5-battle-client)
+- Frame O(entities): towers (6) + units (≤40) + fx only; static terrain (576 tiles + river + bridges) pre-rendered once to offscreen canvas, O(1) blit/frame; backing store DPR-capped at 2.
+- Interp O(1)/unit single-pass (`toRenderUnits` O(v)): shared lookup scratch (no per-frame Map/closure), indexed loops; 60fps loop skips when `document.hidden` + freezes settled game-over frames (dirty-check skips fully static scenes).
+- Elixir/deploy/pocket hints O(1)/O(t); particles ≤400 + floats ≤40 ring-buffered (drop oldest), in-place per-frame compaction (no splice/filter allocs).

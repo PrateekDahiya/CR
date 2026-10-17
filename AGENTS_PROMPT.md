@@ -395,3 +395,102 @@
 - **Outputs**: PASS 8/8 (3 UI + 5 API), Playwright 1.64.1 Chromium 156.0.8078.4, screenshots 3 (Task ses_eb906eeb...).
 - **Branch/worktree**: `feature/phase-4-frontend-shell`
 - **Status**: done
+
+## PROMPT-036 - 2026-10-17 - coder - phase-5-arena-canvas (MEMORY#18 exact UI)
+- **Requirement**: Arena Canvas portrait 18x32 exact-CR (MEMORY#16 + #18).
+- **Goals**: ArenaCanvas.tsx (grass checker, river/bridges, deploy tint, pocket dotted, towers HP bars + crown + explosion, units emoji + interp lerp, spells, damage numbers, 60fps rAF, click->tile, no socket) + TowerView.tsx (HP bar + canvas helper); match UI_REFERENCE §§2-4 + wiki/supercell screenshots, original code only.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: elixir-hand + battle-flow agents... do NOT touch their paths; read MEMORY#15-18 + UI_REFERENCE + GAME_DESIGN§§5-9 + CONTEXT + types + socket(transport only); only ArenaCanvas + TowerView."
+- **Inputs**: MEMORY.md, docs/UI_REFERENCE.md, docs/GAME_DESIGN.md, shared/types.ts
+- **Constraints**: frontend/components/battle/ArenaCanvas.tsx + TowerView.tsx only.
+- **Done criteria**: 2 files, no socket import.
+- **Outputs**: 21KB + 4.9KB, tsc 0 errors in files, offscreen terrain noted (Task ses_eb8f7558...).
+- **Branch/worktree**: `feature/phase-5-battle-client`
+- **Status**: done
+
+## PROMPT-037 - 2026-10-17 - coder - phase-5-elixir-hand (MEMORY#18)
+- **Requirement**: Elixir bar + hand + top bar exact-CR.
+- **Goals**: ElixirBar.tsx (purple gradient, 10 pips, number, shake at 10, leak prop), Hand.tsx (4 slots rarity borders + cost + Next preview + testids), BattleTopBar.tsx (names/trophies, timer m:ss + OT, mute/emote); no socket.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: arena + flow agents... do NOT touch their paths; read MEMORY#18 + UI_REFERENCE§§4-6 + GAME_DESIGN§§1/7 + cards + types; only ElixirBar + Hand + BattleTopBar."
+- **Inputs**: MEMORY.md, docs/UI_REFERENCE.md, frontend/lib/cards.ts
+- **Constraints**: 3 component files only.
+- **Done criteria**: testids elixir-bar/card-hand-0..3 present.
+- **Outputs**: 3 files, tsc clean (Task ses_eb8f7557...).
+- **Branch/worktree**: `feature/phase-5-battle-client`
+- **Status**: done
+
+## PROMPT-038 - 2026-10-17 - coder - phase-5-battle-flow
+- **Requirement**: /battle route + hook + sfx + spec.
+- **Goals**: app/battle/page.tsx (localStorage, socket flow, overlays, tap-deploy + sfx), lib/battle/useBattle.ts (serverTimeMs clock, 60fps interp, elixir extrap, hand cycle, isDeployValid), sfx.ts (WebAudio + mute), tests/battle.spec.ts (3 Chromium tests + screenshots); local fallbacks w/ swap notes (siblings landed mid-task).
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: arena + elixir agents... do NOT touch components; read MEMORY#17-18 + UI_REFERENCE + GAME_DESIGN§12 + socket/api + lobby + types; only battle page + lib/battle + spec."
+- **Inputs**: MEMORY.md, frontend/lib/socket.ts, shared/types.ts
+- **Constraints**: app/battle/page + lib/battle/* + tests/battle.spec only.
+- **Done criteria**: 4 files, tsc 0 errors.
+- **Outputs**: 4 files, fallback-vs-sibling drift flagged for merger (Task ses_eb8f7556...).
+- **Branch/worktree**: `feature/phase-5-battle-client`
+- **Status**: done
+
+## PROMPT-039 - 2026-10-17 - reviewer - phase-5-arena (MEMORY#16 + #18)
+- **Requirement**: Review arena canvas for exact-CR match.
+- **Goals**: 18x32, hexes, river/bridges, tint/pocket/X, towers HP/crown/explosion, units/spells/numbers, rAF interp, border, click, no socket; write docs/ISSUES_phase-5-arena.md.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: flow reviewer + tester running... only arena issues file; read MEMORY#16-19 + UI_REFERENCE + GAME_DESIGN + ArenaCanvas + TowerView + types; refs wiki/supercell/fandom."
+- **Inputs**: MEMORY.md, docs/UI_REFERENCE.md, frontend/components/battle/
+- **Constraints**: docs/ISSUES_phase-5-arena.md only; no server kills.
+- **Done criteria**: file with 10+ checks.
+- **Outputs**: pass-with-issues 1maj/7min + 16 PASS (Task ses_eb8eea03...).
+- **Branch/worktree**: `feature/phase-5-battle-client`
+- **Status**: done
+
+## PROMPT-040 - 2026-10-17 - reviewer - phase-5-flow (MEMORY#16 + #18)
+- **Requirement**: Review hand/flow/spec.
+- **Goals**: Elixir 10 pips, hand contracts, topbar, localStorage keys, socket events + twins, sfx, spec screenshots; write docs/ISSUES_phase-5-flow.md.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: arena reviewer + tester... only flow issues file; read MEMORY#16-19 + UI_REFERENCE + GAME_DESIGN§12 + components + page + useBattle + sfx + spec + socket + types."
+- **Inputs**: MEMORY.md, frontend/components/battle/, frontend/app/battle/
+- **Constraints**: docs/ISSUES_phase-5-flow.md only; no server kills.
+- **Done criteria**: file exists.
+- **Outputs**: pass-with-issues 1blk/5maj/6min (fallback-vs-sibling props not swappable blocker) (Task ses_eb8eea02...).
+- **Branch/worktree**: `feature/phase-5-battle-client`
+- **Status**: done
+
+## PROMPT-041 - 2026-10-17 - tester - phase-5-static (MEMORY#16)
+- **Requirement**: Static checks (no live).
+- **Goals**: node --check lib, package.json, /battle route, 5 components, lib/battle files, testids grep, spec count, tsc; write docs/TEST_REPORT_phase-5-static.md.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: reviewers writing ISSUES... do NOT touch ISSUES; read MEMORY + package + components + page + spec; only static report; no ports."
+- **Inputs**: MEMORY.md, frontend/package.json
+- **Constraints**: docs/TEST_REPORT_phase-5-static.md only.
+- **Done criteria**: table + verdict.
+- **Outputs**: CONDITIONAL PASS (testid/props drift S1/S2/S3, merger must reconcile) (Task ses_eb8eea01...).
+- **Branch/worktree**: `feature/phase-5-battle-client`
+- **Status**: done
+
+## PROMPT-042 - 2026-10-17 - fixer/merger - phase-5-contracts
+- **Requirement**: Reconcile fallback-vs-sibling contract (MEMORY#16 + #18).
+- **Goals**: page.tsx imports siblings (ArenaCanvas/ElixirBar/Hand/BattleTopBar, delete fallbacks); useBattle OT-vs-double-elixir split + pocket-4 + flat setState + Play-Again reset; spec additive OR-locators + 4th pips test.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: you are ONLY fixer... do NOT touch ISSUES/static report; read MEMORY#16-19 + UI_REFERENCE + ISSUES + static + page + components + useBattle; only page + useBattle + spec."
+- **Inputs**: MEMORY.md, docs/ISSUES_phase-5-*.md, frontend/app/battle/page.tsx
+- **Constraints**: page.tsx + useBattle.ts + battle.spec.ts (additive) only; components read-only.
+- **Done criteria**: sibling imports, no fallback defs, pocket bands present.
+- **Outputs**: reconciled, tsc 0 battle errors, deferred polish to Phase 8 (Task ses_eb8ecf94...).
+- **Branch/worktree**: `feature/phase-5-battle-client`
+- **Status**: done
+
+## PROMPT-043 - 2026-10-17 - perf - phase-5-migration (MEMORY#20 first run)
+- **Requirement**: Migrate hot paths to best time+space (MEMORY#20).
+- **Goals**: engine tickGame O(u·(u+t)) zero-alloc + dist²/AABB, playCard O(1) zero-alloc, rooms syncWire zero-alloc + stringify-once-per-room, useBattle O(v) scratch, ArenaCanvas offscreen blit + DPR cap 2 + ring buffers + dirty-check; Big-O comments; 33/33 green; measure tick ms + snapshot bytes; CONTEXT Big-O notes.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: you are ONLY agent... do NOT touch ISSUES/reports/UI_REFERENCE; read MEMORY#20 + GAME_DESIGN§§9-11 + engine + rooms + useBattle + ArenaCanvas + tests; only engine + rooms + useBattle + ArenaCanvas + CONTEXT appends; npm test only, no ports."
+- **Inputs**: MEMORY.md, backend/src/game/engine.ts, backend/src/net/rooms.ts
+- **Constraints**: 4 code files + 2 CONTEXT appends only.
+- **Done criteria**: 33/33 PASS + measurements logged.
+- **Outputs**: tick 0.034-0.046ms (~100x headroom), snapshot 6105B@40u / 3979B@22u, 33/33 PASS, tsc clean (Task ses_eb8e24a7...).
+- **Branch/worktree**: `feature/phase-5-battle-client`
+- **Status**: done
+
+## PROMPT-044 - 2026-10-17 - live-tester - phase-5-ui (MEMORY#17 + #18, retry)
+- **Requirement**: Playwright Chromium live battle (MEMORY#17 + #18, #16).
+- **Goals**: Backend :4100 + frontend :3100 ephemeral, 4 battle tests, /battle screenshots mobile+desktop vs UI_REFERENCE §8, TEST_REPORT_phase-5-ui.md, kill only own ports, verify preview :3000/:4000 intact.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: you are only live tester... code read-only, allowed spec additive + README + ui report + screenshots; read MEMORY#17-19 + UI_REFERENCE§§7-8 + spec + config + page + backend index; run 3100+4100, cleanup, verify preview."
+- **Inputs**: MEMORY.md, docs/UI_REFERENCE.md, frontend/tests/battle.spec.ts
+- **Constraints**: spec additive + README + TEST_REPORT_phase-5-ui.md + screenshots only; ports 4100/3100; no commits.
+- **Done criteria**: 4 tests PASS + screenshots + preview intact.
+- **Outputs**: 4/4 PASS (spec MouseEvent + path fixes), screenshots mobile+desktop, preview :4000 ok but :3000/ 404 (stale dev cache, flagged for main-agent restart) (Task ses_eb8daae4...).
+- **Branch/worktree**: `feature/phase-5-battle-client`
+- **Status**: done

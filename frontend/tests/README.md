@@ -63,3 +63,17 @@ $env:PLAYWRIGHT_BASE_URL="http://localhost:3000"; npx playwright test --project=
 - Screenshots: `docs/screenshots/phase-4-{home,deck,lobby}.png`.
 - Full log: `docs/TEST_REPORT_phase-4-ui.md`. Servers stopped after run
   (ports 4100/3100 verified free). No docker, no commit.
+
+## Live run 2026-10-17 — Phase 5 battle (branch `feature/phase-5-battle-client`)
+
+- Backend on `:4100` reused (pre-existing PID, left running), frontend on `:3100`
+  (`PORT=3100`, `NEXT_PUBLIC_BACKEND_URL=http://localhost:4100`, PID killed after run).
+- Spec fixes (additive, app code untouched): deploy test dispatches a bubbling
+  `MouseEvent` on the canvas (idle BATTLE overlay intercepts hit-tested clicks);
+  screenshot paths prefixed `../docs/screenshots/` (cwd is `frontend/`).
+- Result: **4/4 PASS** on `--project=chromium`
+  (`PLAYWRIGHT_BASE_URL=http://localhost:3100`): render smoke, tap-to-deploy
+  offline notice, screenshots, 10 elixir pips.
+- Screenshots: `docs/screenshots/phase-5-battle-{mobile,desktop}.png`.
+- Full log: `docs/TEST_REPORT_phase-5-ui.md`. Preview `:4000` intact;
+  `:3000/` 404 noted (sibling churn, out of scope). No commit.
