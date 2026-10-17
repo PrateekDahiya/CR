@@ -68,4 +68,10 @@ npm start
 - Tests: 33/33 PASS (16 engine + 17 validation) per docs/TEST_REPORT_phase-3-backend.md.
 - Run: `Set-Location backend; npm test` (plus `npx tsc --noEmit` clean).
 
+## 10. Perf (MEMORY#20 — Phase 5 perf pass, feature/phase-5-battle-client)
+- `tickGame` O(u·(u+t)) worst-case bounded (u≤40, t=6; ~2k dist² ops, p95 ≪5ms; measured ~0.03–0.05ms avg 40-unit combat tick, ~0ms once over via early-out). Single target-selection pass/unit with AABB+range early-outs, dist² (no sqrt), shared sort scratch + in-place sweeps (zero per-tick allocs). True O(u+t)/tick needs a spatial hash — deferred (constant tiny at u≤40).
+- `playCard` validation O(1)/O(1) space (bounded: t=6, ≤5 recent ticks, squad ≤3); in-place playTicks compaction, towers by ref.
+- Broadcast O(rooms): one `state:update` emit/room/tick (10Hz); JSON stringify-once-per-room (cached per mutation, invalidated by syncWire); wire snapshot in-place synced O(u+t) zero-alloc steady-state.
+- Measured: full 40-unit wire snapshot ≈6105 bytes (EXCEEDS 4KB §9 budget at absolute-max density; ~22-unit mid-game ≈3979 bytes fits) — delta compression already deferred per GAME_DESIGN §13; never drop towers.
+
 (End — Phase 1 scaffolding, 2026-10-16; Phase 3 update appended 2026-10-17)

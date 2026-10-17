@@ -148,6 +148,23 @@ const CLOCK_EPS = 1e-9;
  */
 const RANGE_EPS = 1e-6;
 
+/* ---------------- perf scratch (MEMORY#20: no per-tick allocs) ---------------- */
+
+// O(1) space reused buffers: tick paths must not allocate per-tick on hot
+// paths (u<=40 units, t=6 towers). Backing arrays are reused across ticks
+// (single-threaded Node — never reentrant); only the length changes.
+// PERF: avoids 2x [...units].sort() spreads + 2x filter() arrays per tick.
+const _orderedScratch: SimUnit[] = [];
+
+/** Squared Euclidean distance — avoids Math.hypot sqrt in range checks. */
+// O(1) time, O(1) space.
+// PERF: hot inner loops compare d2 <= (range+EPS)^2 instead of hypot().
+function dist2(ax: number, ay: number, bx: number, by: number): number {
+  const dx = ax - bx;
+  const dy = ay - by;
+  return dx * dx + dy * dy;
+}
+
 /* ---------------- helpers ---------------- */
 
 function dist(
@@ -158,6 +175,8 @@ function dist(
 ): number {
   return Math.hypot(ax - bx, ay - by);
 }
+// O(1): dist() keeps sqrt ONLY for steering travel math; all range checks
+// use dist2() above. PERF: sqrt is ~10-20x costlier than 2 mults+add.
 
 function sideOfRiver(y: number): "blue" | "red" | "river" {
   if (y < 15) return "blue";
@@ -170,21 +189,25 @@ function other(side: PlayerSide): PlayerSide {
 }
 
 /** Pocket unlocked by destroying the enemy princess on each lane side. */
+// O(t) time single-pass, t=6 towers; O(1) space (no find() closures).
+// PERF: was 2x Array.find scans; now one loop with early-out when both lanes taken.
 function pocketFor(state: EngineState, side: PlayerSide): Pocket {
   const foe = other(side);
-  const left = state.towers.find(
-    (t) => t.owner === foe && t.kind === "princess" && t.x < 9,
-  );
-  const right = state.towers.find(
-    (t) => t.owner === foe && t.kind === "princess" && t.x >= 9,
-  );
-  return {
-    leftTaken: left !== undefined && left.destroyed,
-    rightTaken: right !== undefined && right.destroyed,
-  };
+  const towers = state.towers;
+  let leftTaken = false;
+  let rightTaken = false;
+  for (let i = 0; i < towers.length; i++) {
+    const t = towers[i];
+    if (t.owner !== foe || t.kind !== "princess" || !t.destroyed) continue;
+    if (t.x < 9) leftTaken = true;
+    else rightTaken = true;
+    if (leftTaken && rightTaken) break;
+  }
+  return { leftTaken, rightTaken };
 }
 
 /** Lowest standing-tower HP fraction for a side (king included). §8.2 */
+// O(t) time single-pass, t=6; O(1) space.
 function lowestTowerHpPct(state: EngineState, side: PlayerSide): number {
   let min = 1;
   let any = false;
@@ -269,6 +292,8 @@ export function createGame(
 /* ---------------- playCard (validation §11) ---------------- */
 
 /** Deterministic spawn offsets per squad index (no randomness). */
+// O(1) time/space: count<=3 bounded; reuses SPAWN_OFFSETS (no per-unit alloc
+// beyond the output positions array, max 3 entries, play-time only).
 const SPAWN_OFFSETS: Array<[number, number]> = [
   [0, 0],
   [-0.45, 0.1],
@@ -313,25 +338,44 @@ function applySpell(
     const dmg = cardId === "fireball" ? 700 : cardId === "arrows" ? 300 : 220;
     const towerDmg = cardId === "fireball" ? 280 : cardId === "arrows" ? 120 : 88;
     const stun = cardId === "zap" ? 0.5 : 0;
-    for (const u of state.units) {
+    // O(u+t) single-pass with squared ranges + AABB early-out (no sqrt).
+    // PERF: hoisted radius/dmg/stun/timeSec; dx/dy box reject before dist2.
+    const r = radius + RANGE_EPS;
+    const r2 = r * r;
+    const units = state.units;
+    const timeSec = state.timeSec;
+    for (let i = 0; i < units.length; i++) {
+      const u = units[i];
       if (u.owner !== foe || u.hp <= 0) continue;
-      if (dist(x, y, u.x, u.y) <= radius + RANGE_EPS) {
+      const dx = x - u.x;
+      if (dx > r || dx < -r) continue;
+      const dy = y - u.y;
+      if (dy > r || dy < -r) continue;
+      if (dx * dx + dy * dy <= r2) {
         u.hp -= dmg;
         if (stun > 0) {
-          const until = state.timeSec + stun;
+          const until = timeSec + stun;
           if (until > u.stunUntil) u.stunUntil = until;
-          u.cooldown = Math.max(u.cooldown, stun); // reset/retarget
+          if (u.cooldown < stun) u.cooldown = stun; // reset/retarget
         }
       }
     }
-    for (const t of state.towers) {
+    const tr = radius + 0.5 + RANGE_EPS;
+    const tr2 = tr * tr;
+    const towers = state.towers;
+    for (let i = 0; i < towers.length; i++) {
+      const t = towers[i];
       if (t.owner !== foe || t.destroyed) continue;
-      if (dist(x, y, t.x, t.y) <= radius + 0.5 + RANGE_EPS) {
+      const dx = x - t.x;
+      if (dx > tr || dx < -tr) continue;
+      const dy = y - t.y;
+      if (dy > tr || dy < -tr) continue;
+      if (dx * dx + dy * dy <= tr2) {
         damageTower(state, t, towerDmg, side);
         if (stun > 0) {
-          const until = state.timeSec + stun;
+          const until = timeSec + stun;
           if (until > t.stunUntil) t.stunUntil = until;
-          t.cooldown = Math.max(t.cooldown, stun);
+          if (t.cooldown < stun) t.cooldown = stun;
         }
       }
     }
@@ -344,6 +388,9 @@ function applySpell(
  * failures onto the error/error:game twins (§11 ack-vs-event rule).
  * No state mutation on reject. Rate + stale enforced per §11.4.
  */
+// O(1) time + O(1) space: every sub-check is bounded (t=6 towers, k<=5
+// recent play ticks, squad count<=3, queue len 4). No filter/map allocs.
+// PERF: in-place playTicks compaction + push; towers passed by ref (no map).
 export function playCard(
   state: EngineState,
   side: PlayerSide,
@@ -366,9 +413,15 @@ export function playCard(
   ) {
     return fail("STALE_TICK", "client tick outside ±5 window");
   }
-  const recent = state.playTicks[side].filter((t) => state.tick - t < TICKS_PER_SEC);
-  state.playTicks[side] = recent;
-  if (recent.length >= MAX_PLAYS_PER_SEC) {
+  const ticks = state.playTicks[side];
+  // O(k) k<=5 bounded → O(1): compact in place, no filter() alloc.
+  // PERF: reuse backing array; same observable filtering as before.
+  let kept = 0;
+  for (let i = 0; i < ticks.length; i++) {
+    if (state.tick - ticks[i] < TICKS_PER_SEC) ticks[kept++] = ticks[i];
+  }
+  ticks.length = kept;
+  if (kept >= MAX_PLAYS_PER_SEC) {
     return fail("RATE_LIMITED", "burst cap 5 card:play/s/side");
   }
 
@@ -400,19 +453,16 @@ export function playCard(
     if (!isInDeployZone(side, x, y, pocket)) {
       return fail("BAD_POSITION", "outside legal deploy zone");
     }
-    const footprint = state.towers.map((t) => ({
-      x: t.x,
-      y: t.y,
-      destroyed: t.destroyed,
-    }));
-    if (isOnTowerFootprint(x, y, footprint)) {
+    // PERF: pass live towers by ref — SimTower {x,y,destroyed} matches the
+    // footprint structural type, so no .map() alloc (was 6 objects/play).
+    if (isOnTowerFootprint(x, y, state.towers)) {
       return fail("BAD_POSITION", "inside tower footprint");
     }
   }
 
   // ---- accepted: deduct, cycle, spawn (visible next tick) ----
   state.elixir[side] = Math.max(0, state.elixir[side] - card.cost);
-  state.playTicks[side] = [...recent, state.tick];
+  ticks.push(state.tick); // O(1) amortized; replaces [...recent, tick] spread
 
   // CR-style rotation: played card to back of queue, next card into slot.
   const nextId = state.queue[side].shift();
@@ -475,26 +525,44 @@ function nearestEnemyTower(
   y: number,
   includeBuildings: boolean,
 ): { kind: "tower"; tower: SimTower } | { kind: "unit"; unit: SimUnit } | null {
-  let best: { d: number; tower: SimTower } | null = null;
-  for (const t of state.towers) {
+  // O(t+b) single-pass, t=6 towers, b<=u buildings; O(1) space.
+  // PERF: squared distances (no sqrt); hoisted towers/units; no closures.
+  const towers = state.towers;
+  let bestTower: SimTower | null = null;
+  let bestD2 = Infinity;
+  for (let i = 0; i < towers.length; i++) {
+    const t = towers[i];
     if (t.owner === owner || t.destroyed) continue;
-    const d = dist(x, y, t.x, t.y);
-    if (!best || d < best.d) best = { d, tower: t };
-  }
-  let bestB: { d: number; unit: SimUnit } | null = null;
-  if (includeBuildings) {
-    for (const u of state.units) {
-      if (u.owner === owner || !u.isBuilding || u.hp <= 0) continue;
-      const d = dist(x, y, u.x, u.y);
-      if (!bestB || d < bestB.d) bestB = { d, unit: u };
+    const d2 = dist2(x, y, t.x, t.y);
+    if (d2 < bestD2) {
+      bestD2 = d2;
+      bestTower = t;
     }
   }
-  if (bestB && (!best || bestB.d < best.d)) return { kind: "unit", unit: bestB.unit };
-  if (best) return { kind: "tower", tower: best.tower };
+  let bestB: SimUnit | null = null;
+  let bestB2 = Infinity;
+  if (includeBuildings) {
+    const units = state.units;
+    for (let i = 0; i < units.length; i++) {
+      const u = units[i];
+      if (u.owner === owner || !u.isBuilding || u.hp <= 0) continue;
+      const d2 = dist2(x, y, u.x, u.y);
+      if (d2 < bestB2) {
+        bestB2 = d2;
+        bestB = u;
+      }
+    }
+  }
+  if (bestB !== null && bestB2 < bestD2) return { kind: "unit", unit: bestB };
+  if (bestTower !== null) return { kind: "tower", tower: bestTower };
   return null;
 }
 
 /** Troop acquire: sight-filtered candidates, else nearest tower. §6.3 */
+// O(u+t) per unit single-pass with AABB+sight early-outs; O(1) space.
+// PERF: dist2 + dx/dy box reject before multiply; hoisted owner/sight/targets.
+// NOTE: per-tick total is O(u*(u+t)) worst-case (u<=40 → <=1840 dist2 ops,
+// sub-ms); true O(u+t)/tick needs a spatial hash — deferred (see tickGame).
 function acquireUnitTarget(
   state: EngineState,
   u: SimUnit,
@@ -502,30 +570,55 @@ function acquireUnitTarget(
   if (u.targets === "buildings") {
     return nearestEnemyTower(state, u.owner, u.x, u.y, true);
   }
+  const sight = u.sightRange + RANGE_EPS;
+  const sight2 = sight * sight;
+  const ux = u.x;
+  const uy = u.y;
+  const owner = u.owner;
+  const groundOnly = u.targets === "ground";
+  const units = state.units;
   let best: SimUnit | null = null;
-  let bestD = Infinity;
-  for (const e of state.units) {
-    if (e.owner === u.owner || e.hp <= 0) continue;
-    if (u.targets === "ground" && (e.flying || false)) continue;
-    const d = dist(u.x, u.y, e.x, e.y);
-    if (d <= u.sightRange + RANGE_EPS && d < bestD) {
-      bestD = d;
+  let bestD2 = Infinity;
+  for (let i = 0; i < units.length; i++) {
+    const e = units[i];
+    if (e.owner === owner || e.hp <= 0) continue;
+    if (groundOnly && e.flying) continue;
+    const dx = ux - e.x;
+    if (dx > sight || dx < -sight) continue; // AABB early-out on sight box
+    const dy = uy - e.y;
+    if (dy > sight || dy < -sight) continue;
+    const d2 = dx * dx + dy * dy;
+    if (d2 <= sight2 && d2 < bestD2) {
+      bestD2 = d2;
       best = e;
     }
   }
   if (best) return { kind: "unit", unit: best };
-  return nearestEnemyTower(state, u.owner, u.x, u.y, false);
+  return nearestEnemyTower(state, u.owner, ux, uy, false);
 }
 
 /** Tower acquire: nearest enemy entity in range (incl. Cannon). §6.3 */
+// O(u) single-pass with AABB+range early-outs; O(1) space.
+// PERF: dist2, no sqrt; hoisted tower x/y/owner/range.
 function acquireTowerTarget(state: EngineState, t: SimTower): SimUnit | null {
+  const r = t.range + RANGE_EPS;
+  const r2 = r * r;
+  const tx = t.x;
+  const ty = t.y;
+  const owner = t.owner;
+  const units = state.units;
   let best: SimUnit | null = null;
-  let bestD = Infinity;
-  for (const e of state.units) {
-    if (e.owner === t.owner || e.hp <= 0) continue;
-    const d = dist(t.x, t.y, e.x, e.y);
-    if (d <= t.range + RANGE_EPS && d < bestD) {
-      bestD = d;
+  let bestD2 = Infinity;
+  for (let i = 0; i < units.length; i++) {
+    const e = units[i];
+    if (e.owner === owner || e.hp <= 0) continue;
+    const dx = tx - e.x;
+    if (dx > r || dx < -r) continue;
+    const dy = ty - e.y;
+    if (dy > r || dy < -r) continue;
+    const d2 = dx * dx + dy * dy;
+    if (d2 <= r2 && d2 < bestD2) {
+      bestD2 = d2;
       best = e;
     }
   }
@@ -556,8 +649,12 @@ function damageTower(
   }
   // Princess destroyed: crown + activate friendly king (§6.2).
   state.crowns[bySide] += 1;
-  for (const k of state.towers) {
-    if (k.owner === t.owner && k.kind === "king" && !k.destroyed) k.active = true;
+  // O(t) t=6. PERF: indexed loop, hoisted owner/kind.
+  const towers = state.towers;
+  const owner = t.owner;
+  for (let i = 0; i < towers.length; i++) {
+    const k = towers[i];
+    if (k.owner === owner && k.kind === "king" && !k.destroyed) k.active = true;
   }
   if (state.overtime && !state.over) {
     endMatch(state, bySide); // sudden-death: first blood wins (§8.1)
@@ -593,8 +690,16 @@ function moveUnit(state: EngineState, u: SimUnit, dt: number): void {
   if (!target) return;
   const tx = target.kind === "tower" ? target.tower.x : target.unit.x;
   const ty = target.kind === "tower" ? target.tower.y : target.unit.y;
-  const d = dist(u.x, u.y, tx, ty);
-  if (d <= u.range + RANGE_EPS) return; // in range — combat handles the rest
+  // O(u+t) acquire (see acquireUnitTarget) + O(1) steering.
+  // PERF: range check via dist2 (no sqrt); sqrt only for travel below.
+  const ux = u.x;
+  const uy = u.y;
+  const r = u.range + RANGE_EPS;
+  {
+    const dx = ux - tx;
+    const dy = uy - ty;
+    if (dx * dx + dy * dy <= r * r) return; // in range — combat handles it
+  }
 
   // Ground troops funnel through bridges; fliers fly straight. §5.2
   let wx = tx;
@@ -633,9 +738,13 @@ function moveUnit(state: EngineState, u: SimUnit, dt: number): void {
 
 function towerPhase(state: EngineState, dt: number): void {
   // Same-tick order: tower shots resolve before troop shots. §6.4
-  for (const t of state.towers) {
+  // O(t*u) time, t=6 constant → O(u); O(1) space. PERF: indexed, hoisted clock.
+  const towers = state.towers;
+  const now = state.timeSec;
+  for (let i = 0; i < towers.length; i++) {
+    const t = towers[i];
     if (t.destroyed || !t.active) continue;
-    if (state.timeSec < t.stunUntil) continue;
+    if (now < t.stunUntil) continue;
     t.cooldown -= dt;
     if (t.cooldown > 0) continue;
     const target = acquireTowerTarget(state, t);
@@ -650,18 +759,43 @@ function towerPhase(state: EngineState, dt: number): void {
   sweepDeadUnits(state);
 }
 
+/** Fill + sort the shared scratch with live unit refs in id order (deterministic). */
+// O(u log u) time, O(1) amortized space (backing reused across ticks).
+// PERF: replaces per-phase [...units].sort() spread allocs (was 2/tick).
+// Comparator is byte-identical to the original (lexicographic id).
+function sortedUnits(state: EngineState): SimUnit[] {
+  const src = state.units;
+  _orderedScratch.length = 0;
+  for (let i = 0; i < src.length; i++) _orderedScratch.push(src[i]);
+  _orderedScratch.sort((a, b) => (a.id < b.id ? -1 : 1));
+  return _orderedScratch;
+}
+
 function unitPhase(state: EngineState, dt: number): void {
-  const ordered = [...state.units].sort((a, b) => (a.id < b.id ? -1 : 1));
-  for (const u of ordered) {
+  // O(u*(u+t)) worst-case single target-selection pass per unit (§6.4 order
+  // preserved: towers already fired + swept above). O(1) extra space via scratch.
+  // PERF: zero-alloc order reuse; dist2 range checks; splash AABB early-out.
+  const ordered = sortedUnits(state);
+  const now = state.timeSec;
+  const units = state.units;
+  for (let oi = 0; oi < ordered.length; oi++) {
+    const u = ordered[oi];
     if (u.hp <= 0) continue;
-    if (state.timeSec < u.stunUntil) continue;
-    if (state.timeSec < u.readyAt) continue; // Cannon deploy 1.0s
+    if (now < u.stunUntil) continue;
+    if (now < u.readyAt) continue; // Cannon deploy 1.0s
     u.cooldown -= dt;
     const target = acquireUnitTarget(state, u);
     if (!target) continue;
     const tx = target.kind === "tower" ? target.tower.x : target.unit.x;
     const ty = target.kind === "tower" ? target.tower.y : target.unit.y;
-    if (dist(u.x, u.y, tx, ty) > u.range + RANGE_EPS) continue;
+    const ux = u.x;
+    const uy = u.y;
+    const r = u.range + RANGE_EPS;
+    {
+      const dx = ux - tx;
+      const dy = uy - ty;
+      if (dx * dx + dy * dy > r * r) continue;
+    }
     if (u.cooldown > 0) continue;
     if (target.kind === "tower") {
       damageTower(state, target.tower, u.damage, u.owner);
@@ -669,9 +803,19 @@ function unitPhase(state: EngineState, dt: number): void {
     } else {
       target.unit.hp -= u.damage;
       if (u.splash > 0) {
-        for (const e of state.units) {
-          if (e.owner === u.owner || e.hp <= 0 || e.id === target.unit.id) continue;
-          if (dist(tx, ty, e.x, e.y) <= u.splash + RANGE_EPS) e.hp -= u.damage;
+        const sr = u.splash + RANGE_EPS;
+        const sr2 = sr * sr;
+        const tid = target.unit.id;
+        const uowner = u.owner;
+        const udmg = u.damage;
+        for (let i = 0; i < units.length; i++) {
+          const e = units[i];
+          if (e.owner === uowner || e.hp <= 0 || e.id === tid) continue;
+          const dx = tx - e.x;
+          if (dx > sr || dx < -sr) continue;
+          const dy = ty - e.y;
+          if (dy > sr || dy < -sr) continue;
+          if (dx * dx + dy * dy <= sr2) e.hp -= udmg;
         }
       }
       if (target.unit.hp <= 0 && target.unit.deathBurst) {
@@ -685,25 +829,51 @@ function unitPhase(state: EngineState, dt: number): void {
 }
 
 /** Rock Golem death burst: 280 to enemy units + towers in area 2.0. §1 */
+// O(u+t) single-pass, dist2 + AABB early-outs; O(1) space.
 function golemBurst(state: EngineState, dead: SimUnit): void {
   const radius = dead.deathBurstRadius ?? 2.0;
   const dmg = dead.deathBurst ?? 0;
   if (dmg <= 0) return;
   const foe = other(dead.owner);
-  for (const e of state.units) {
+  const r = radius + RANGE_EPS;
+  const r2 = r * r;
+  const dx0 = dead.x;
+  const dy0 = dead.y;
+  const units = state.units;
+  for (let i = 0; i < units.length; i++) {
+    const e = units[i];
     if (e.owner !== foe || e.hp <= 0 || e.id === dead.id) continue;
-    if (dist(dead.x, dead.y, e.x, e.y) <= radius + RANGE_EPS) e.hp -= dmg;
+    const dx = dx0 - e.x;
+    if (dx > r || dx < -r) continue;
+    const dy = dy0 - e.y;
+    if (dy > r || dy < -r) continue;
+    if (dx * dx + dy * dy <= r2) e.hp -= dmg;
   }
-  for (const t of state.towers) {
+  const tr = radius + 0.5 + RANGE_EPS;
+  const tr2 = tr * tr;
+  const towers = state.towers;
+  for (let i = 0; i < towers.length; i++) {
+    const t = towers[i];
     if (t.owner !== foe || t.destroyed) continue;
-    if (dist(dead.x, dead.y, t.x, t.y) <= radius + 0.5 + RANGE_EPS) {
+    const dx = dx0 - t.x;
+    if (dx > tr || dx < -tr) continue;
+    const dy = dy0 - t.y;
+    if (dy > tr || dy < -tr) continue;
+    if (dx * dx + dy * dy <= tr2) {
       damageTower(state, t, dmg, dead.owner);
     }
   }
 }
 
 function sweepDeadUnits(state: EngineState): void {
-  state.units = state.units.filter((u) => u.hp > 0);
+  // O(u) in-place compaction preserving id order; O(1) space.
+  // PERF: was filter() (new array + closure per call, 2x/tick); now zero-alloc.
+  const arr = state.units;
+  let w = 0;
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i].hp > 0) arr[w++] = arr[i];
+  }
+  arr.length = w;
 }
 
 /* ---------------- tick ---------------- */
@@ -714,22 +884,33 @@ function sweepDeadUnits(state: EngineState): void {
  * integrates variable-step physics (§10 anti-speedhack corollary).
  * Mutates + returns state (frozen once over).
  */
+// O(u*(u+t)) worst-case per tick, u<=40 units, t=6 towers — bounded (~2k
+// dist2 ops, sub-ms; p95 budget 5ms). Per-phase breakdown: elixir O(1),
+// movement O(u*(u+t)) [one acquire per unit], towers O(t*u), troops
+// O(u*(u+t)) [single target-selection pass per unit with AABB early-outs],
+// sweep+expiry O(u) fused, clock/win O(t). O(1) amortized space: sorted-order
+// scratch + in-place sweeps, no per-tick arrays/closures/sqrt.
+// PERF: true O(u+t)/tick would need a spatial hash over sight ranges —
+// deferred micro-opt (u<=40 keeps the constant tiny; correctness first).
+// Early-out: returns immediately when over (frozen); stun/not-ready skip
+// before any acquire; range checks use dist2.
 export function tickGame(state: EngineState, dt: number = TICK_DT): EngineState {
-  if (state.over) return state;
+  if (state.over) return state; // O(1) early-out once decided
   const step = Number.isFinite(dt) && dt > 0 && dt <= 0.5 ? dt : TICK_DT;
 
   // (2) elixir regen — server float, cap 10, double from t=120s incl. OT.
   const doubleRate = state.timeSec + CLOCK_EPS >= DOUBLE_AT_SEC;
   const perSec = doubleRate ? ELIXIR_DOUBLE_SEC : ELIXIR_SINGLE_SEC;
-  for (const side of ["blue", "red"] as PlayerSide[]) {
-    state.elixir[side] = Math.min(ELIXIR_CAP, state.elixir[side] + step / perSec);
-  }
+  state.elixir.blue = Math.min(ELIXIR_CAP, state.elixir.blue + step / perSec);
+  state.elixir.red = Math.min(ELIXIR_CAP, state.elixir.red + step / perSec);
 
-  // (3) movement
-  const ordered = [...state.units].sort((a, b) => (a.id < b.id ? -1 : 1));
-  for (const u of ordered) {
+  // (3) movement — deterministic id order via shared scratch (no spread/sort alloc).
+  const ordered = sortedUnits(state);
+  const tickNow = state.timeSec;
+  for (let i = 0; i < ordered.length; i++) {
+    const u = ordered[i];
     if (u.hp <= 0) continue;
-    if (state.timeSec < u.stunUntil) continue;
+    if (tickNow < u.stunUntil) continue;
     moveUnit(state, u, step);
   }
 
@@ -737,11 +918,21 @@ export function tickGame(state: EngineState, dt: number = TICK_DT): EngineState 
   towerPhase(state, step);
   if (!state.over) unitPhase(state, step);
 
-  // Cannon lifetime expiry (30s) — not a kill, no burst.
-  const now = state.timeSec;
-  state.units = state.units.filter(
-    (u) => u.expiresAt === undefined || now < u.expiresAt,
-  );
+  // Cannon lifetime expiry (30s) fused with the dead-sweep: single O(u)
+  // in-place pass, no filter() alloc. Uses pre-increment clock like before.
+  // Not a kill → no death burst (expiry only drops the building).
+  {
+    const now = tickNow;
+    const arr = state.units;
+    let w = 0;
+    for (let i = 0; i < arr.length; i++) {
+      const u = arr[i];
+      if (u.hp <= 0) continue;
+      if (u.expiresAt !== undefined && !(now < u.expiresAt)) continue;
+      arr[w++] = u;
+    }
+    arr.length = w;
+  }
 
   // (5) clock / win
   state.tick += 1;
