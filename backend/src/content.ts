@@ -2,7 +2,7 @@
 // All handlers O(c)/O(m) reads + O(1) fallback. Never serves binary rips.
 
 import type { Express, Request, Response } from "express";
-import { getContentCards, getContentMenus, getContentSprites, isMysqlConfigured, pingMysql } from "./mysql.js";
+import { getCatalog, getContentCards, getContentMenus, getContentSprites, isMysqlConfigured, pingMysql } from "./mysql.js";
 
 export function mountContent(app: Express): void {
   // O(c) c=12 cards.
@@ -21,6 +21,13 @@ export function mountContent(app: Express): void {
   app.get("/content/menus", async (_req: Request, res: Response) => {
     const data = await getContentMenus();
     res.json({ ...data, count: data.menus.length });
+  });
+
+  // O(n) n≈108 full catalog (facts: name/elixir/rarity/type).
+  app.get("/content/catalog", async (_req: Request, res: Response) => {
+    const data = await getCatalog();
+    const playable = data.catalog.filter((c) => c.playable).length;
+    res.json({ ...data, count: data.catalog.length, playable });
   });
 
   // O(1) store status (env presence + live ping).

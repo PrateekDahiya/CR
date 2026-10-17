@@ -88,3 +88,14 @@ CREATE TABLE IF NOT EXISTS matches (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_matches_season (season, created_at DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS card_catalog (
+  name VARCHAR(40) PRIMARY KEY,
+  card_type ENUM('troop','spell','building','tower') NOT NULL,
+  elixir TINYINT NOT NULL,
+  rarity ENUM('common','rare','epic','legendary','champion') NOT NULL,
+  playable TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = full GAME_DESIGN stats + engine support',
+  note VARCHAR(255) NOT NULL DEFAULT '',
+  INDEX idx_catalog_rarity (rarity),
+  INDEX idx_catalog_elixir (elixir)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -187,3 +187,17 @@ export function getContentMenus(baseUrl?: string): Promise<{ menus: { label: str
   const base = backendUrl(baseUrl).replace(/\/$/, "");
   return fetchJson(`${base}/content/menus`);
 }
+
+export interface CatalogEntry {
+  name: string;
+  cardType: string;
+  elixir: number;
+  rarity: string;
+  playable: boolean;
+}
+
+/** GET {backend}/content/catalog — full CR catalog facts (108+ cards). O(n) n≈108. */
+export function getCatalog(baseUrl?: string): Promise<{ catalog: CatalogEntry[]; source: string; count: number; playable: number }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/content/catalog`);
+}
