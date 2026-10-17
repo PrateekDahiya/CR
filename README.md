@@ -16,25 +16,29 @@ Realtime 1v1 card battler (Clash Royale-like): deploy troops/spells with elixir,
 ## 2. Prerequisites
 - Node 24+, npm, Python 3.12+, Docker 29+, Git 2.54+
 
-## 3. Quickstart (Phase 1 COMPLETE — scaffolding + docker config PASS)
+## 3. Quickstart (v0.1.0 - all 10 phases DONE + TESTED)
 ```powershell
 # clone
 git clone https://github.com/PrateekDahiya/CR.git
 Set-Location CR
-git checkout main
+git checkout main   # phase-only merges 0..9 + tag v0.1.0
 
-# Phase 1 verified:
-docker compose -f infra/docker-compose.yml config  # -> exit 0, 5 services
+# validate compose (no build):
+docker compose -f infra/docker-compose.yml config
+docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml config
 
-# Phase 1+ run (all services, needs npm install fix already applied via npm install in Dockerfiles):
+# run everything (dev):
 docker compose -f infra/docker-compose.yml up --build
+# -> UI http://localhost:3000, backend http://localhost:4000/health, ai http://localhost:8000/health
 
-# Frontend dev (Phase 4+):
-# Set-Location frontend; npm install; npm run dev  # -> http://localhost:3000
-# Backend dev (Phase 3+):
-# Set-Location backend; npm install; npm run dev    # -> http://localhost:4000
-# AI service dev (Phase 6+):
-# Set-Location ai-service; pip install -r requirements.txt; uvicorn main:app --reload --port 8000
+# run prod overlay (restart always + healthchecks + DATABASE_URL/SEASON):
+Copy-Item infra/.env.example infra/.env   # edit POSTGRES_PASSWORD + CORS_ORIGIN for real hosts
+docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d --build
+
+# local dev (no docker):
+# Set-Location backend; npm install; npm run dev      # -> :4000
+# Set-Location frontend; npm install; npm run dev     # -> :3000 (NEXT_PUBLIC_BACKEND_URL=http://localhost:4000)
+# Set-Location ai-service; pip install -r requirements.txt; uvicorn main:app --port 8000
 ```
 
 Ports (planned): frontend 3000, backend 4000 (socket same), ai-service 8000, postgres 5432, redis 6379.
@@ -45,12 +49,21 @@ Ports (planned): frontend 3000, backend 4000 (socket same), ai-service 8000, pos
 
 ## 5. Running & Testing
 - Docker e2e: `docker compose -f infra/docker-compose.yml up` then open `http://localhost:3000`.
-- Unit/integration per service: see per-directory `CONTEXT.md` (Phase 1+).
-- Test reports: `docs/TEST_REPORT_<feature>.md`. Issues: `docs/ISSUES_<feature>.md`.
+- Unit/integration per service:
+  - backend: `Set-Location backend; npm test` (35/35: engine 16 + validation 17 + meta 2) + `npx tsc --noEmit` clean.
+  - ai-service: `python -m pytest -q` (12/12) + `python bot.py` self-check.
+  - frontend: `npx playwright test --project=chromium` (shell 3 + battle 4 PASS) + `tsc` (only pre-existing DeckBuilder TS2802).
+- Test reports: `docs/TEST_REPORT_<feature>.md` (static + live + e2e). Issues: `docs/ISSUES_<feature>.md`.
+- Perf budgets (MEMORY#20): tick ~0.04ms (<5ms), AI ~0.05ms (<50ms), 60fps O(v). Snapshot 6105B@40u note (delta deferred).
+- Live previews: :3000/:4000/:8000 (MEMORY#19, detached, restarted per phase).
 
 ## 6. Deployment
-- Dev: docker-compose local. Staging/prod: prod compose `infra/docker-compose.prod.yml` (Phase 9) + Vercel for frontend (optional) + container host for backend/ai. Env via `.env` (see `infra/.env.example` Phase 1+).
-- Release: tag `v0.1.0` after Phase 9 green.
+- Dev: `docker compose -f infra/docker-compose.yml up --build` (restart unless-stopped, memory fallback DB).
+- Prod: `docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d --build` (restart always, healthchecks postgres/redis/backend/ai, DATABASE_URL + SEASON wired, CORS_ORIGIN documented - backend still CORS * until explicit-origin patch).
+- Frontend alt: Vercel (set NEXT_PUBLIC_BACKEND_URL + NEXT_PUBLIC_AI_URL to container host). Backend/AI: any container host (Render/Fly/VM) with postgres:16 + redis:7.
+- Env: copy `infra/.env.example` -> `infra/.env` (gitignored), set POSTGRES_PASSWORD, DATABASE_URL, CORS_ORIGIN, SEASON. Never commit `.env`.
+- Prisma: `npm install @prisma/client prisma pg` in backend, `npx prisma migrate dev` with DATABASE_URL (Phase 7 schema User/Deck/Match).
+- Release: tag `v0.1.0` (Phase 9 green = phases 0-9 merged + suites 47/47 + live + compose config PASS).
 
 ## 7. Branching (mandatory)
 - `main` = phase merges only. Work in `feature/phase-<n>-<slug>`, merge with `git merge --no-ff` directly (no PR wait).

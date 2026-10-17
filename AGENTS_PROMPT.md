@@ -560,3 +560,14 @@
 - **Branch/worktree**: `feature/phase-8-hardening`
 - **Status**: done
 
+## PROMPT-051 - 2026-10-17 - deploy - phase-9-deployment (main-agent, no subagents)
+- **Requirement**: Prod hardening + docs + tag v0.1.0 (MEMORY#21 done gate).
+- **Goals**: prod overlay (restart always, healthchecks, healthy dep, DATABASE_URL/SEASON/CORS_ORIGIN), .env.example additions, README deploy/run/test refresh, CONTEXT Phase 9 note, dev + prod compose config PASS.
+- **Prompt (verbatim condensed)**: N/A - main-agent direct. Only infra/* + README + PHASES/AGENTS_PROMPT.
+- **Inputs**: MEMORY.md, infra/docker-compose*.yml, README.md
+- **Constraints**: infra/* + README + PHASES/AGENTS_PROMPT only; no code changes (suites still valid); previews untouched.
+- **Done criteria**: both compose configs PASS + docs.
+- **Outputs**: prod hardened + README + CONTEXT; dev + prod config PASS.
+- **Branch/worktree**: `feature/phase-9-deployment`
+- **Status**: done
+

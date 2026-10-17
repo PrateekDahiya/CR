@@ -1,13 +1,14 @@
-# CR Clone — prod compose STUB (Phase 1; full hardening in Phase 9)
+# CR Clone — prod compose (Phase 9 hardened, v0.1.0)
 #
 # Location: infra/docker-compose.prod.yml
-# Usage (Phase 9+): docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d --build
+# Usage: docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d --build
 # Differences vs dev compose:
 #   - restart: always on every service (container host / VM expectation).
-#   - Intentionally NO bind-mount volumes for code (only named volumes pgdata/redisdata).
-#     Do not add `./../frontend:/app`-style mounts here.
-#   - Phase 9 will pin image tags / registry, add healthchecks, resource limits, secrets.
-# Build contexts are relative to THIS file (infra/), same as dev compose.
+#   - No bind-mounts for code (only named volumes pgdata/redisdata).
+#   - DATABASE_URL + SEASON wired for backend Prisma (Phase 7); memory fallback if unset.
+#   - CORS_ORIGIN documented (backend currently CORS * dev-only; set explicit origin in prod).
+#   - Healthchecks on postgres/redis/backend/ai-service; frontend depends on backend healthy.
+#   - No secrets committed: all via ${VAR:-default} + infra/.env (gitignored).
 
 name: cr-prod
 
@@ -35,8 +36,10 @@ services:
     ports:
       - "4000:4000"
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       - NODE_ENV=production
       - PORT=4000
@@ -45,9 +48,18 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-cr}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-crpass}
       - POSTGRES_DB=${POSTGRES_DB:-crdb}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://cr:crpass@postgres:5432/crdb}
+      - SEASON=${SEASON:-s1}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
     networks:
       - cr-net
     restart: always
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   ai-service:
     build:
@@ -62,6 +74,12 @@ services:
     networks:
       - cr-net
     restart: always
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   postgres:
     image: postgres:16
@@ -76,6 +94,12 @@ services:
     networks:
       - cr-net
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-cr} -d $${POSTGRES_DB:-crdb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   redis:
     image: redis:7
@@ -86,6 +110,12 @@ services:
     networks:
       - cr-net
     restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 volumes:
   pgdata:

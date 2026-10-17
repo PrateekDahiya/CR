@@ -89,3 +89,8 @@ via `NEXT_PUBLIC_BACKEND_URL`. See `infra/.env.example`.
 | Compose warns `version is obsolete` | `version:` key present | This repo omits `version:` — keep it that way |
 
 > NOTE: build contexts are `../frontend` (not `./frontend`) because compose lives in `infra/` — keep `../<service>` per Conventions above.
+
+## Phase 9 update (2026-10-17, branch feature/phase-9-deployment, v0.1.0)
+- Prod overlay hardened: `restart: always`, healthchecks (postgres pg_isready, redis ping, backend + ai /health), `depends_on` healthy for backend->postgres, DATABASE_URL + SEASON + CORS_ORIGIN wired (backend CORS * dev-only until explicit-origin patch - documented, not changed).
+- Env: `.env.example` gains DATABASE_URL, NEXT_PUBLIC_AI_URL, SEASON, CORS_ORIGIN (all `:-default` fallbacks, no secrets committed).
+- Verify: `docker compose -f infra/docker-compose.yml config` + `docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml config` both PASS.
