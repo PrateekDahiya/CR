@@ -14,8 +14,9 @@ export interface CardArtProps {
   progress?: { current: number; max: number };
 }
 
-// Tries /cards/<name>.png (gitignored user-supplied folder), falls back to
-// rarity-tinted gradient + rune + emoji. O(1) per render.
+// Renders CR card art (real PNG from /cards/<slug>.png gitignored folder) with
+// rarity-tinted frame + level + cost chrome. Falls back to rune+emoji when no
+// image is present. O(1) per render (one img + DOM nodes; onError toggles class).
 export default function CardArt({
   name,
   level = 0,
@@ -36,9 +37,10 @@ export default function CardArt({
   return (
     <div
       data-testid={`card-art-${safeName}`}
-      className={`relative ${dims} overflow-hidden rounded-lg border-2 ${border} bg-gradient-to-b ${bg} shadow-md`}
+      data-rarity={rarity}
+      className={`card-art relative ${dims} overflow-hidden rounded-lg border-2 ${border} bg-gradient-to-b ${bg} shadow-md`}
     >
-      {/* Local art try (user-supplied gitignored). Hidden fallback via onError. */}
+      {/* Real art (gitignored /public/cards/<slug>.png; falls back via onError). */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={`/cards/${safeName}.png`}
@@ -46,18 +48,13 @@ export default function CardArt({
         onError={(e) => {
           (e.currentTarget as HTMLImageElement).style.display = "none";
         }}
-        className="absolute inset-0 h-full w-full object-cover"
+        className="card-art-img absolute inset-0 h-full w-full object-cover"
       />
-      {/* Rarity rune at top-center, falling back when no local art */}
-      <div className="absolute inset-0 flex items-center justify-center text-3xl drop-shadow">
-        <span className="opacity-95">{rune}</span>
+      {/* Rarity rune + emoji fallback behind the image (hidden by `.card-art.has-art img`). */}
+      <div className="card-art-fallback absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-3xl drop-shadow">{rune}</span>
+        {cost === 0 && <span className="mt-1 text-2xl drop-shadow">{emoji}</span>}
       </div>
-      {/* Emoji fallback for troops/buildings */}
-      {cost === 0 && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-2 flex items-end justify-center text-2xl">
-          <span className="drop-shadow">{emoji}</span>
-        </div>
-      )}
       {/* Purple elixir drop top-left */}
       {showCost && cost > 0 && (
         <div
