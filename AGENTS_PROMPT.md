@@ -581,3 +581,14 @@
 - **Outputs**: 6 tables + SEED_OK 12/12/7; fixed Pool bracket + restart latch; 38/38 PASS + 11/11 live; ISS-C10-001..003 + TEST_REPORT_phase-10.
 - **Branch/worktree**: feature/phase-10-authentic-content
 - **Status**: done
+
+## PROMPT-053 - 2026-10-17 - builder/tester - phase-11-exact-ui (main-agent, no subagents)
+- **Requirement**: Refactor to exact-UI per user screenshots (MEMORY#18+#23), full catalog seed.
+- **Goals**: 6 shared components (TopBar/CardArt/CardFrame/BottomNav/CRButton/PageShell) + crTheme + 4 new routes (decks/collection/shop/social) + home refactor + MySQL card_catalog 108/12 + Playwright 11/11 + screenshots 12.
+- **Prompt (verbatim condensed)**: N/A - main-agent direct. Subagent attempts were aborted by user; main did the whole refactor in one focused pass.
+- **Inputs**: MEMORY.md, docs/UI_REFERENCE.md, frontend/lib/api.ts, backend/src/mysql.ts
+- **Constraints**: Only allowed paths (components/ui + lib + app pages + backend/src + infra/mysql); previews :3000/:4000/:8000 intact.
+- **Done criteria**: build PASS, 39/39 + 11/11 PASS, screenshots saved.
+- **Outputs**: 6 components, 4 routes, 12 screenshots, ISS-UI11-001..003 (1 fixed, 1 fixed, 1 accepted) + TEST_REPORT. 11/11 Playwright PASS.
+- **Branch/worktree**: feature/phase-11-exact-ui
+- **Status**: done
