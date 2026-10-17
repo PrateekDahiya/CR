@@ -17,10 +17,11 @@ import { test, expect } from "@playwright/test";
 const BASE = process.env.PLAYWRIGHT_BASE_URL ?? process.env.BASE_URL ?? "http://localhost:3000";
 
 test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
-  test("home / has top bar + 5-tab bottom nav + Battle button", async ({ page }) => {
+  test("home / has top bar + 6-tab bottom nav + Battle button", async ({ page }) => {
     await page.goto(`${BASE}/`);
     await expect(page).toHaveTitle(/CR Clone/);
-    await expect(page.getByRole("heading", { name: /CR Clone/i })).toBeVisible();
+    await expect(page.getByTestId("home-root")).toBeVisible();
+    await expect(page.getByTestId("home-battle")).toBeVisible();
     await expect(page.getByTestId("topbar")).toBeVisible();
     await expect(page.getByTestId("topbar-cards")).toBeVisible();
     await expect(page.getByTestId("topbar-coins")).toBeVisible();
@@ -29,19 +30,30 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     for (const t of ["cards", "collection", "battle", "shop", "social", "ranked"]) {
       await expect(page.getByTestId(`nav-tab-${t}`)).toBeVisible();
     }
-    await expect(page.getByTestId("home-battle")).toBeVisible();
-    await expect(page.getByTestId("home-vs-ai")).toBeVisible();
-    await expect(page.getByTestId("home-1v1")).toBeVisible();
+    await expect(page.getByTestId("home-playing-deck")).toBeVisible();
+    // BATTLE button opens the matchmaking loader.
+    await page.getByTestId("home-battle").click();
+    await expect(page.getByTestId("matchmaking-loader")).toBeVisible();
   });
 
-  test("decks /decks has tabs 6/7/8/9/10 + grid", async ({ page }) => {
+  test("decks /decks has tabs 6/7/8/9/10 + grid + card-info overlay", async ({ page }) => {
     await page.goto(`${BASE}/decks`);
     await expect(page.getByTestId("deck-tabs")).toBeVisible();
     for (const n of [6, 7, 8, 9, 10]) {
       await expect(page.getByTestId(`deck-tab-${n}`)).toBeVisible();
     }
     await expect(page.getByTestId("deck-grid")).toBeVisible();
-    await expect(page.locator('[data-testid^="deck-card-"]').first()).toBeVisible();
+    const firstCard = page.locator('[data-testid^="deck-card-"]').first();
+    await expect(firstCard).toBeVisible();
+    // Card click opens the info overlay.
+    await firstCard.click();
+    await expect(page.getByTestId("card-info-overlay")).toBeVisible();
+    await expect(page.getByTestId("card-info-name")).toBeVisible();
+    await expect(page.getByTestId("card-info-rarity")).toBeVisible();
+    await expect(page.getByTestId("card-info-type")).toBeVisible();
+    // Close via the X button.
+    await page.getByTestId("card-info-close").click();
+    await expect(page.getByTestId("card-info-overlay")).toHaveCount(0);
   });
 
   test("deck /deck still has 8 card slots (legacy)", async ({ page }) => {

@@ -15,14 +15,45 @@ body {
     @apply transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .card-art .card-art-fallback {
-    /* Hidden once the real art image loads successfully. */
     transition: opacity 120ms ease-out;
   }
   .card-art .card-art-img:not([style*="display: none"]) ~ .card-art-fallback {
-    /* If image renders anything non-broken, dim the fallback to ~12% so art shines through. */
     opacity: 0.12;
   }
   .card-art .card-art-img[style*="display: none"] ~ .card-art-fallback {
     opacity: 1;
+  }
+  .card-info-preview {
+    /* Simple two-knight walk animation mirroring the screenshot preview. */
+  }
+  .card-info-preview .card-info-knight {
+    animation: ci-walk 3.2s linear infinite;
+  }
+  .card-info-preview .card-info-knight--clone {
+    animation-delay: 1.6s;
+  }
+  @keyframes ci-walk {
+    0% { transform: translate(-50%, 0); }
+    50% { transform: translate(-50%, -16px); }
+    100% { transform: translate(-50%, 0); }
+  }
+  .card-info-preview .card-info-tower {
+    animation: ci-tower 2s ease-in-out infinite;
+  }
+  @keyframes ci-tower {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 191, 36, 0); }
+    50% { box-shadow: 0 0 12px 0 rgba(255, 191, 36, 0.65); }
+  }
+  .matchmaking-spinner {
+    width: 64px;
+    height: 64px;
+    border: 6px solid rgba(255, 255, 255, 0.15);
+    border-top-color: #fbbf24;
+    border-right-color: #1e88e5;
+    border-radius: 9999px;
+    animation: ci-spin 0.9s linear infinite;
+  }
+  @keyframes ci-spin {
+    to { transform: rotate(360deg); }
   }
 }

@@ -603,3 +603,14 @@
 - **Outputs**: frontend/scripts/fetch_card_art.py (idempotent 2-source fetcher), 3 phase-12 screenshots, ISSUES + TEST_REPORT.
 - **Branch/worktree**: feature/phase-12-real-art
 - **Status**: done
+
+## PROMPT-055 - 2026-10-17 - builder/tester - phase-13-ux-polish (main-agent, no subagents)
+- **Requirement**: Card-info overlay + Decks click-edit + auto-matchmaking + Home redesign per user feedback (MEMORY#24).
+- **Goals**: CardInfoOverlay component, Decks tab click-to-edit (no name labels), MatchmakingLoader w/ spinner+seconds+Cancel, BATTLE skips lobby, Home redesign per gameUI/03, getSocketClient wrapper, 11/11 Playwright.
+- **Prompt (verbatim condensed)**: N/A - main-agent direct. Subagents deprecated.
+- **Inputs**: MEMORY.md, docs/gameUI/ (gitignored reference), frontend/lib/socket.ts, frontend/components/ui/CardArt.tsx
+- **Constraints**: gitignored public/cards/; no fetched rips committed; only tracked changes to app/* + components/ui + lib/socket + lib/api + tests + globals.css + docs/.
+- **Done criteria**: 11/11 Playwright PASS, all 4 user requests resolved.
+- **Outputs**: 4 new components (CardInfoOverlay/MatchmakingLoader + CardInfoOverlayProps), Decks tab click-edit, getSocketClient, Home redesign, 7 phase-13 screenshots, ISSUES + TEST_REPORT.
+- **Branch/worktree**: feature/phase-13-ux-polish
+- **Status**: done
