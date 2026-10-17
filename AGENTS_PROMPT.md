@@ -538,3 +538,14 @@
 - **Branch/worktree**: `feature/phase-6-ai-service`
 - **Status**: done
 
+## PROMPT-049 - 2026-10-17 - builder/tester - phase-7-persistence (main-agent, no subagents)
+- **Requirement**: Prisma schema + db/auth/meta + leaderboard UI + tests + live (MEMORY#18/#20/#21).
+- **Goals**: schema.prisma User/Deck/Match, db.ts Prisma-or-memory O(1)/O(n log n), auth.ts guest token, meta.ts 6 routes, meta.test.ts 2 suites, frontend leaderboard + api, tsc clean, npm test 35/35, live :4000 7/7.
+- **Prompt (verbatim condensed)**: N/A - main-agent direct (subagent infra deprecated). Only backend/prisma+src/db+auth+meta+tests + frontend leaderboard/api + 2 docs + CONTEXTs.
+- **Inputs**: MEMORY.md, docs/GAME_DESIGN.md, backend/src/index.ts, frontend/lib/api.ts
+- **Constraints**: listed paths only; preview :3000/:8000 untouched, :4000 restarted once for live test (MEMORY#19).
+- **Done criteria**: 35/35 + 7/7 live + docs.
+- **Outputs**: schema + db/auth/meta + 35/35 PASS + 7/7 live (db:false fallback), ISS-M7-001..003 + TEST_REPORT_phase-7-meta.md.
+- **Branch/worktree**: `feature/phase-7-persistence`
+- **Status**: done
+

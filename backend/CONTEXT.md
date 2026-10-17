@@ -74,4 +74,9 @@ npm start
 - Broadcast O(rooms): one `state:update` emit/room/tick (10Hz); JSON stringify-once-per-room (cached per mutation, invalidated by syncWire); wire snapshot in-place synced O(u+t) zero-alloc steady-state.
 - Measured: full 40-unit wire snapshot ≈6105 bytes (EXCEEDS 4KB §9 budget at absolute-max density; ~22-unit mid-game ≈3979 bytes fits) — delta compression already deferred per GAME_DESIGN §13; never drop towers.
 
+## 11. Phase 7 update (2026-10-17, branch feature/phase-7-persistence, MEMORY#20 + #21)
+- Persistence: `prisma/schema.prisma` (User/Deck/Match, postgresql + DATABASE_URL) + `src/db.ts` (Prisma when installed + memory fallback, O(1) ops, leaderboard O(n log n) read) + `src/auth.ts` (guest base64url token O(1)) + `src/meta.ts` (6 REST routes) mounted in index.ts.
+- Tests: `tests/meta.test.ts` 2 suites; full `npm test` 35/35 PASS; `tsc --noEmit` clean.
+- Prod: `npm install @prisma/client prisma pg && npx prisma migrate dev` + DATABASE_URL enables Postgres (docker `postgres` service already in compose). Dev/preview runs memory fallback (db:false).
+
 (End — Phase 1 scaffolding, 2026-10-16; Phase 3 update appended 2026-10-17)
