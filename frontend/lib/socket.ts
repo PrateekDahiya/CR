@@ -80,7 +80,7 @@ export interface CardPlayArgs {
 type Unsubscribe = () => void;
 
 let socket: Socket | null = null;
-/** Last-seen server clock (ms). Updated on queue:matched, state:update, pong. */
+let autoConnectUrl: string | null = null;
 let lastServerTimeMs = 0;
 
 function trackServerTime(value: unknown): void {
@@ -99,37 +99,137 @@ export function getSocket(): Socket | null {
   return socket;
 }
 
-/**
- * Connect (or reuse) the singleton socket for the given backend URL.
- * e.g. connect(process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000")
- */
-export function connect(url: string): Socket {
-  if (socket !== null && socket.connected) {
-    return socket;
-  }
-  if (socket !== null) {
-    socket.removeAllListeners();
-    socket.disconnect();
+// Auto-connect singleton used by matchmaking loader / home Battle. Returns a
+// stable wrapper that exposes joinQueue / leaveQueue / selectDeck / onMatched
+// / onGameError, hiding the underlying Socket.io instance.
+export interface SocketClient {
+  socket: Socket | null;
+  joinQueue: (playerId: string, deck?: string[]) => void;
+  leaveQueue: (playerId?: string) => void;
+  selectDeck: (playerId: string, deck: string[]) => void;
+  onMatched: (cb: (matchId: string, side: "blue" | "red", opponentId?: string) => void) => Unsubscribe;
+  onGameError: (cb: (code: string, message: string) => void) => Unsubscribe;
+  close: () => void;
+}
+
+function wrapSocket(s: Socket | null): SocketClient {
+  return {
+    socket: s,
+    joinQueue: (playerId, deck) => {
+      if (!s) return;
+      const payload: Record<string, unknown> = { playerId };
+      if (deck) payload.deck = deck;
+      s.emit("queue:join", payload);
+    },
+    leaveQueue: (playerId) => {
+      if (!s) return;
+      s.emit("queue:leave", playerId ? { playerId } : {});
+    },
+    selectDeck: (playerId, deck) => {
+      if (!s) return;
+      s.emit("deck:select", { playerId, deck });
+    },
+    onMatched: (cb) => {
+      if (!s) return () => {};
+      const handler = (payload: { matchId: string; opponentId?: string; side?: "blue" | "red" }) => {
+        cb(payload.matchId, payload.side ?? "blue", payload.opponentId);
+      };
+      s.on("queue:matched", handler);
+      s.on("match:found", handler);
+      return () => {
+        s.off("queue:matched", handler);
+        s.off("match:found", handler);
+      };
+    },
+    onGameError: (cb) => {
+      if (!s) return () => {};
+      let lastKey = "";
+      let lastAt = 0;
+      const handler = (e: { code: string; message: string }) => {
+        const key = JSON.stringify(e ?? null);
+        const now = Date.now();
+        if (key === lastKey && now - lastAt < 100) return;
+        lastKey = key;
+        lastAt = now;
+        cb(e?.code ?? "ERROR", e?.message ?? "");
+      };
+      s.on("error", handler);
+      s.on("error:game", handler);
+      return () => {
+        s.off("error", handler);
+        s.off("error:game", handler);
+      };
+    },
+    close: () => {
+      // no-op for singleton; matchmaking loader will route away on match.
+    },
+  };
+}
+
+function ensureConnected(): Socket | null {
+  if (socket !== null) return socket;
+  if (!autoConnectUrl) return null;
+  try {
+    socket = io(autoConnectUrl, { transports: ["websocket", "polling"], reconnection: true });
+    autoBindSocket(socket);
+  } catch {
     socket = null;
   }
-  socket = io(url, { transports: ["websocket", "polling"] });
+  return socket;
+}
 
-  socket.on("queue:matched", (payload: QueueMatched) => {
+function autoBindSocket(s: Socket): void {
+  s.on("queue:matched", (payload: QueueMatched) => {
     trackServerTime(payload?.serverTimeMs);
   });
-  socket.on("match:found", () => {
-    // Legacy twin of queue:matched — no serverTimeMs carried, nothing to track.
+  s.on("match:found", () => {
+    // legacy twin
   });
-  socket.on("match:start", (payload: { state?: StateUpdate }) => {
+  s.on("match:start", (payload: { state?: StateUpdate }) => {
     trackServerTime(payload?.state?.serverTimeMs);
   });
-  socket.on("state:update", (state: StateUpdate) => {
+  s.on("state:update", (state: StateUpdate) => {
     trackServerTime(state?.serverTimeMs);
   });
-  socket.on("pong", (payload: { serverTime?: number; serverTimeMs?: number }) => {
+  s.on("pong", (payload: { serverTime?: number; serverTimeMs?: number }) => {
     trackServerTime(payload?.serverTime ?? payload?.serverTimeMs);
   });
-  return socket;
+}
+
+/**
+ * Get-or-create a SocketClient bound to the given backend URL. Idempotent;
+ * callers can call this in render safely.
+ */
+export function getSocketClient(url: string): SocketClient {
+  if (socket === null || (autoConnectUrl && autoConnectUrl !== url)) {
+    autoConnectUrl = url;
+    if (socket !== null) {
+      try {
+        socket.removeAllListeners();
+        socket.disconnect();
+      } catch {
+        // ignore
+      }
+      socket = null;
+    }
+    try {
+      socket = io(url, { transports: ["websocket", "polling"], reconnection: true });
+      autoBindSocket(socket);
+    } catch {
+      socket = null;
+    }
+  } else if (!socket.connected) {
+    // already a socket, will auto-reconnect via Socket.io
+  }
+  return wrapSocket(socket);
+}
+
+/**
+ * Connect (or reuse) the singleton socket for the given backend URL.
+ * Backwards-compatible: returns the raw socket.
+ */
+export function connect(url: string): Socket {
+  return getSocketClient(url).socket ?? ensureConnected() ?? io(url, { transports: ["websocket", "polling"] });
 }
 
 /** Disconnect and clear the singleton. Safe to call when not connected. */

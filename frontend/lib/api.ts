@@ -174,6 +174,7 @@ export interface ContentCard {
   targets: string;
   unitCount: number;
   rarity: string;
+  playable?: boolean;
 }
 
 /** GET {backend}/content/cards — same CR roster, MySQL live or local fallback. O(c) c=12. */
