@@ -494,3 +494,47 @@
 - **Outputs**: 4/4 PASS (spec MouseEvent + path fixes), screenshots mobile+desktop, preview :4000 ok but :3000/ 404 (stale dev cache, flagged for main-agent restart) (Task ses_eb8daae4...).
 - **Branch/worktree**: `feature/phase-5-battle-client`
 - **Status**: done
+## PROMPT-045 - 2026-10-17 - coder - phase-6-bot-brain (SUBAGENT FAILED, main executed)
+- **Requirement**: Rule-based bot brain (MEMORY#20 <50ms + Big-O).
+- **Goals**: bot.py easy O(h) / medium O(h+t) / hard O(h+t+u), cards mirror GAME_DESIGN, no I/O.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: routes + analytics agents... only bot.py; read MEMORY#16-17/#20/#21 + GAME_DESIGN§§1-2/12.4 + main + CONTEXT + types; no commits."
+- **Inputs**: MEMORY.md, docs/GAME_DESIGN.md, ai-service/main.py
+- **Constraints**: ai-service/bot.py (+cards_data if needed) only.
+- **Done criteria**: compiles, no new deps.
+- **Outputs**: FAILED to spawn (Model muse-spark-1.3-contributor-free deprecated, Task ses_eb8cadb8...). Recovered: files present from earlier partial run (bot.py 624 lines); main-agent fixed Mapping import + dict-hand + side-aware _scan_enemies, verified legal moves.
+- **Branch/worktree**: `feature/phase-6-ai-service`
+- **Status**: done (main-agent recovery)
+
+## PROMPT-046 - 2026-10-17 - coder - phase-6-routes (SUBAGENT FAILED, main executed)
+- **Requirement**: Upgrade routes (MEMORY#20 p95 <50ms, ISS-P2-002 handIndex).
+- **Goals**: lazy bot import, hand resolve + substituted + took_ms, difficulty 200 default, balance reads analytics else stub; test_main 6 tests.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: bot + analytics agents... only main.py/requirements/test_main/CONTEXT; read MEMORY + GAME_DESIGN§12.4 + ISS-P2-002 + main/test/CONTEXT."
+- **Inputs**: MEMORY.md, ai-service/main.py, ai-service/test_main.py
+- **Constraints**: main.py + test_main.py + CONTEXT append only.
+- **Done criteria**: 6 tests, no new deps.
+- **Outputs**: FAILED to spawn (Task ses_eb8cadb9...). Recovered: main.py already upgraded (canonical signature missing - main-agent added); test_main.py rewritten 7 tests by main-agent; pytest 12/12 green.
+- **Branch/worktree**: `feature/phase-6-ai-service`
+- **Status**: done (main-agent recovery)
+
+## PROMPT-047 - 2026-10-17 - coder - phase-6-analytics (SUBAGENT FAILED, main executed)
+- **Requirement**: Balance store O(k)/O(c)/O(n+c) (MEMORY#20).
+- **Goals**: analytics.py ring-buffer + record_match/game + card_stats + flag_outliers + 5 tests.
+- **Prompt (verbatim condensed)**: "PARALLEL-AGENT AWARENESS: bot + routes agents... only analytics.py + test_analytics.py; read MEMORY + GAME_DESIGN§2 + CONTEXT."
+- **Inputs**: MEMORY.md, docs/GAME_DESIGN.md
+- **Constraints**: ai-service/analytics.py + test_analytics.py only.
+- **Done criteria**: 2 files.
+- **Outputs**: FAILED to spawn (Task ses_eb8cadb7...). Recovered: files present (analytics.py 297 lines, test_analytics.py 103 lines); verified 12-card pool + eviction exact.
+- **Branch/worktree**: `feature/phase-6-ai-service`
+- **Status**: done (main-agent recovery)
+
+## PROMPT-048 - 2026-10-17 - reviewer/tester - phase-6-ai (main-agent, no subagent)
+- **Requirement**: Review + pytest + live 8100 matrix (MEMORY#16-17/#20).
+- **Goals**: Fix Mapping/signature/hand/scan/balance issues, pytest 12/12, live 9/9, write ISSUES + TEST_REPORT.
+- **Prompt (verbatim condensed)**: N/A - main-agent direct (subagent infra deprecated). Only ai-service/* + docs/ISSUES_phase-6-ai.md + docs/TEST_REPORT_phase-6-ai.md.
+- **Inputs**: MEMORY.md, ai-service/*, docs/GAME_DESIGN.md
+- **Constraints**: ai-service/* + 2 docs only; ephemeral 8100; preview :3000/:4000 untouched.
+- **Done criteria**: 12 unit + 9 live PASS + docs.
+- **Outputs**: ISS-AI6-001..006 (5 fixed, 1 deferred ConfigDict), TEST_REPORT 12/12 + 9/9 live, balance 5->12 fixed, took_ms 0.05ms.
+- **Branch/worktree**: `feature/phase-6-ai-service`
+- **Status**: done
+
