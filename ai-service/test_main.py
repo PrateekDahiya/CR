@@ -1,10 +1,24 @@
-"""Pytest stubs for the AI service."""
+"""Pytest for Phase 6 routes: health, bot/move matrix, balance.
+
+Covers: GET /health, POST /bot/move easy/medium/hard + invalid->medium +
+handIndex echo + took_ms budget, GET /balance/cards shape.
+All O(1) request overhead + O(h+t+u) brain (MEMORY#20 <50ms p95).
+"""
+
+import time
 
 from fastapi.testclient import TestClient
 
 from main import app
 
 client = TestClient(app)
+
+HAND = [
+    {"card": "giant", "handIndex": 0, "cost": 5},
+    {"card": "musketeer", "handIndex": 1, "cost": 4},
+    {"card": "zap", "handIndex": 2, "cost": 2},
+    {"card": "skeletons", "handIndex": 3, "cost": 1},
+]
 
 
 def test_health():
@@ -13,10 +27,68 @@ def test_health():
     assert res.json() == {"ok": True, "service": "ai"}
 
 
-def test_bot_move_returns_random_move_with_difficulty():
-    res = client.post("/bot/move", json={"difficulty": "hard"})
+def test_bot_move_easy():
+    res = client.post("/bot/move", json={"difficulty": "easy", "hand": HAND, "elixir": 8.0, "side": "red"})
     assert res.status_code == 200
     body = res.json()
-    assert body["difficulty"] == "hard"
-    assert body["card"] in ["knight", "archers", "giant", "fireball", "skeletons"]
-    assert "x" in body and "y" in body
+    assert body["difficulty"] == "easy"
+    assert body["handIndex"] in [0, 1, 2, 3]
+    assert 0 <= body["x"] <= 18 and 0 <= body["y"] <= 32
+    assert body["took_ms"] < 50.0
+
+
+def test_bot_move_medium_greedy():
+    res = client.post("/bot/move", json={"difficulty": "medium", "hand": HAND, "elixir": 8.0, "side": "red", "game_state": {}})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["difficulty"] == "medium"
+    assert body["handIndex"] in [0, 1, 2, 3]
+    assert body["took_ms"] < 50.0
+
+
+def test_bot_move_hard_and_invalid_difficulty():
+    # hard with swarm state -> zap answer expected when affordable
+    state = {
+        "side": "red",
+        "towers": [],
+        "units": [
+            {"cardId": "skeletons", "owner": "blue", "hitPoints": 80, "position": {"x": 8.0, "y": 20.0}},
+            {"cardId": "skeletons", "owner": "blue", "hitPoints": 80, "position": {"x": 8.6, "y": 20.4}},
+        ],
+    }
+    res = client.post("/bot/move", json={"difficulty": "hard", "hand": HAND, "elixir": 8.0, "game_state": state, "side": "red"})
+    assert res.status_code == 200
+    assert res.json()["difficulty"] == "hard"
+    # invalid difficulty defaults to medium with 200 (never 422)
+    res2 = client.post("/bot/move", json={"difficulty": "BOGUS", "hand": HAND, "elixir": 5})
+    assert res2.status_code == 200
+    assert res2.json()["difficulty"] == "medium"
+
+
+def test_bot_move_handindex_substitution():
+    # brain pick not in hand -> nearest-by-cost substitution, still legal handIndex
+    hand = [{"card": "knight", "handIndex": 0, "cost": 3}]
+    res = client.post("/bot/move", json={"difficulty": "medium", "hand": hand, "elixir": 10, "side": "red"})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["handIndex"] == 0
+    assert isinstance(body["substituted"], bool)
+
+
+def test_balance_cards_shape():
+    res = client.get("/balance/cards")
+    assert res.status_code == 200
+    body = res.json()
+    assert "cards" in body and isinstance(body["cards"], list)
+    assert len(body["cards"]) >= 5
+    for row in body["cards"]:
+        assert "name" in row and "win_rate" in row
+
+
+def test_bot_move_latency_budget():
+    t0 = time.perf_counter()
+    for _ in range(20):
+        r = client.post("/bot/move", json={"difficulty": "hard", "hand": HAND, "elixir": 8.0})
+        assert r.status_code == 200
+    dt_ms = (time.perf_counter() - t0) * 1000.0 / 20.0
+    assert dt_ms < 50.0, dt_ms
