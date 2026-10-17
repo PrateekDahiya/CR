@@ -24,7 +24,7 @@ function loadInitialDeck(): string[] {
     const parsed: unknown = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.every((c) => typeof c === "string")) {
       const valid = (parsed as string[]).filter((id) => getCard(id) !== undefined);
-      return [...new Set(valid)].slice(0, DECK_SIZE);
+      return Array.from(new Set(valid)).slice(0, DECK_SIZE);
     }
   } catch {
     // ignore corrupt storage

@@ -9,6 +9,8 @@ frontend/out/
 frontend/build/
 backend/dist/
 *.tsbuildinfo
+frontend/test-results/
+frontend/playwright-report/
 
 # python
 __pycache__/
@@ -47,3 +49,7 @@ npm-debug.log*
 
 # prisma
 *.db-journal
+
+# reference captures + user-supplied art (never commit - MEMORY#23)
+docs/gameUI/
+frontend/public/cards/

@@ -31,6 +31,14 @@ export interface SpriteMeta {
   artPath: string;
 }
 
+export interface CatalogEntry {
+  name: string;
+  cardType: string;
+  elixir: number;
+  rarity: string;
+  playable: boolean;
+}
+
 export interface MenuItem {
   label: string;
   route: string;
@@ -136,6 +144,16 @@ const LOCAL_MENUS: MenuItem[] = [
   { label: "Lobby", route: "/lobby", icon: "🎮", sortOrder: 7 },
 ];
 
+// Local catalog fallback: the 12 playable cards (full ~108 needs MySQL seed_catalog.py).
+// O(c) c=12 derived from canonical CARDS. Facts mirror GAME_DESIGN section 1.
+const LOCAL_CATALOG: CatalogEntry[] = Object.values(CARDS).map((c) => ({
+  name: c.id,
+  cardType: c.type,
+  elixir: c.cost,
+  rarity: c.rarity,
+  playable: true,
+}));
+
 export async function getContentCards(): Promise<{ cards: ContentCard[]; source: string }> {
   // O(c) rows. MySQL first, local fallback on any failure.
   const p = getPool();
@@ -197,6 +215,32 @@ export async function getContentSprites(): Promise<{ sprites: SpriteMeta[]; sour
     }
   }
   return { source: "local", sprites: LOCAL_SPRITES.map((s) => ({ ...s })) };
+}
+
+export async function getCatalog(): Promise<{ catalog: CatalogEntry[]; source: string }> {
+  // O(n) n≈108 catalog rows. MySQL first, curated local fallback (same facts).
+  const p = getPool();
+  if (p) {
+    try {
+      const [rows] = await p.query("SELECT name,card_type,elixir,rarity,playable FROM card_catalog ORDER BY elixir,name");
+      const list = rows as Record<string, unknown>[];
+      if (list.length > 0) {
+        return {
+          source: "mysql",
+          catalog: list.map((r) => ({
+            name: String(r["name"]),
+            cardType: String(r["card_type"]),
+            elixir: Number(r["elixir"]),
+            rarity: String(r["rarity"]),
+            playable: Number(r["playable"] ?? 0) === 1,
+          })),
+        };
+      }
+    } catch {
+      // fallback
+    }
+  }
+  return { source: "local", catalog: LOCAL_CATALOG.map((c) => ({ ...c })) };
 }
 
 export async function getContentMenus(): Promise<{ menus: MenuItem[]; source: string }> {
