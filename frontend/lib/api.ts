@@ -161,3 +161,29 @@ export function getLeaderboard(limit = 20, baseUrl?: string): Promise<Leaderboar
   const base = backendUrl(baseUrl).replace(/\/$/, "");
   return fetchJson<LeaderboardResponse>(`${base}/leaderboard?limit=${limit}`);
 }
+
+export interface ContentCard {
+  name: string;
+  displayName: string;
+  cardType: string;
+  elixir: number;
+  hp: number;
+  dps: number;
+  speedLabel: string;
+  rangeTiles: number;
+  targets: string;
+  unitCount: number;
+  rarity: string;
+}
+
+/** GET {backend}/content/cards — same CR roster, MySQL live or local fallback. O(c) c=12. */
+export function getContentCards(baseUrl?: string): Promise<{ cards: ContentCard[]; source: string; count: number }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/content/cards`);
+}
+
+/** GET {backend}/content/menus — same CR menu labels/routes, MySQL or fallback. O(m) m=7. */
+export function getContentMenus(baseUrl?: string): Promise<{ menus: { label: string; route: string; icon: string; sortOrder: number }[]; source: string; count: number }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/content/menus`);
+}

@@ -1,0 +1,90 @@
+-- CR Clone MySQL schema (Aiven MySQL 8.4, db `cr`) - Phase 10.
+-- Educational clone: SAME card roster/naming/stats/menus as Clash Royale structure,
+-- ORIGINAL art only (emoji/CSS placeholders, no ripped Supercell binaries).
+-- Apply: mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p $DB_NAME < infra/mysql/schema.sql
+-- Engine: MySQL 8.4 (Aiven). All reads O(1) by PK / O(c) full roster (c=12).
+
+CREATE TABLE IF NOT EXISTS cards (
+  name VARCHAR(32) PRIMARY KEY,
+  card_type ENUM('troop','spell','building') NOT NULL,
+  elixir TINYINT NOT NULL,
+  hp INT NOT NULL DEFAULT 0,
+  dmg_per_hit INT NOT NULL DEFAULT 0,
+  hit_speed_ms INT NOT NULL DEFAULT 0,
+  dps INT NOT NULL DEFAULT 0,
+  speed_ms_per_tile INT NOT NULL DEFAULT 0 COMMENT 'x1000 tiles/sec, 0 = static',
+  speed_label VARCHAR(16) NOT NULL DEFAULT '',
+  range_tiles DECIMAL(4,1) NOT NULL DEFAULT 0,
+  range_kind VARCHAR(16) NOT NULL DEFAULT '',
+  targets VARCHAR(16) NOT NULL DEFAULT '',
+  unit_count TINYINT NOT NULL DEFAULT 1,
+  rarity ENUM('common','rare','epic','legendary') NOT NULL,
+  damage_vs_troops INT NOT NULL DEFAULT 0,
+  damage_vs_towers INT NOT NULL DEFAULT 0,
+  radius_tiles DECIMAL(3,1) NOT NULL DEFAULT 0,
+  stun_ms INT NOT NULL DEFAULT 0,
+  lifetime_ms INT NOT NULL DEFAULT 0,
+  deploy_delay_ms INT NOT NULL DEFAULT 1000,
+  death_burst INT NOT NULL DEFAULT 0,
+  notes TEXT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS sprites (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  card_name VARCHAR(32) NOT NULL,
+  kind ENUM('troop','spell','building','tower','ui') NOT NULL,
+  atlas_x INT NOT NULL DEFAULT 0,
+  atlas_y INT NOT NULL DEFAULT 0,
+  w INT NOT NULL DEFAULT 64,
+  h INT NOT NULL DEFAULT 64,
+  placeholder_emoji VARCHAR(16) NOT NULL DEFAULT '',
+  art_path VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'original placeholder path only, never ripped binaries',
+  art_note VARCHAR(255) NOT NULL DEFAULT 'original placeholder - inspired by, not copied',
+  FOREIGN KEY (card_name) REFERENCES cards(name) ON DELETE CASCADE,
+  INDEX idx_sprites_card (card_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS menus (
+  label VARCHAR(32) PRIMARY KEY,
+  route VARCHAR(64) NOT NULL,
+  icon VARCHAR(16) NOT NULL DEFAULT '',
+  sort_order TINYINT NOT NULL DEFAULT 0,
+  parent VARCHAR(32) NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS users (
+  id VARCHAR(64) PRIMARY KEY,
+  player_id VARCHAR(64) NOT NULL UNIQUE,
+  trophies INT NOT NULL DEFAULT 0,
+  wins INT NOT NULL DEFAULT 0,
+  losses INT NOT NULL DEFAULT 0,
+  draws INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_users_trophies (trophies DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS decks (
+  id VARCHAR(64) PRIMARY KEY,
+  user_id VARCHAR(64) NOT NULL,
+  name VARCHAR(64) NOT NULL DEFAULT 'Battle Deck',
+  cards JSON NOT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_decks_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS matches (
+  id VARCHAR(64) PRIMARY KEY,
+  blue_id VARCHAR(64) NULL,
+  red_id VARCHAR(64) NULL,
+  blue_crowns TINYINT NOT NULL DEFAULT 0,
+  red_crowns TINYINT NOT NULL DEFAULT 0,
+  winner VARCHAR(8) NOT NULL DEFAULT 'draw',
+  duration_ms INT NOT NULL DEFAULT 0,
+  season VARCHAR(8) NOT NULL DEFAULT 's1',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_matches_season (season, created_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
