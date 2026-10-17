@@ -1,0 +1,58 @@
+// Prisma schema for CR Clone (Phase 7).
+// Postgres in prod/docker (infra/docker-compose.yml `postgres` service).
+// Dev/preview runs without DB via in-memory fallback in src/db.ts (no install needed).
+// To enable Postgres: npm install @prisma/client prisma pg && npx prisma migrate dev.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  playerId  String   @unique
+  trophies  Int      @default(0)
+  wins      Int      @default(0)
+  losses    Int      @default(0)
+  draws     Int      @default(0)
+  decks     Deck[]
+  matchesBlue Match[] @relation("BluePlayer")
+  matchesRed  Match[] @relation("RedPlayer")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([trophies(sort: Desc)])
+}
+
+model Deck {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String   @default("Battle Deck")
+  cards     String[] // 8 card ids, validated max 2 spells (GAME_DESIGN §4)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Match {
+  id        String   @id @default(cuid())
+  blueId    String?
+  blue      User?    @relation("BluePlayer", fields: [blueId], references: [id])
+  redId     String?
+  red       User?    @relation("RedPlayer", fields: [redId], references: [id])
+  blueCrowns Int     @default(0)
+  redCrowns  Int     @default(0)
+  winner    String   @default("draw") // blue | red | draw
+  durationMs Int     @default(0)
+  season    String   @default("s1")
+  createdAt DateTime @default(now())
+
+  @@index([season, createdAt(sort: Desc)])
+}

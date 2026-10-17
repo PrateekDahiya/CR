@@ -117,3 +117,47 @@ export function getBalanceCards(card?: string, aiBaseUrl?: string): Promise<Bala
   const qs = typeof card === "string" && card.length > 0 ? `?card=${encodeURIComponent(card)}` : "";
   return fetchJson<BalanceResponse>(`${base}/balance/cards${qs}`);
 }
+
+export interface ProfileResponse {
+  id: string;
+  playerId: string;
+  trophies: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  season: string;
+  db: boolean;
+}
+
+export interface LeaderboardEntry {
+  id: string;
+  playerId: string;
+  trophies: number;
+  wins: number;
+  losses: number;
+  draws: number;
+}
+
+export interface LeaderboardResponse {
+  season: string;
+  db: boolean;
+  entries: LeaderboardEntry[];
+}
+
+/** POST {backend}/auth/guest — O(1) guest login, returns token. */
+export function postGuest(playerId: string, baseUrl?: string): Promise<{ playerId: string; token: string; trophies: number; db: boolean }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/auth/guest`, { method: "POST", body: JSON.stringify({ playerId }) });
+}
+
+/** GET {backend}/profile/:id — O(1) lookup. */
+export function getProfile(playerId: string, baseUrl?: string): Promise<ProfileResponse> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson<ProfileResponse>(`${base}/profile/${encodeURIComponent(playerId)}`);
+}
+
+/** GET {backend}/leaderboard — O(n log n) server sort, n tiny. */
+export function getLeaderboard(limit = 20, baseUrl?: string): Promise<LeaderboardResponse> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson<LeaderboardResponse>(`${base}/leaderboard?limit=${limit}`);
+}

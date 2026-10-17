@@ -31,6 +31,7 @@ import {
   getCardCost,
 } from "./net/validation.js";
 import { initRedis } from "./net/redis.js";
+import { mountMeta } from "./meta.js";
 
 dotenv.config();
 
@@ -43,6 +44,8 @@ app.use(express.json());
 app.get("/health", (_req, res) => {
   res.json({ ok: true, service: "backend" });
 });
+
+mountMeta(app);
 
 const httpServer = createServer(app);
 

@@ -82,3 +82,7 @@ docker run -p 3000:3000 cr-frontend
 - Frame O(entities): towers (6) + units (≤40) + fx only; static terrain (576 tiles + river + bridges) pre-rendered once to offscreen canvas, O(1) blit/frame; backing store DPR-capped at 2.
 - Interp O(1)/unit single-pass (`toRenderUnits` O(v)): shared lookup scratch (no per-frame Map/closure), indexed loops; 60fps loop skips when `document.hidden` + freezes settled game-over frames (dirty-check skips fully static scenes).
 - Elixir/deploy/pocket hints O(1)/O(t); particles ≤400 + floats ≤40 ring-buffered (drop oldest), in-place per-frame compaction (no splice/filter allocs).
+
+## Phase 7 update (2026-10-17, branch feature/phase-7-persistence)
+- Meta UI: `app/leaderboard/page.tsx` (exact-CR gold table, season, testids leaderboard-list/row-*) + `lib/api.ts` postGuest/getProfile/getLeaderboard (O(1)/O(n log n) server sort).
+- Backend REST live: /auth/guest, /profile/:id, /leaderboard, /deck, /matches/report, /season (memory fallback db:false, Postgres via Prisma when DATABASE_URL set).

@@ -16,8 +16,11 @@
 - [x] Phase 5 - Exact-CR Battle Client (2026-10-17): `/battle` portrait + ArenaCanvas (18x32, river/bridges, towers HP/crown/explosion, units interp, spells, damage numbers, offscreen blit, DPR cap 2) + ElixirBar (10 pips + shake) + Hand (rarity borders + Next) + BattleTopBar (timer m:ss + OT + mute/emote) + useBattle (serverTimeMs clock, 60fps interp, elixir extrap, pocket-4, flat setState) + sfx WebAudio + battle.spec 4 tests. Pipeline: 3 coders (036..038) -> 2 reviewers (039 pass-with-issues 1maj/7min; 040 pass-with-issues 1blk/5maj/6min) -> 1 static (041 conditional pass, testid drift) -> 1 merger (042 contract reconciliation, OT/pocket/setState, OR-locators) -> 1 perf (043 MEMORY#20: tick 0.034-0.046ms ~100x headroom, snapshot 6105B@40u/3979B@22u, 33/33 PASS) -> 1 live UI (044: Playwright Chromium 4/4 PASS + mobile/desktop screenshots, preview :3000/ 404 flagged stale). Merged to `main` as 30bf44c, pushed. Preview restarted from merge (200s).
 - [x] Phase 6 - Python AI Service (2026-10-17): `bot.py` easy O(h)/medium O(h+t)/hard O(h+t+u) + `analytics.py` ring-buffer O(k)/O(c)/O(n+c) + `main.py` lazy brain + handIndex resolve (ISS-P2-002) + took_ms + balance 12 cards. Subagents FAILED (model deprecated) -> main-agent recovery PROMPT-045..048: fixed Mapping import, canonical signature, dict-hand, side-aware scan, balance getters. pytest 12/12 + live 8100 9/9 (took_ms 0.05ms, balance 12). ISSUES_phase-6-ai.md (5 fixed, 1 deferred ConfigDict) + TEST_REPORT_phase-6-ai.md.
 
+- [x] Phase 6 - Python AI Service (2026-10-17): merged f19ba5e, pytest 12/12 + live 9/9, preview :8000 started. Auto-continued per MEMORY#21.
+- [x] Phase 7 - Persistence & Meta (2026-10-17): Prisma schema (User/Deck/Match) + db.ts (Prisma-or-memory O(1), leaderboard O(n log n)) + auth.ts guest token + meta.ts 6 routes + meta.test.ts; frontend leaderboard CR-style + api postGuest/getProfile/getLeaderboard. tsc backend clean (frontend only pre-existing DeckBuilder), npm test 35/35, live :4000 7/7 (db:false fallback). ISSUES_phase-7-meta.md (1maj fixed dynamic require, 2min accepted) + TEST_REPORT_phase-7-meta.md. Pipeline: main-agent PROMPT-049 (subagents deprecated).
+
 ## CURRENTLY IN PROGRESS
-- [ ] Phase 6 - final step: commit, merge `feature/phase-6-ai-service` --no-ff into `main`, push, start preview :8000 + verify :3000/:4000/:8000. Then straight to Phase 7 per MEMORY#21 (no stop).
+- [ ] Phase 7 - final step: commit, merge `feature/phase-7-persistence` --no-ff into `main`, push, restart preview :4000 from main + verify :3000/:4000/:8000. Then straight to Phase 8 per MEMORY#21 (no stop).
 
 ## NEXT (Planned)
 - [ ] Phase 7 - Persistence & Meta: Postgres+Prisma (users/decks/matches/leaderboard), auth, profiles, leaderboard UI, season stub.
@@ -33,4 +36,5 @@
 | 3 | `feature/phase-3-backend-server` | bdf3d17 (merge --no-ff) | 2026-10-17 | engine + net + 33 unit + 39 live PASS, pushed, auto-continued |
 | 4 | `feature/phase-4-frontend-shell` | 4aff0d1 (merge --no-ff) | 2026-10-17 | shell + deck + Playwright 8/8 PASS, pushed, auto-continued |
 | 5 | `feature/phase-5-battle-client` | 30bf44c (merge --no-ff) | 2026-10-17 | exact-CR battle + perf tick 0.04ms + 4/4 UI PASS, preview restarted :3000/:4000 200s |
-| 6 | `feature/phase-6-ai-service` | pending | 2026-10-17 | started, run-to-completion per MEMORY#21 |
+| 6 | `feature/phase-6-ai-service` | f19ba5e (merge --no-ff) | 2026-10-17 | bot + analytics 12/12 + 9 live PASS, preview :8000 live |
+| 7 | `feature/phase-7-persistence` | pending | 2026-10-17 | started, run-to-completion per MEMORY#21 |
