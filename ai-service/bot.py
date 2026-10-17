@@ -630,9 +630,10 @@ if __name__ == "__main__":  # pragma: no cover
             assert _on_bot_half(_m["y"], "red"), _m
         assert 0 <= _m["handIndex"] < len(_HAND), _m
         assert _dt < 50.0, (_d, _dt)
-    # Hard answers the skeleton cluster with zap; medium plays greedy value.
+    # Hard answers the skeleton cluster with zap; medium plays greedy value
+    # (skeletons: 240 dps / 1 elixir = best DPS-per-elixir in hand).
     assert choose_move(_STATE, _HAND, 8.0, "hard")["card"] == "zap"
-    assert choose_move(_STATE, _HAND, 8.0, "medium")["card"] == "musketeer"
+    assert choose_move(_STATE, _HAND, 8.0, "medium")["card"] == "skeletons"
     # Degenerate inputs never raise and stay in-bounds.
     for _m2 in (choose_move({}, [], 0.0, "easy"),
                 choose_move(None, ["zap"], 0.0, "hard"),

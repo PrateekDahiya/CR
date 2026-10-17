@@ -549,3 +549,14 @@
 - **Branch/worktree**: `feature/phase-7-persistence`
 - **Status**: done
 
+## PROMPT-050 - 2026-10-17 - gate - phase-8-hardening (main-agent, no subagents)
+- **Requirement**: Full-repo gate: suites + bot-vs-bot + compose + secrets + perf + security (MEMORY#20/#21).
+- **Goals**: backend 35/35, ai 12/12 + bot.py self-check, compose config PASS, secrets scan, perf budgets, previews live; write ISSUES_phase-8-hardening.md + TEST_REPORT_phase-8-e2e.md.
+- **Prompt (verbatim condensed)**: N/A - main-agent direct. Only bot.py (self-check fix) + 2 docs + PHASES/AGENTS_PROMPT.
+- **Inputs**: MEMORY.md, backend/tests, ai-service/*, infra/docker-compose.yml
+- **Constraints**: minimal paths; previews untouched (verified live, not restarted).
+- **Done criteria**: 47/47 suites + e2e PASS + docs.
+- **Outputs**: fixed ISS-H8-001 (medium skeletons), accepted H8-002/003; 35/35 + 12/12 + compose PASS + secrets clean.
+- **Branch/worktree**: `feature/phase-8-hardening`
+- **Status**: done
+
