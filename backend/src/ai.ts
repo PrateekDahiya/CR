@@ -14,6 +14,7 @@
 
 import type { Server } from "socket.io";
 import { applyEnginePlay, getHand, type PlayerSide, type Room } from "./net/rooms.js";
+import { CARDS } from "./game/cards.js";
 
 export interface BotMove {
   card: string;
@@ -62,21 +63,11 @@ function fallbackMove(room: Room, side: PlayerSide): BotMove | null {
   return { card: best.card, handIndex: best.index, x: lane + Math.random() * 2, y };
 }
 
-// Local cost table (mirrors net/validation.ts) so the fallback needs no import cycle.
-const COSTS: Record<string, number> = {
-  knight: 3,
-  archers: 3,
-  giant: 5,
-  skeletons: 1,
-  musketeer: 4,
-  "baby-dragon": 4,
-  fireball: 4,
-  arrows: 3,
-  "mini-pekka": 4,
-  "rock-golem": 4,
-  zap: 2,
-  cannon: 3,
-};
+// Cost table from the canonical engine card set (108 cards) — no import cycle.
+// O(1) build, O(1) lookup.
+const COSTS: Record<string, number> = Object.fromEntries(
+  Object.values(CARDS).map((c) => [c.id, c.cost]),
+);
 
 export function costOf(cardId: string): number | null {
   return COSTS[cardId] ?? null;

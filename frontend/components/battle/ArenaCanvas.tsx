@@ -139,6 +139,29 @@ function emojiFor(cardId: string): string {
   return UNIT_EMOJI[cardId] ?? "❓";
 }
 
+/**
+ * Real card art for deployed units: /cards/<slug>.png (same art the deck and
+ * collection use). Images are cached per card id and drawn once decoded, so the
+ * per-frame cost stays O(1) per unit (one drawImage).
+ *
+ * O(u) draws for u visible units; the cache is bounded by the 108-card catalog.
+ * Missing art falls back to the emoji glyph (onError marks the entry).
+ */
+const artCache = new Map<string, HTMLImageElement | "missing">();
+
+function artFor(cardId: string): HTMLImageElement | null {
+  const hit = artCache.get(cardId);
+  if (hit !== undefined) return hit === "missing" ? null : hit;
+  const slug = cardId.replace(/[^a-z0-9-]/gi, "-").toLowerCase();
+  const img = new Image();
+  img.decoding = "async";
+  img.onload = () => undefined; // decoded -> drawImage works
+  img.onerror = () => artCache.set(cardId, "missing");
+  img.src = `/cards/${slug}.png`;
+  artCache.set(cardId, img);
+  return img;
+}
+
 function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
 }
@@ -606,11 +629,23 @@ export default function ArenaCanvas({
         c.lineWidth = 3;
         c.strokeStyle = u.owner === "blue" ? "#2563eb" : "#dc2626";
         c.stroke();
-        // emoji
-        c.font = "13px serif";
-        c.textAlign = "center";
-        c.textBaseline = "middle";
-        upright(cx, cy + 0.5, () => c.fillText(emojiFor(u.cardId), 0, 0));
+        // Real card art (same PNG as deck/collection); emoji only until decoded
+        // or when the card has no art file.
+        const art = artFor(u.cardId);
+        if (art !== null && art.complete && art.naturalWidth > 0) {
+          const d = r * 1.8;
+          c.save();
+          c.beginPath();
+          c.arc(cx, cy, r - 1, 0, Math.PI * 2);
+          c.clip();
+          c.drawImage(art, cx - d / 2, cy - d / 2, d, d);
+          c.restore();
+        } else {
+          c.font = "13px serif";
+          c.textAlign = "center";
+          c.textBaseline = "middle";
+          upright(cx, cy + 0.5, () => c.fillText(emojiFor(u.cardId), 0, 0));
+        }
         // HP bar
         const max = Math.max(1, u.maxHitPoints);
         const pct = clamp(u.hitPoints / max, 0, 1);

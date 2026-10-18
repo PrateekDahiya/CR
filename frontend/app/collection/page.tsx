@@ -13,6 +13,7 @@ import {
 } from "../../components/ui";
 import { backendUrl, getCatalog, getContentCards, type CatalogEntry, type ContentCard } from "../../lib/api";
 import { useDeckState } from "../../lib/useDeck";
+import { CARDS } from "../../lib/cards";
 
 // Collection: full catalog (108), rarity + elixir filters, grid of the shared
 // CardTile. Tapping a card opens the same info popup as My Deck, with working
@@ -61,6 +62,12 @@ export default function CollectionPage() {
         playable: c.playable ?? prev?.playable ?? true,
       };
     }
+    // Engine cost wins (tower troops are catalogued at 0 elixir but cost 4).
+    for (const [name, def] of Object.entries(CARDS)) {
+      const prev = out[name];
+      if (!prev) continue;
+      out[name] = { ...prev, elixir: def.cost, cardType: def.type, playable: true };
+    }
     return out;
   }, [catalog, roster]);
 
@@ -99,11 +106,6 @@ export default function CollectionPage() {
   };
 
   const requestUse = (name: string) => {
-    if (factsByName[name]?.playable === false) {
-      setInfo(null);
-      say(`${pretty(name)} can't be used in battles yet`);
-      return;
-    }
     const res = useCard(name);
     if (res.kind === "placed") {
       setInfo(null);
@@ -198,7 +200,6 @@ export default function CollectionPage() {
                   level={15}
                   testId={`collection-card-${c.name}`}
                   inDeck={deck.includes(c.name)}
-                  locked={!c.playable}
                   onClick={() => setInfo({ name: c.name })}
                   ariaLabel={`${c.name}, ${c.elixir} elixir`}
                 />
@@ -248,7 +249,7 @@ export default function CollectionPage() {
                   : undefined
               }
               onClose={() => setInfo(null)}
-              onUse={f.playable === false ? undefined : () => requestUse(info.name)}
+              onUse={() => requestUse(info.name)}
               onRemove={inDeck ? () => doRemove(info.name) : undefined}
               onUpgrade={() => setInfo(null)}
               inDeck={inDeck}

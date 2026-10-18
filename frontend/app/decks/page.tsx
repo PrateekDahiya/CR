@@ -12,6 +12,7 @@ import {
   type DeckSlotFact,
 } from "../../components/ui";
 import { backendUrl, getContentCards, getCatalog, type ContentCard, type CatalogEntry } from "../../lib/api";
+import { CARDS } from "../../lib/cards";
 import { useDeckState, DECK_SIZE } from "../../lib/useDeck";
 
 // /decks — My Deck strip on top, full collection grid underneath, two tabs.
@@ -62,8 +63,9 @@ export default function DecksPage() {
     [catalog, cards],
   );
 
-  // Single fact lookup for every card the deck can hold: catalog first, then the
-  // playable roster (richer stats). O(n) over 108 entries per render.
+  // Single fact lookup for every card the deck can hold. Catalog gives the roster
+  // + rarity; the shared card table (generated from the same source as the
+  // engine) gives the authoritative cost/type used in battle. O(n), n = 108.
   const factsByName = useMemo(() => {
     const out: Record<string, CatalogEntry> = {};
     for (const c of collection) out[c.name] = c;
@@ -76,6 +78,12 @@ export default function DecksPage() {
         rarity: c.rarity || prev?.rarity || "common",
         playable: c.playable ?? prev?.playable ?? true,
       };
+    }
+    // Engine cost wins (tower troops are catalogued at 0 elixir but cost 4).
+    for (const [name, def] of Object.entries(CARDS)) {
+      const prev = out[name];
+      if (!prev) continue;
+      out[name] = { ...prev, elixir: def.cost, cardType: def.type, playable: true };
     }
     return out;
   }, [collection, cards]);
@@ -103,11 +111,6 @@ export default function DecksPage() {
   // "Use": fills the first free slot; a full deck (or moving a card already in
   // the deck) opens the slot picker so the user always chooses what is replaced.
   const requestUse = (name: string) => {
-    if (factsByName[name]?.playable === false) {
-      setInfo(null);
-      say(`${pretty(name)} can't be used in battles yet`);
-      return;
-    }
     const res = useCard(name);
     if (res.kind === "placed") {
       setInfo(null);
@@ -250,7 +253,6 @@ export default function DecksPage() {
                   level={15}
                   testId={`collection-card-${c.name}`}
                   inDeck={deck.includes(c.name)}
-                  locked={!c.playable}
                   onClick={() => setInfo({ name: c.name, slot: "list" })}
                 />
               ))}
@@ -289,7 +291,7 @@ export default function DecksPage() {
                     : undefined
                 }
                 onClose={() => setInfo(null)}
-                onUse={f.playable === false ? undefined : () => requestUse(info.name)}
+                onUse={() => requestUse(info.name)}
                 onRemove={inDeck ? () => doRemove(info.slot, info.name) : undefined}
                 onUpgrade={() => setInfo(null)}
                 inDeck={inDeck}
