@@ -54,6 +54,8 @@ import {
   toggleMute,
 } from "../../lib/battle/sfx";
 import { sendEmote } from "../../lib/socket";
+import { crBgStyle } from "../../lib/crTheme";
+import { CRButton } from "../../components/ui";
 import type { Tower, Unit } from "../../../shared/types";
 
 const DECK_STORAGE_KEY = "cr-clone-deck-v1";
@@ -282,7 +284,7 @@ export default function BattlePage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center bg-gradient-to-b from-sky-400 via-green-600 to-amber-950 p-2 text-slate-100">
+    <main className="flex min-h-screen flex-col items-center p-2 text-white" style={crBgStyle()}>
       <style>{`
         @keyframes battle-shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { transform: translateX(-4px); } }
         .battle-shake { animation: battle-shake 0.4s ease; }
@@ -292,15 +294,26 @@ export default function BattlePage() {
         .battle-spinner { animation: battle-spin 0.9s linear infinite; }
       `}</style>
 
-      <div data-testid="battle-page" className="flex w-full max-w-[420px] flex-col gap-1.5">
-        <div className="flex items-center justify-between px-1 pt-1">
-          <Link href="/" className="text-xs font-bold text-white/90 underline hover:text-white">
+      <div
+        data-testid="battle-page"
+        className="flex w-full max-w-[440px] flex-col gap-2"
+      >
+        <div className="flex items-center justify-between rounded-lg border border-slate-600/60 bg-[#12224a]/90 px-2 py-1.5 shadow-md">
+          <Link
+            href="/"
+            data-testid="battle-home-link"
+            className="rounded-md border border-slate-600 bg-gradient-to-b from-slate-500 to-slate-700 px-2 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white active:translate-y-0.5"
+          >
             ← Menu
           </Link>
-          <span className="text-xs font-extrabold tracking-wide text-yellow-200 [text-shadow:1px_1px_0_rgba(0,0,0,0.6)]">
-            ⚔️ BATTLE
+          <span className="text-xs font-extrabold uppercase tracking-[0.2em] text-amber-300 [text-shadow:1px_1px_0_rgba(0,0,0,0.6)]">
+            ⚔️ Battle
           </span>
-          <Link href="/deck" className="text-xs font-bold text-white/90 underline hover:text-white">
+          <Link
+            href="/decks"
+            data-testid="battle-deck-link"
+            className="rounded-md border border-sky-800 bg-gradient-to-b from-sky-400 to-sky-600 px-2 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white active:translate-y-0.5"
+          >
             Deck
           </Link>
         </div>
@@ -353,7 +366,9 @@ export default function BattlePage() {
         )}
 
         <div
-          className={`relative ${invalidFlash ? "battle-shake" : ""}`}
+          className={`relative overflow-hidden rounded-xl border-2 border-slate-600/70 shadow-lg ${
+            invalidFlash ? "battle-shake" : ""
+          }`}
           onMouseMove={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
             const t = tileFromClient(e.clientX, e.clientY, rect);
@@ -369,37 +384,39 @@ export default function BattlePage() {
             onTileClick={(x, y) => void handleTile(x, y)}
           />
           {phase === "idle" && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-lg bg-slate-950/70 p-4 text-center">
-              <p className="text-sm text-slate-200">
-                {playerId ? `Ready as ${playerId}` : "Set a playerId in Lobby first (or play below)."}
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-lg bg-[#050b1c]/85 p-4 text-center backdrop-blur-[2px]">
+              <p className="text-sm font-bold text-slate-200">
+                {playerId ? `Ready as ${playerId}` : "Tap BATTLE to find an opponent."}
               </p>
-              <button
-                type="button"
-                data-testid="battle-join"
+              <CRButton
+                variant="gold"
+                size="lg"
+                testId="battle-join"
                 onClick={() => void battle.join()}
-                className="rounded-xl border-b-4 border-amber-700 bg-gradient-to-b from-amber-300 to-amber-500 px-10 py-3 text-xl font-extrabold text-red-900 hover:brightness-110"
+                icon="⚔️"
               >
-                BATTLE!
-              </button>
-              <Link href="/lobby" className="text-xs text-sky-300 underline">
-                Go to Lobby
+                Battle
+              </CRButton>
+              <Link href="/decks" className="text-xs font-bold text-amber-300 underline">
+                Change deck
               </Link>
             </div>
           )}
           {phase === "searching" && (
-            <div data-testid="queue-status" className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-lg bg-slate-950/70 p-4 text-center">
+            <div
+              data-testid="queue-status"
+              className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-lg bg-[#050b1c]/85 p-4 text-center backdrop-blur-[2px]"
+            >
               <span className="battle-spinner inline-block text-3xl">🌀</span>
-              <p className="text-sm font-bold text-slate-100">
+              <p className="text-sm font-extrabold uppercase tracking-wide text-amber-300">
                 Searching for opponent…
-                {battle.queuePosition !== null ? ` (#${battle.queuePosition} in queue)` : ""}
               </p>
-              <button
-                type="button"
-                onClick={battle.leave}
-                className="rounded-lg border-b-4 border-red-800 bg-gradient-to-b from-red-400 to-red-600 px-6 py-2 text-sm font-extrabold text-white"
-              >
+              {battle.queuePosition !== null && (
+                <p className="text-xs font-bold text-slate-300">#{battle.queuePosition} in queue</p>
+              )}
+              <CRButton variant="red" size="sm" testId="queue-cancel" onClick={battle.leave}>
                 Cancel
-              </button>
+              </CRButton>
             </div>
           )}
         </div>
@@ -440,33 +457,42 @@ export default function BattlePage() {
         )}
 
         {battle.result && (
-          <div data-testid="battle-result" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
-            <div className="w-full max-w-[340px] rounded-2xl border-b-8 border-amber-700 bg-gradient-to-b from-sky-800 to-sky-950 p-6 text-center">
-              <h2 className="text-3xl font-extrabold text-yellow-300 [text-shadow:2px_2px_0_rgba(0,0,0,0.6)]">
-                {resultTitle} {resultTitle === "Victory!" ? "🏆" : resultTitle === "Defeat!" ? "💀" : "🤝"}
-              </h2>
-              <p className="mt-2 text-lg" aria-label={`${myCrowns} crowns`}>
-                {"⭐".repeat(Math.max(0, Math.min(3, myCrowns))) || "☆☆☆"}
-              </p>
-              <p className="mt-1 text-xs text-sky-200">
-                Crowns — you {battle.result.crowns[side] ?? 0} : {battle.result.crowns[side === "blue" ? "red" : "blue"] ?? 0} foe
-              </p>
-              <div className="mt-4 flex flex-col gap-2">
-                <button
-                  type="button"
-                  data-testid="battle-play-again"
-                  onClick={() => void handlePlayAgain()}
-                  className="rounded-xl border-b-4 border-amber-700 bg-gradient-to-b from-amber-300 to-amber-500 px-4 py-2 font-extrabold text-red-900 hover:brightness-110"
-                >
-                  Play Again
-                </button>
-                <div className="flex gap-2">
-                  <Link href="/deck" className="flex-1 rounded-xl border-b-4 border-sky-900 bg-gradient-to-b from-sky-400 to-sky-600 px-4 py-2 text-center font-extrabold text-white">
-                    Deck
-                  </Link>
-                  <Link href="/" className="flex-1 rounded-xl border-b-4 border-slate-700 bg-slate-800 px-4 py-2 text-center font-extrabold text-white">
-                    Menu
-                  </Link>
+          <div
+            data-testid="battle-result"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#050b1c]/90 p-4 backdrop-blur-[2px]"
+          >
+            <div className="w-full max-w-[340px] overflow-hidden rounded-2xl border-4 border-amber-600/70 bg-gradient-to-b from-[#1b2f5c] to-[#0a1730] text-center shadow-2xl">
+              <div className="border-b-2 border-amber-500/30 bg-gradient-to-r from-[#24407a] to-[#12224a] px-3 py-2">
+                <h2 className="text-3xl font-extrabold uppercase tracking-wide text-amber-300 [text-shadow:2px_2px_0_rgba(0,0,0,0.6)]">
+                  {resultTitle}
+                </h2>
+              </div>
+              <div className="px-4 py-4">
+                <p className="text-2xl" aria-label={`${myCrowns} crowns`}>
+                  {"👑".repeat(Math.max(0, Math.min(3, myCrowns))) || "☆☆☆"}
+                </p>
+                <p className="mt-1 text-xs font-bold text-slate-300">
+                  You {battle.result.crowns[side] ?? 0} —{" "}
+                  {battle.result.crowns[side === "blue" ? "red" : "blue"] ?? 0} foe
+                </p>
+                <div className="mt-4 flex flex-col gap-2">
+                  <CRButton
+                    variant="gold"
+                    size="md"
+                    testId="battle-play-again"
+                    onClick={() => void handlePlayAgain()}
+                    icon="⚔️"
+                  >
+                    Play Again
+                  </CRButton>
+                  <div className="flex gap-2">
+                    <CRButton variant="blue" size="sm" testId="battle-result-deck" href="/decks">
+                      Deck
+                    </CRButton>
+                    <CRButton variant="gray" size="sm" testId="battle-result-menu" href="/">
+                      Home
+                    </CRButton>
+                  </div>
                 </div>
               </div>
             </div>
