@@ -118,7 +118,7 @@ export default function CardInfoOverlay({
             <span className="absolute inset-0 grid place-items-center">⚔️</span>
           </div>
         </div>
-        <footer className="grid grid-cols-4 gap-2 px-3 pb-3">
+        <footer className={`grid gap-2 px-3 pb-3 ${onRemove ? "grid-cols-4" : "grid-cols-3"}`}>
           <button
             type="button"
             data-testid="card-info-star-level"
@@ -142,7 +142,7 @@ export default function CardInfoOverlay({
             onClick={onUse}
             className="rounded-xl border-b-4 border-amber-800 bg-gradient-to-b from-amber-300 to-amber-600 px-2 py-2 text-center text-amber-950 shadow-md active:translate-y-0.5"
           >
-            <div className="text-lg font-extrabold uppercase tracking-wide">{inDeck ? "In Deck" : "Use"}</div>
+            <div className="text-lg font-extrabold uppercase tracking-wide">Use</div>
           </button>
           {onRemove && (
             <button
