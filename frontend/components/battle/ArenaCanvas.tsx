@@ -638,9 +638,11 @@ export default function ArenaCanvas({
           c.beginPath();
           c.arc(cx, cy, r - 1, 0, Math.PI * 2);
           c.clip();
-          // `upright` counteracts the board mirror so the card art is never
-          // drawn upside down (the board itself is mirrored for the blue side).
-          upright(cx, cy, () => c.drawImage(art, -d / 2, -d / 2, d, d));
+          // Draw centred on the unit, un-flipping the board mirror so the art is
+          // never upside down for the blue player.
+          c.translate(cx, cy);
+          if (sideRef.current === "blue") c.scale(1, -1);
+          c.drawImage(art, -d / 2, -d / 2, d, d);
           c.restore();
         } else {
           c.font = "13px serif";

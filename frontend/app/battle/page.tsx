@@ -314,7 +314,7 @@ export default function BattlePage() {
     prevResultRef.current = null;
     seenUnitsRef.current = new Set();
     battle.leave();
-    await battle.joinPractice("medium");
+    await battle.joinSearch("medium");
   }
 
   return (
@@ -359,7 +359,7 @@ export default function BattlePage() {
                 variant="gold"
                 size="xl"
                 testId="battle-join"
-                onClick={() => void battle.joinPractice("medium")}
+                onClick={() => void battle.joinSearch("medium")}
                 icon="⚔️"
               >
                 Battle

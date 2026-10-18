@@ -141,7 +141,7 @@ export default function Home() {
         <button
           type="button"
           data-testid="home-battle"
-onClick={() => setMatchmaking("ai")}
+onClick={() => setMatchmaking("pvp")}
           className="mt-3 block w-full rounded-2xl border-b-4 border-amber-800 bg-gradient-to-b from-amber-300 to-amber-600 px-4 py-3 text-center text-2xl font-extrabold uppercase tracking-wider text-amber-950 shadow-md active:translate-y-0.5"
         >
           ⚔️ Battle

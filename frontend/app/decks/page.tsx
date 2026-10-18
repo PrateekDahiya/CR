@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   PageShell,
   CardTile,
-  CRButton,
   CardInfoOverlay,
   DeckSlotPicker,
   ActionToast,
@@ -24,7 +23,6 @@ export default function DecksPage() {
   const [info, setInfo] = useState<{ name: string; slot: number | "list" } | null>(null);
   const [replace, setReplace] = useState<{ name: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [matchmaking, setMatchmaking] = useState(false);
   const [tab, setTab] = useState<"deck" | "collection">("deck");
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { deck, hydrated, placeAt, useCard, removeCard, saveDeck } = useDeckState();
@@ -150,10 +148,10 @@ export default function DecksPage() {
         ).toFixed(1)
       : "—";
 
-  const onBattle = () => {
+  // Battles start from the Battle tab (home); the deck screen only edits cards.
+  useEffect(() => {
     saveDeck();
-    setMatchmaking(true);
-  };
+  }, [deck]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <PageShell active="cards" topBarCurrencies={{ cards: cards.length, coins: 1625, gems: 5 }}>
@@ -202,11 +200,6 @@ export default function DecksPage() {
           <p className="mt-2 text-center text-[10px] font-semibold text-slate-400">
             Tap a card for info • tap an empty slot to add one
           </p>
-          <div className="mt-2 flex justify-end">
-            <CRButton variant="gold" size="sm" testId="deck-battle" onClick={onBattle} icon="⚔️">
-              Battle
-            </CRButton>
-          </div>
         </section>
 
         {/* Tabs: Deck + Collection (both in-place, no separate /deck route) */}
@@ -316,22 +309,6 @@ export default function DecksPage() {
 
       <ActionToast message={toast} />
 
-      {matchmaking ? (
-        <div
-          data-testid="deck-matchmaking"
-          className="fixed inset-0 z-40 flex items-center justify-center bg-[#050b1c]/85"
-        >
-          <div className="rounded-xl border-4 border-amber-600/70 bg-gradient-to-b from-[#1b2f5c] to-[#0a1730] p-6 text-center text-white shadow-2xl">
-            <div className="mb-1 text-lg font-extrabold uppercase tracking-wide text-amber-300">
-              Searching for opponent…
-            </div>
-            <p className="mb-3 text-xs text-slate-300">Battles start from the Battle tab.</p>
-            <CRButton variant="red" size="sm" testId="deck-matchmaking-cancel" onClick={() => setMatchmaking(false)}>
-              Cancel
-            </CRButton>
-          </div>
-        </div>
-      ) : null}
     </PageShell>
   );
 }

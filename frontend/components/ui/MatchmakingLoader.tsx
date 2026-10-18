@@ -14,6 +14,9 @@ export interface MatchmakingLoaderProps {
   difficulty?: "easy" | "medium" | "hard";
 }
 
+/** How long PvP matchmaking waits for a human before the AI takes the slot. */
+export const PVP_SEARCH_MS = 5000;
+
 /**
  * The battle screen (and the server) need a stable playerId. Reuse the saved
  * one, otherwise mint and persist one so deploys are never rejected.
@@ -117,7 +120,9 @@ export default function MatchmakingLoader({
           startPractice();
         } else {
           socket.joinQueue(pid, deck);
-          fallbackTimer = setTimeout(startPractice, 4000);
+          // Real CR: give a human 5 seconds to find an opponent before the bot
+          // takes the slot, so an incoming 1v1 still pairs up.
+          fallbackTimer = setTimeout(startPractice, PVP_SEARCH_MS);
         }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "matchmaking failed");

@@ -38,6 +38,48 @@ async function openClient(browser: Browser, playerId: string): Promise<Page> {
   return page;
 }
 
+test("solo player waits 5s for a human before the AI match starts", async ({ page }) => {
+  await page.addInitScript(
+    ({ deck }: { deck: string[] }) => {
+      window.localStorage.setItem("cr-player-id", "solo-player");
+      window.localStorage.setItem("cr-clone-deck-v1", JSON.stringify(deck));
+    },
+    { deck: DECK },
+  );
+  await page.goto(`${BASE}/battle`);
+
+  const t0 = Date.now();
+  await page.getByTestId("battle-join").click();
+
+  // Searching state must be visible first (a real 1v1 could still pair up).
+  await expect(page.getByTestId("queue-status")).toBeVisible({ timeout: 5000 });
+
+  // Poll until the queue clears: either the 5s AI fallback fired, or another
+  // test's player was already queued and paired us (not measurable here).
+  let pairedWithHuman = false;
+  while (Date.now() - t0 < 12000) {
+    if ((await page.getByTestId("queue-status").count()) === 0) {
+      const foe = (await page.getByTestId("enemy-info").textContent()) ?? "";
+      pairedWithHuman = !foe.includes("AI");
+      break;
+    }
+    await page.waitForTimeout(250);
+  }
+  test.skip(pairedWithHuman, "another player was already queued — fallback timing not measurable");
+
+  const waited = Date.now() - t0;
+  expect(waited, `AI fallback fired too early (${waited}ms)`).toBeGreaterThanOrEqual(4500);
+  expect(waited, `AI fallback took too long (${waited}ms)`).toBeLessThan(11000);
+  await expect(page.getByTestId("enemy-info")).toContainText("AI", { timeout: 10000 });
+});
+
+test("deck tab has no battle button", async ({ page }) => {
+  await page.goto(`${BASE}/decks`);
+  await expect(page.getByTestId("my-deck-strip")).toBeVisible({ timeout: 15000 });
+  await expect(page.getByTestId("deck-battle")).toHaveCount(0);
+  await expect(page.getByTestId("deck-matchmaking")).toHaveCount(0);
+});
+
 test("1v1: two players pair up, get opposite sides and can both deploy", async ({ browser }) => {
   // Same player id on purpose: two tabs of one browser share localStorage.
   const a = await openClient(browser, "shared-id");
