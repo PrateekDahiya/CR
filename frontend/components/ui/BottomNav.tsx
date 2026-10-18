@@ -3,12 +3,11 @@
 import { usePathname, useRouter } from "next/navigation";
 
 const TABS = [
-  { key: "cards", label: "Cards", icon: "💰", route: "/decks" },
-  { key: "collection", label: "Collection", icon: "🃏", route: "/collection" },
-  { key: "battle", label: "Battle", icon: "⚡", route: "/lobby" },
   { key: "shop", label: "Shop", icon: "🛒", route: "/shop" },
-  { key: "social", label: "Social", icon: "👥", route: "/social" },
-  { key: "ranked", label: "Ranked", icon: "🏆", route: "/leaderboard" },
+  { key: "cards", label: "Deck", icon: "🃏", route: "/decks" },
+  { key: "battle", label: "Battle", icon: "⚔️", route: "/battle" },
+  { key: "social", label: "Clan", icon: "👥", route: "/social" },
+  { key: "ranked", label: "Rank", icon: "🏆", route: "/leaderboard" },
 ] as const;
 
 export type BottomNavKey = (typeof TABS)[number]["key"];
@@ -25,7 +24,7 @@ export default function BottomNav({ active }: { active?: BottomNavKey }) {
   return (
     <nav
       data-testid="bottom-nav"
-      className="sticky bottom-0 z-30 grid grid-cols-6 border-t-2 border-amber-700/40 bg-gradient-to-b from-[#102347] to-[#0a1730] text-white shadow-[0_-4px_18px_rgba(0,0,0,0.55)]"
+      className="sticky bottom-0 z-30 grid grid-cols-5 border-t-2 border-amber-700/40 bg-gradient-to-b from-[#102347] to-[#0a1730] text-white shadow-[0_-4px_18px_rgba(0,0,0,0.55)]"
     >
       {TABS.map((t) => {
         const isActive = current === t.key;

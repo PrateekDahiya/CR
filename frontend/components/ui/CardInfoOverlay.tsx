@@ -11,6 +11,7 @@ export interface CardInfoOverlayProps {
   level?: number;
   onClose: () => void;
   onUse?: () => void;
+  onRemove?: () => void;
   onUpgrade?: () => void;
   inDeck?: boolean;
 }
@@ -29,6 +30,7 @@ export default function CardInfoOverlay({
   level = 0,
   onClose,
   onUse,
+  onRemove,
   onUpgrade,
   inDeck = false,
 }: CardInfoOverlayProps) {
@@ -116,7 +118,7 @@ export default function CardInfoOverlay({
             <span className="absolute inset-0 grid place-items-center">⚔️</span>
           </div>
         </div>
-        <footer className="grid grid-cols-3 gap-2 px-3 pb-3">
+        <footer className="grid grid-cols-4 gap-2 px-3 pb-3">
           <button
             type="button"
             data-testid="card-info-star-level"
@@ -142,6 +144,16 @@ export default function CardInfoOverlay({
           >
             <div className="text-lg font-extrabold uppercase tracking-wide">{inDeck ? "In Deck" : "Use"}</div>
           </button>
+          {onRemove && (
+            <button
+              type="button"
+              data-testid="card-info-remove"
+              onClick={onRemove}
+              className="rounded-xl border-b-4 border-rose-800 bg-gradient-to-b from-rose-400 to-rose-700 px-2 py-2 text-center text-white shadow-md active:translate-y-0.5"
+            >
+              <div className="text-lg font-extrabold uppercase tracking-wide">Remove</div>
+            </button>
+          )}
         </footer>
       </div>
     </div>
