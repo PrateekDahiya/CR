@@ -38,6 +38,7 @@ import {
 import { initRedis } from "./net/redis.js";
 import { mountMeta } from "./meta.js";
 import { mountContent } from "./content.js";
+import { mountShop } from "./shop.js";
 
 dotenv.config();
 
@@ -53,6 +54,7 @@ app.get("/health", (_req, res) => {
 
 mountMeta(app);
 mountContent(app);
+mountShop(app);
 
 const httpServer = createServer(app);
 
