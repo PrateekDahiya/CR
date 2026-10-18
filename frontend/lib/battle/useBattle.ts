@@ -262,6 +262,8 @@ export interface UseBattle {
   error: string | null;
   clearError: () => void;
   join: () => Promise<void>;
+  /** Queue for a human opponent, then fall back to the AI after 5s. */
+  joinSearch: (difficulty?: "easy" | "medium" | "hard", waitMs?: number) => Promise<void>;
   /** Starts a real authoritative match vs the server-side AI bot. */
   joinPractice: (difficulty?: "easy" | "medium" | "hard") => Promise<void>;
   /** Adopt a known match id/side (matchmaking redirect). */
@@ -325,6 +327,9 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
   const snapshotRef = useRef<StateUpdate | null>(null);
   snapshotRef.current = snapshot;
   const prevSnapshotRef = useRef<StateUpdate | null>(null);
+  const phaseRef = useRef<BattlePhase>("idle");
+  phaseRef.current = phase;
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   prevSnapshotRef.current = prevSnapshot;
   const handRef = useRef<string[]>(hand);
   handRef.current = hand;
@@ -428,6 +433,51 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
         setPhase("searching");
       } catch (e) {
         setError(e instanceof Error ? e.message : "practice match failed");
+      }
+    },
+    [backendUrl],
+  );
+
+  /**
+   * Search for a real opponent first, then fall back to the bot after
+   * `PVP_SEARCH_MS` (5s). Used by the BATTLE button everywhere: an incoming
+   * 1v1 still pairs up, and a solo player always ends up in a playable game.
+   */
+  const joinSearch = useCallback(
+    async (difficulty: "easy" | "medium" | "hard" = "medium", waitMs = 5000) => {
+      const id = playerIdRef.current.trim();
+      const d = toBattleDeck(deckRef.current);
+      if (id.length === 0) {
+        setError("Missing playerId.");
+        return;
+      }
+      setError(null);
+      setResult(null);
+      try {
+        const sock = connect(backendUrl);
+        setConnected(sock.connected);
+        const sel = await selectDeck(id, d);
+        if (!sel.ok) {
+          setError(sel.error ? `${sel.error.code}: ${sel.error.message}` : "deck:select rejected");
+          return;
+        }
+        const ack = await joinQueue(id, d);
+        if (!ack.ok) {
+          // Queue rejected (e.g. BAD_DECK) -> straight to a playable AI game.
+          await joinPractice(difficulty);
+          return;
+        }
+        setQueuePosition(typeof ack.position === "number" ? ack.position : null);
+        setPhase("searching");
+        if (fallbackTimerRef.current !== null) clearTimeout(fallbackTimerRef.current);
+        fallbackTimerRef.current = setTimeout(() => {
+          fallbackTimerRef.current = null;
+          // Matched within the window -> leave it alone.
+          if (matchIdRef.current !== null || phaseRef.current === "ended") return;
+          void joinPractice(difficulty);
+        }, waitMs);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "matchmaking failed");
       }
     },
     [backendUrl],
@@ -764,6 +814,7 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
     error,
     clearError,
     join,
+    joinSearch,
     joinPractice,
     adoptMatch,
     leave,
