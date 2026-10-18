@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   PageShell,
   CardTile,
@@ -10,9 +10,21 @@ import {
   type CardInfoOverlayProps,
   type DeckSlotFact,
 } from "../../components/ui";
-import { backendUrl, getContentCards, getCatalog, type ContentCard, type CatalogEntry } from "../../lib/api";
+import {
+  backendUrl,
+  createPlayerDeck,
+  deletePlayerDeck,
+  getContentCards,
+  getCatalog,
+  selectPlayerDeck,
+  updatePlayerDeck,
+  type ContentCard,
+  type CatalogEntry,
+  type DeckRecord,
+} from "../../lib/api";
 import { CARDS } from "../../lib/cards";
-import { useDeckState, DECK_SIZE } from "../../lib/useDeck";
+import { useDeckState, DECK_KEY, DECK_SIZE } from "../../lib/useDeck";
+import { usePlayer } from "../../lib/playerContext";
 
 // /decks — My Deck strip on top, full collection grid underneath, two tabs.
 // Deck edits (add / remove / replace) run through useDeckState so this screen and
@@ -25,7 +37,10 @@ export default function DecksPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [tab, setTab] = useState<"deck" | "collection">("deck");
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { deck, hydrated, placeAt, useCard, removeCard, saveDeck } = useDeckState();
+  const { deck, hydrated, placeAt, useCard, removeCard, replace: loadDeckInto, saveDeck } = useDeckState();
+  const { playerId, profile, refresh: refreshProfile } = usePlayer();
+  const [decks, setDecks] = useState<DeckRecord[]>([]);
+  const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +54,24 @@ export default function DecksPage() {
       cancelled = true;
     };
   }, []);
+
+  // Load the player's deck list and activate the selected one.
+  useEffect(() => {
+    if (!playerId) return;
+    let cancelled = false;
+    import("../../lib/api")
+      .then(({ getDecks }) => getDecks(playerId, backendUrl()))
+      .then((d) => {
+        if (cancelled) return;
+        setDecks(d.decks);
+        setActiveDeckId(d.activeDeckId);
+        if (d.activeDeck) loadDeckInto(d.activeDeck.cards);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [playerId, loadDeckInto]);
 
   const say = (message: string) => {
     setToast(message);
@@ -148,6 +181,66 @@ export default function DecksPage() {
         ).toFixed(1)
       : "—";
 
+  // --- Multiple decks (server-backed; the selected deck is used in battle) ---
+  const pushDecks = useCallback((next: DeckRecord[], activeId: string | null) => {
+    setDecks(next);
+    setActiveDeckId(activeId);
+    if (activeId !== null) {
+      const active = next.find((d) => d.id === activeId);
+      if (active) {
+        loadDeckInto(active.cards);
+        localStorage.setItem(DECK_KEY, JSON.stringify(active.cards));
+        // The battle screen reads the selected deck from here.
+        localStorage.setItem("cr-clone-active-deck", JSON.stringify(active.cards));
+      }
+    }
+  }, []);
+
+  const onCreateDeck = async () => {
+    try {
+      const created = await createPlayerDeck(playerId, `Deck ${decks.length + 1}`, [...deck], backendUrl());
+      pushDecks([...decks, created], created.id);
+      await selectPlayerDeck(playerId, created.id, backendUrl()).catch(() => undefined);
+      await refreshProfile();
+      say(`${created.name} created`);
+    } catch {
+      say("Could not create deck (offline?)");
+    }
+  };
+
+  const onSelectDeck = async (deckId: string) => {
+    try {
+      const res = await selectPlayerDeck(playerId, deckId, backendUrl());
+      pushDecks(decks, res.activeDeckId);
+      await refreshProfile();
+      say(`${res.activeDeck.name} selected for battle`);
+    } catch {
+      say("Could not select that deck");
+    }
+  };
+
+  const onDeleteDeck = async (deckId: string) => {
+    try {
+      const res = await deletePlayerDeck(playerId, deckId, backendUrl());
+      pushDecks(res.decks, res.decks.find((d) => d.id === activeDeckId)?.id ?? res.decks[0]?.id ?? null);
+      await refreshProfile();
+      say("Deck deleted");
+    } catch {
+      say("Could not delete that deck");
+    }
+  };
+
+  // Persist the edited deck to the server whenever the card list changes.
+  useEffect(() => {
+    if (!hydrated || activeDeckId === null) return;
+    const t = setTimeout(() => {
+      void updatePlayerDeck(playerId, activeDeckId, { cards: [...deck] }, backendUrl())
+        .then(() => refreshProfile())
+        .catch(() => undefined);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [deck, hydrated, activeDeckId, playerId, refreshProfile]);
+
   // Battles start from the Battle tab (home); the deck screen only edits cards.
   useEffect(() => {
     saveDeck();
@@ -156,6 +249,66 @@ export default function DecksPage() {
   return (
     <PageShell active="cards" topBarCurrencies={{ cards: cards.length, coins: 1625, gems: 5 }}>
       <div className="px-3 py-3">
+        {/* Deck list: create, rename, select (the selected deck is used in battle). */}
+        <section
+          data-testid="deck-list"
+          className="mb-3 rounded-xl border-2 border-slate-600/60 bg-[#12224a]/80 p-2"
+        >
+          <header className="mb-1 flex items-center justify-between">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-200">
+              My Decks
+            </span>
+            <button
+              type="button"
+              data-testid="deck-new"
+              onClick={onCreateDeck}
+              className="rounded-md border border-emerald-700 bg-gradient-to-b from-emerald-400 to-emerald-700 px-2 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white active:translate-y-0.5"
+            >
+              + New Deck
+            </button>
+          </header>
+          <div className="flex flex-wrap gap-1.5">
+            {decks.map((d) => {
+              const active = d.id === activeDeckId;
+              return (
+                <div
+                  key={d.id}
+                  data-testid={`deck-chip-${d.id}`}
+                  className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-extrabold ${
+                    active
+                      ? "border-amber-400 bg-amber-300 text-amber-950"
+                      : "border-slate-600 bg-slate-800/60 text-slate-200"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    data-testid={`deck-select-${d.id}`}
+                    onClick={() => onSelectDeck(d.id)}
+                    title={active ? "Selected for battle" : "Use this deck in battle"}
+                    className="uppercase tracking-wide"
+                  >
+                    {d.name}
+                    {active ? " ✓" : ""}
+                  </button>
+                  <button
+                    type="button"
+                    data-testid={`deck-delete-${d.id}`}
+                    onClick={() => onDeleteDeck(d.id)}
+                    disabled={decks.length <= 1}
+                    title="Delete deck"
+                    className="text-[10px] opacity-70 disabled:opacity-25"
+                  >
+                    ✕
+                  </button>
+                </div>
+              );
+            })}
+            {decks.length === 0 && (
+              <span className="text-[11px] text-slate-400">No decks yet — create one.</span>
+            )}
+          </div>
+        </section>
+
         {/* My Deck strip on top */}
         <section
           data-testid="my-deck-strip"

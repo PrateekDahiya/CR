@@ -54,6 +54,8 @@ import {
   toggleMute,
 } from "../../lib/battle/sfx";
 import { requestSync, sendEmote } from "../../lib/socket";
+import { reportMatch } from "../../lib/api";
+import { usePlayer } from "../../lib/playerContext";
 import { crBgStyle } from "../../lib/crTheme";
 import { CRButton } from "../../components/ui";
 import type { Tower, Unit } from "../../../shared/types";
@@ -87,6 +89,24 @@ function cardCost(id: string): number {
 }
 
 function loadDeck(): string[] {
+  // Prefer the deck selected in the Deck tab (server-backed multi-deck).
+  const active = (() => {
+    try {
+      return window.localStorage.getItem("cr-clone-active-deck");
+    } catch {
+      return null;
+    }
+  })();
+  if (active !== null) {
+    try {
+      const parsed = JSON.parse(active);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed as string[];
+      }
+    } catch {
+      // fall through
+    }
+  }
   try {
     const raw = window.localStorage.getItem(DECK_STORAGE_KEY);
     if (!raw) return FALLBACK_DECK;
@@ -126,6 +146,9 @@ export default function BattlePage() {
   const [notice, setNotice] = useState<string | null>(null);
   const seenUnitsRef = useRef<Set<string>>(new Set());
   const prevResultRef = useRef<string | null>(null);
+  const reportedRef = useRef<string | null>(null);
+  const [trophyDelta, setTrophyDelta] = useState<number | null>(null);
+  const [coinDelta, setCoinDelta] = useState<number | null>(null);
 
   useEffect(() => {
     setDeck(loadDeck());
@@ -147,6 +170,7 @@ export default function BattlePage() {
 
   const battle = useBattle({ backendUrl, playerId, deck });
   const { phase, matchId, side, opponentId, renderState, displayElixir } = battle;
+  const { refresh: refreshProfile } = usePlayer();
 
   // Adopt the match from the matchmaking redirect (client-side only, after
   // mount): the red player must render/deploy on their own half.
@@ -205,6 +229,34 @@ export default function BattlePage() {
     else if (r.winner === side) playWin();
     else playLose();
   }, [battle.result, side]);
+
+  // Report the result so trophies/coins update server-side (once per match).
+  // Bot matches count too — they are real wins/losses for the ladder.
+  useEffect(() => {
+    const r = battle.result;
+    if (!r || reportedRef.current === r.matchId || playerId.length === 0) return;
+    reportedRef.current = r.matchId;
+    void reportMatch(
+      {
+        blueId: side === "blue" ? playerId : "ai-opponent",
+        redId: side === "red" ? playerId : "ai-opponent",
+        winner: r.winner === "draw" ? "draw" : r.winner,
+        blueCrowns: r.crowns?.blue ?? 0,
+        redCrowns: r.crowns?.red ?? 0,
+        durationMs: Math.max(0, 180_000 - battle.timeLeftSec * 1000),
+      },
+      backendUrl,
+    )
+      .then((res) => {
+        const mine = res.deltas?.find((d) => d.playerId === playerId);
+        if (mine) {
+          setTrophyDelta(mine.trophyDelta);
+          setCoinDelta(mine.coinDelta);
+        }
+        void refreshProfile();
+      })
+      .catch(() => undefined);
+  }, [battle.result, battle.timeLeftSec, playerId, side, backendUrl, refreshProfile]);
 
   // Sibling adapters (ISS-F5-001 canonical contracts).
   const towers: Tower[] = useMemo(() => {
@@ -330,6 +382,9 @@ export default function BattlePage() {
 
       <div
         data-testid="battle-page"
+        data-phase={phase}
+        data-match={matchId ?? ""}
+        data-pid={playerId}
         className="relative h-[100dvh] w-full max-w-[440px] overflow-hidden"
       >
         {/* Arena fills the viewport; the bottom HUD overlaps only its lower edge so the
@@ -493,6 +548,24 @@ export default function BattlePage() {
                   You {battle.result.crowns[side] ?? 0} —{" "}
                   {battle.result.crowns[side === "blue" ? "red" : "blue"] ?? 0} foe
                 </p>
+                {(trophyDelta !== null || coinDelta !== null) && (
+                  <div
+                    data-testid="result-rewards"
+                    className="mt-2 flex items-center justify-center gap-2 text-sm font-extrabold"
+                  >
+                    {trophyDelta !== null && (
+                      <span className={trophyDelta >= 0 ? "text-emerald-300" : "text-rose-300"}>
+                        🏆 {trophyDelta >= 0 ? "+" : ""}
+                        {trophyDelta}
+                      </span>
+                    )}
+                    {coinDelta !== null && (
+                      <span className="text-amber-300">
+                        🪙 +{coinDelta}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="mt-4 flex flex-col gap-2">
                   <CRButton
                     variant="gold"

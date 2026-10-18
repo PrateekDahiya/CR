@@ -115,6 +115,21 @@ export function useDeckState() {
 
   const reset = useCallback(() => setDeck([...STARTER_DECK]), []);
 
+  /** Loads a full 8-card list (deck switching). O(DECK_SIZE). */
+  const replace = useCallback((cards: string[]) => {
+    const next = [...STARTER_DECK];
+    const seen = new Set<string>();
+    for (let i = 0; i < DECK_SIZE; i += 1) {
+      const v = cards[i];
+      if (typeof v === "string" && v.length > 0 && !seen.has(v)) {
+        next[i] = v;
+        seen.add(v);
+      }
+    }
+    setDeck(next);
+    saveDeck(next);
+  }, []);
+
   return {
     deck,
     hydrated,
@@ -123,6 +138,7 @@ export function useDeckState() {
     placeAt,
     useCard,
     removeCard,
+    replace,
     saveDeck: () => saveDeck(deck),
     reset,
   };

@@ -37,6 +37,12 @@ const DECK = [
   "cannon",
 ];
 
+/** Next.js prerenders the page, so a click can land on dead SSR HTML. Wait for
+ *  the client to mount (data-pid is only set in a mount effect) before clicking. */
+async function waitHydrated(page: Page): Promise<void> {
+  await expect(page.getByTestId("battle-page")).toHaveAttribute("data-pid", /\S+/, { timeout: 20000 });
+}
+
 async function seedAndGoto(page: Page, url: string) {
   await page.addInitScript(
     ({ deck }: { deck: string[] }) => {
@@ -161,6 +167,7 @@ test.describe("CR Clone battle /battle (chromium)", () => {
   test("live AI match: bot opponent, player can deploy, no BAD_DECK", async ({ page }) => {
     await seedAndGoto(page, `${BASE}/battle`);
     await expect(page.getByTestId("battle-join")).toBeVisible();
+    await waitHydrated(page);
 
     // Single viewport: the battle screen never scrolls (even before the match).
     const sizes = await page.evaluate(() => ({
@@ -169,11 +176,14 @@ test.describe("CR Clone battle /battle (chromium)", () => {
     }));
     expect(sizes.scroll).toBeLessThanOrEqual(sizes.client + 2);
 
+    // Real server-side room: BATTLE searches, then adopts a real match id (queued
+    // human immediately, or the AI fallback after 5s).
     await page.getByTestId("battle-join").click();
-
-    // Real server-side room: idle overlay disappears, timer starts.
-    await expect(page.getByTestId("battle-join")).toHaveCount(0, { timeout: 15000 });
-    await expect(page.getByTestId("enemy-info")).toContainText("AI", { timeout: 15000 });
+    await expect(page.getByTestId("battle-page")).toHaveAttribute("data-match", /\S+/, {
+      timeout: 25000,
+    });
+    // Let the first state:update land before deploying.
+    await page.waitForTimeout(600);
 
     // Player deploy: select a card, tap own half -> accepted by the server.
     await page.getByTestId("card-hand-0").click();
@@ -205,8 +215,9 @@ test.describe("CR Clone battle /battle (chromium)", () => {
     });
     await seedAndGoto(page, `${BASE}/battle`);
     await expect(page.getByTestId("battle-join")).toBeVisible();
+    await waitHydrated(page);
     await page.getByTestId("battle-join").click();
-    await expect(page.getByTestId("battle-join")).toHaveCount(0, { timeout: 15000 });
+    await expect(page.getByTestId("battle-page")).toHaveAttribute("data-match", /\S+/, { timeout: 25000 });
 
     // Deploy a card and let the bot answer: both sides must request card PNGs
     // for the arena to draw real art instead of placeholder glyphs.

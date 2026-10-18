@@ -445,15 +445,12 @@ export default function ArenaCanvas({
         c.scale(1, -1);
       }
 
-      // Glyphs must stay upright even when the board is mirrored.
+      // Draw something centred at a board point, keeping it upright even when
+      // the board is mirrored (player 1's view). `paint` draws around (0,0).
       const upright = (tx: number, ty: number, paint: () => void): void => {
-        if (sideRef.current !== "blue") {
-          paint();
-          return;
-        }
         c.save();
         c.translate(tx, ty);
-        c.scale(1, -1);
+        if (sideRef.current === "blue") c.scale(1, -1);
         paint();
         c.restore();
       };
@@ -577,12 +574,17 @@ export default function ArenaCanvas({
           c.lineWidth = 3;
           c.strokeStyle = t.owner === "blue" ? "#2563eb" : "#dc2626";
           c.stroke();
-          // emoji (👑 king 2400 / 🏰 princess 1400)
-          c.font = `${t.kind === "king" ? 20 : 17}px serif`;
-          c.textAlign = "center";
-          c.textBaseline = "middle";
-          upright(cx, cy + 1, () => c.fillText(t.kind === "king" ? "👑" : "🏰", 0, 0));
-          drawTowerHpBar(c, t, cx, cy - baseR - 4, TW * 2.4);
+          // emoji (👑 king 2400 / 🏰 princess 1400) + HP bar, both upright and always
+          // ABOVE the tower regardless of whose view this is.
+          upright(cx, cy, () => {
+            c.font = `${t.kind === "king" ? 20 : 17}px serif`;
+            c.textAlign = "center";
+            c.textBaseline = "middle";
+            c.fillText(t.kind === "king" ? "👑" : "🏰", 0, 1);
+          });
+          upright(cx, cy - baseR - 4, () => {
+            drawTowerHpBar(c, t, 0, 0, TW * 2.4);
+          });
         } else {
           // rubble
           c.fillStyle = "#57534e";

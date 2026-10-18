@@ -245,6 +245,51 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(page.getByTestId("shop-trader")).toBeVisible();
   });
 
+  test("economy: player name, trophies, coins, gems in the top bar", async ({ page }) => {
+    await page.goto(`${BASE}/`);
+    await expect(page.getByTestId("topbar-player")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId("topbar-name")).toHaveText(/\S+/);
+    await expect(page.getByTestId("topbar-trophies")).toContainText("🏆");
+    // Rename through the top bar.
+    await page.getByTestId("topbar-player").click();
+    await page.getByTestId("topbar-name-input").fill("Arena King");
+    await page.getByTestId("topbar-name-save").click();
+    await expect(page.getByTestId("topbar-name")).toHaveText("Arena King", { timeout: 15000 });
+  });
+
+  test("shop: buying a card spends coins and grants the card", async ({ page }) => {
+    await page.goto(`${BASE}/shop`);
+    await expect(page.getByTestId("shop-coins")).toBeVisible({ timeout: 15000 });
+    const coinsBefore = Number(((await page.getByTestId("shop-coins").textContent()) ?? "").replace(/[^\d]/g, ""));
+    const buy = page.locator('[data-testid^="deal-buy-"]').first();
+    await expect(buy).toBeEnabled();
+    await buy.click();
+    await expect(page.getByTestId("shop-coins")).not.toHaveText(String(coinsBefore), { timeout: 15000 });
+  });
+
+  test("decks: multiple decks, select the deck used for battle", async ({ page }) => {
+    await page.goto(`${BASE}/decks`);
+    await expect(page.getByTestId("deck-list")).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('[data-testid^="deck-chip-"]')).toHaveCount(1);
+    await page.getByTestId("deck-new").click();
+    await expect(page.locator('[data-testid^="deck-chip-"]')).toHaveCount(2, { timeout: 15000 });
+    // The newest deck is auto-selected.
+    const chips = page.locator('[data-testid^="deck-chip-"]');
+    const second = chips.nth(1);
+    await expect(second).toContainText("✓");
+    // Selecting the first deck moves the check.
+    await page.locator('[data-testid^="deck-select-"]').first().click();
+    await expect(chips.first()).toContainText("✓", { timeout: 15000 });
+  });
+
+  test("player table /leaderboard lists rank, name, trophies and record", async ({ page }) => {
+    await page.goto(`${BASE}/leaderboard`);
+    await expect(page.getByTestId("player-table")).toBeVisible({ timeout: 15000 });
+    const row = page.locator('[data-testid^="leaderboard-row-"]').first();
+    await expect(row).toBeVisible();
+    await expect(row).toContainText("%");
+  });
+
   test("social /social has Leaderboard + Clan tabs", async ({ page }) => {
     await page.goto(`${BASE}/social`);
     await expect(page.getByTestId("social-tabs")).toBeVisible();

@@ -66,15 +66,59 @@ export interface BalanceResponse {
   note?: string;
 }
 
+/** Error carrying the backend's machine code so the UI can react (e.g. NO_FUNDS). */
+export class ApiError extends Error {
+  code: string;
+  status: number;
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+/** Guest auth header: the backend verifies base64url(playerId). O(1). */
+function authHeaders(): Record<string, string> {
+  const pid = typeof window !== "undefined" ? window.localStorage.getItem("cr-player-id") ?? "" : "";
+  if (!pid) return {};
+  return { authorization: `Bearer ${btoa(pid)}` };
+}
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+      ...(init?.headers ?? {}),
+    },
   });
   if (!res.ok) {
-    throw new Error(`request failed: ${res.status} ${res.statusText} (${url})`);
+    let code = "HTTP_ERROR";
+    let message = `${res.status} ${res.statusText}`;
+    try {
+      const body = (await res.json()) as { code?: string; message?: string };
+      if (body?.code) code = body.code;
+      if (body?.message) message = body.message;
+    } catch {
+      // non-JSON error body
+    }
+    throw new ApiError(res.status, code, message);
   }
   return (await res.json()) as T;
+}
+
+function postJson<T>(url: string, body: unknown): Promise<T> {
+  return fetchJson<T>(url, { method: "POST", body: JSON.stringify(body) });
+}
+
+function putJson<T>(url: string, body: unknown): Promise<T> {
+  return fetchJson<T>(url, { method: "PUT", body: JSON.stringify(body) });
+}
+
+function delJson<T>(url: string): Promise<T> {
+  return fetchJson<T>(url, { method: "DELETE" });
 }
 
 /** GET {base}/health — liveness probe for backend (default) or ai-service. */
@@ -201,4 +245,138 @@ export interface CatalogEntry {
 export function getCatalog(baseUrl?: string): Promise<{ catalog: CatalogEntry[]; source: string; count: number; playable: number }> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
   return fetchJson(`${base}/content/catalog`);
+}
+
+/** GET {backend}/leaderboard — legacy rows (kept for older clients). O(n log n). */
+export function getLeaderboardRows(limit = 20, baseUrl?: string): Promise<{ season: string; entries: LeaderboardEntry[] }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/leaderboard?limit=${limit}`);
+}
+
+export interface PlayerProfile {
+  playerId: string;
+  name: string;
+  trophies: number;
+  coins: number;
+  gems: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  cardsOwned: number;
+  activeDeckId: string | null;
+  decks: DeckRecord[];
+  activeDeck: DeckRecord;
+  cards: Record<string, number>;
+  season: string;
+}
+
+export interface DeckRecord {
+  id: string;
+  name: string;
+  cards: string[];
+}
+
+export interface PlayerRow {
+  rank: number;
+  playerId: string;
+  name: string;
+  trophies: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  winRate: number;
+  coins: number;
+  gems: number;
+}
+
+/** GET /profile/:id — full player state (name, trophies, wallet, decks). O(1). */
+export function getPlayerProfile(playerId: string, baseUrl?: string): Promise<PlayerProfile> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/profile/${encodeURIComponent(playerId)}`);
+}
+
+/** POST /profile/:id/name */
+export function setPlayerName(playerId: string, name: string, baseUrl?: string): Promise<{ name: string }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return postJson(`${base}/profile/${encodeURIComponent(playerId)}/name`, { name });
+}
+
+/** GET /players — the player table (rank, trophies, W/L, win rate). O(n log n). */
+export function getPlayers(limit = 50, baseUrl?: string): Promise<{ season: string; rows: PlayerRow[] }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/players?limit=${limit}`);
+}
+
+// --- Multi-deck --------------------------------------------------------------
+
+export function getDecks(playerId: string, baseUrl?: string): Promise<{ decks: DeckRecord[]; activeDeckId: string | null; activeDeck: DeckRecord }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/decks/${encodeURIComponent(playerId)}`);
+}
+
+export function createPlayerDeck(playerId: string, name?: string, cards?: string[], baseUrl?: string): Promise<DeckRecord> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return postJson(`${base}/decks/${encodeURIComponent(playerId)}`, {
+    ...(name ? { name } : {}),
+    ...(cards ? { cards } : {}),
+  });
+}
+
+export function updatePlayerDeck(playerId: string, deckId: string, patch: { name?: string; cards?: string[] }, baseUrl?: string): Promise<DeckRecord> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return putJson(`${base}/decks/${encodeURIComponent(playerId)}/${deckId}`, patch);
+}
+
+export function selectPlayerDeck(playerId: string, deckId: string, baseUrl?: string): Promise<{ activeDeckId: string; activeDeck: DeckRecord }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return postJson(`${base}/decks/${encodeURIComponent(playerId)}/${deckId}/select`, {});
+}
+
+export function deletePlayerDeck(playerId: string, deckId: string, baseUrl?: string): Promise<{ decks: DeckRecord[] }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return delJson(`${base}/decks/${encodeURIComponent(playerId)}/${deckId}`);
+}
+
+/** POST /matches/report — awards trophies/coins and returns the per-player deltas. */
+export function reportMatch(input: {
+  blueId: string | null;
+  redId: string | null;
+  winner: "blue" | "red" | "draw";
+  blueCrowns?: number;
+  redCrowns?: number;
+  durationMs?: number;
+}, baseUrl?: string): Promise<{ deltas: { playerId: string; trophyDelta: number; coinDelta: number }[] }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return postJson(`${base}/matches/report`, input);
+}
+
+// --- Shop -------------------------------------------------------------------
+
+export interface ShopItem {
+  id: string;
+  name: string;
+  kind: "coins" | "gems" | "cards";
+  amount: number;
+  cardId?: string;
+  price: number;
+  currency: "coins" | "gems";
+  pack?: boolean;
+  rare?: boolean;
+}
+
+export interface ShopData {
+  deals: ShopItem[];
+  items: ShopItem[];
+  wallet: { coins: number; gems: number } | null;
+  owned: Record<string, number>;
+}
+
+export function getShop(baseUrl?: string): Promise<ShopData> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/shop`);
+}
+
+export function buyShopItem(itemId: string, baseUrl?: string): Promise<{ ok: boolean; granted: { cardId?: string; kind: string }; wallet: { coins: number; gems: number } }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return postJson(`${base}/shop/buy`, { itemId });
 }
