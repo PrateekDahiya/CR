@@ -97,6 +97,9 @@ test.describe("CR Clone battle /battle (chromium)", () => {
     await expect(nextCardLocator(page)).toBeVisible();
     // Offline idle state offers the gold BATTLE entry (Supercell ref).
     await expect(page.getByTestId("battle-join")).toBeVisible();
+    // Hand cards use the same shared card component as My Deck / Collection.
+    const handArt = await page.locator('[data-testid^="card-hand-"] .card-art').count();
+    expect(handArt).toBe(4);
   });
 
   test("tap-to-deploy: card select then arena tap attempts deploy", async ({ page }) => {

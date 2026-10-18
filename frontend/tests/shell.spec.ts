@@ -144,6 +144,42 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(page.locator('[data-testid^="deck-card-"]')).toHaveCount(8);
   });
 
+  test("decks: every edit closes the overlay and shows a toast", async ({ page }) => {
+    await page.goto(`${BASE}/decks`);
+    await expect(page.locator('[data-testid^="deck-card-"]')).toHaveCount(8, { timeout: 15000 });
+    await page.getByTestId("deck-card-0").click();
+    await page.getByTestId("card-info-use").click();
+    await expect(page.getByTestId("replace-picker")).toBeVisible();
+    await page.getByTestId("replace-slot-1").click();
+    await expect(page.getByTestId("replace-picker")).toHaveCount(0);
+    await expect(page.getByTestId("card-info-overlay")).toHaveCount(0);
+    await expect(page.getByTestId("deck-toast")).toBeVisible();
+    // The whole screen is interactive again after the swap.
+    await page.getByTestId("deck-tab-collection").click();
+    await expect(page.getByTestId("collection-list")).toBeVisible();
+  });
+
+  test("collection /collection can add and remove cards in My Deck", async ({ page }) => {
+    await page.goto(`${BASE}/collection`);
+    await expect(page.getByTestId("collection-grid")).toBeVisible({ timeout: 15000 });
+    const fresh = page.locator('[data-testid^="collection-card-"]:not([data-in-deck])').first();
+    await expect(fresh).toBeVisible();
+    const picked = (await fresh.getAttribute("data-testid"))!.replace("collection-card-", "");
+    // Deck is full -> the picker appears and the chosen slot is replaced.
+    await fresh.click();
+    await expect(page.getByTestId("card-info-overlay")).toBeVisible();
+    await page.getByTestId("card-info-use").click();
+    await expect(page.getByTestId("replace-picker")).toBeVisible();
+    await page.getByTestId("replace-slot-0").click();
+    await expect(page.getByTestId("deck-toast")).toBeVisible();
+    await expect(page.locator(`[data-testid="collection-card-${picked}"][data-in-deck]`)).toBeVisible();
+    // Remove it again from the same popup.
+    await page.locator(`[data-testid="collection-card-${picked}"]`).click();
+    await page.getByTestId("card-info-remove").click();
+    await expect(page.getByTestId("card-info-overlay")).toHaveCount(0);
+    await expect(page.locator(`[data-testid="collection-card-${picked}"][data-in-deck]`)).toHaveCount(0);
+  });
+
   test("deck /deck redirects to /decks", async ({ page }) => {
     await page.goto(`${BASE}/deck`);
     await expect(page).toHaveURL(/\/decks$/);
@@ -163,14 +199,17 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     const tile = page.locator('[data-testid^="collection-card-"]').first();
     await expect(tile.locator(".card-art")).toBeVisible();
     await expect(tile.locator('[data-testid="card-level"]')).toBeVisible();
-    // Real card art: every <img> with /cards/ prefix should load (no broken state).
+    // Real card art: the /cards/*.png images decode (no broken art).
     const imgs = page.locator('.card-art img[src^="/cards/"]');
     const total = await imgs.count();
-    const loaded = await imgs.evaluateAll((els: HTMLImageElement[]) =>
-      els.filter((el) => el.naturalWidth > 0).length,
-    );
     expect(total).toBeGreaterThanOrEqual(100);
-    expect(loaded).toBeGreaterThanOrEqual(Math.floor(total * 0.95));
+    await expect
+      .poll(
+        async () =>
+          imgs.evaluateAll((els: HTMLImageElement[]) => els.filter((el) => el.naturalWidth > 0).length),
+        { timeout: 20000 },
+      )
+      .toBeGreaterThanOrEqual(Math.floor(total * 0.95));
   });
 
   test("shop /shop has Daily Deals + Trader", async ({ page }) => {

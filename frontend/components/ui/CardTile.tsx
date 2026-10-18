@@ -12,9 +12,14 @@ export interface CardTileProps {
   size?: "sm" | "md" | "lg";
   /** Extra label rendered under the art (deck slots only, matches CR "My Deck"). */
   showName?: boolean;
+  /** Cost drop visibility (defaults to on whenever cost > 0). */
+  showCost?: boolean;
+  costTestId?: string;
   onClick?: () => void;
   /** Marks cards already in the deck (used by the collection grid). */
   inDeck?: boolean;
+  /** Selected state (battle hand): sets data-selected + aria-pressed and the gold ring. */
+  selected?: boolean;
   dimmed?: boolean;
   testId?: string;
   className?: string;
@@ -32,8 +37,11 @@ export default function CardTile({
   level = 15,
   size = "md",
   showName = false,
+  showCost,
+  costTestId,
   onClick,
   inDeck = false,
+  selected = false,
   dimmed = false,
   testId,
   className = "",
@@ -44,6 +52,8 @@ export default function CardTile({
       type="button"
       data-testid={testId}
       data-in-deck={inDeck || undefined}
+      data-selected={selected || undefined}
+      aria-pressed={selected || undefined}
       onClick={onClick}
       aria-label={ariaLabel ?? `${name}${cost > 0 ? `, ${cost} elixir` : ""}`}
       className={`relative flex flex-col items-center gap-0.5 rounded-lg transition active:scale-95 ${
@@ -56,7 +66,8 @@ export default function CardTile({
         cost={cost}
         level={level}
         showLevel={level > 0}
-        showCost={cost > 0}
+        showCost={showCost ?? cost > 0}
+        costTestId={costTestId}
         size={size}
       />
       {showName && (

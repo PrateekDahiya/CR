@@ -12,6 +12,8 @@ export interface CardArtProps {
   showCost?: boolean;
   cost?: number;
   progress?: { current: number; max: number };
+  /** Overrides the elixir-drop test id (battle hand uses card-hand-cost-N). */
+  costTestId?: string;
 }
 
 // Renders CR card art (real PNG from /cards/<slug>.png gitignored folder) with
@@ -26,6 +28,7 @@ export default function CardArt({
   showCost = false,
   cost = 0,
   progress,
+  costTestId,
 }: CardArtProps) {
   const dims = size === "lg" ? "h-28 w-24" : size === "sm" ? "h-12 w-10" : "h-20 w-16";
   const emoji = EMOJI_FALLBACK[name] ?? "🃏";
@@ -58,7 +61,7 @@ export default function CardArt({
       {/* Purple elixir drop top-left */}
       {showCost && cost > 0 && (
         <div
-          data-testid="card-cost"
+          data-testid={costTestId ?? "card-cost"}
           className="absolute -left-1 -top-2 grid h-7 w-7 place-items-center rounded-full bg-gradient-to-b from-fuchsia-400 to-purple-700 text-xs font-extrabold text-white shadow"
         >
           {cost}
