@@ -6,6 +6,7 @@ import { Server, type Socket } from "socket.io";
 import {
   joinQueue,
   leaveQueue,
+  leaveQueueBySocket,
   tryMatch,
   setDeck,
   getDeck,
@@ -13,6 +14,7 @@ import {
 import {
   getRoom,
   getSide,
+  getSideForClient,
   getHand,
   getPocketFor,
   applyEnginePlay,
@@ -210,20 +212,32 @@ function handleQueueJoin(socket: Socket, payload: QueueJoinPayload, ack?: AckFn)
   const serverTimeMs = Date.now();
   const blueSocket = io.sockets.sockets.get(blue.socketId);
   const redSocket = io.sockets.sockets.get(red.socketId);
+  // NOTE: the legacy `match:found` twin MUST carry the same `side`, otherwise
+  // clients that listen to both events flip the red player to blue.
   blueSocket?.emit("queue:matched", {
     matchId,
     opponentId: red.playerId,
     side: "blue" satisfies PlayerSide,
     serverTimeMs,
   });
-  blueSocket?.emit("match:found", { matchId, opponentId: red.playerId });
+  blueSocket?.emit("match:found", {
+    matchId,
+    opponentId: red.playerId,
+    side: "blue" satisfies PlayerSide,
+    serverTimeMs,
+  });
   redSocket?.emit("queue:matched", {
     matchId,
     opponentId: blue.playerId,
     side: "red" satisfies PlayerSide,
     serverTimeMs,
   });
-  redSocket?.emit("match:found", { matchId, opponentId: blue.playerId });
+  redSocket?.emit("match:found", {
+    matchId,
+    opponentId: blue.playerId,
+    side: "red" satisfies PlayerSide,
+    serverTimeMs,
+  });
   io.to(matchId).emit("match:start", { matchId, state: room.state });
   broadcastState(io, room);
   startTickLoop(io, matchId);
@@ -241,12 +255,14 @@ function handleCardPlay(socket: Socket, payload: CardPlayPayload, ack?: AckFn): 
     fail(socket, ack, "CARD_REJECTED", "unknown match", matchId);
     return;
   }
-  const side = playerId.length > 0 ? getSide(room, playerId) : null;
+  const side = getSideForClient(room, socket.id, playerId);
   if (side === null) {
     fail(socket, ack, "CARD_REJECTED", "not a participant of this match", matchId);
     return;
   }
-  const rate = checkPlayRate(playerId);
+  // Rate-limit per live client (socket), not per playerId: two players can share
+  // an id and must not throttle each other.
+  const rate = checkPlayRate(socket.id);
   if (!rate.ok) {
     fail(socket, ack, rate.code ?? "RATE_LIMITED", rate.message ?? "rate-limited", matchId);
     return;
@@ -282,7 +298,7 @@ function handleCardPlay(socket: Socket, payload: CardPlayPayload, ack?: AckFn): 
     fail(socket, ack, pv.code ?? "BAD_POSITION", pv.message ?? "bad position", matchId);
     return;
   }
-  const applied = applyEnginePlay(room, side, slot, x as number, y as number, cardId, matchId, playerId);
+  const applied = applyEnginePlay(room, side, slot, x as number, y as number, cardId, matchId, socket.id);
   if (!applied.ok) {
     fail(socket, ack, applied.code ?? "CARD_REJECTED", applied.message ?? "card rejected", matchId);
     return;
@@ -299,7 +315,7 @@ function handleEmote(socket: Socket, payload: EmotePayload, ack?: AckFn): void {
     return;
   }
   const room = getRoom(matchId);
-  if (room === undefined || getSide(room, playerId) === null) {
+  if (room === undefined || getSideForClient(room, socket.id, playerId) === null) {
     fail(socket, ack, "CARD_REJECTED", "not a participant of this match", matchId);
     return;
   }
@@ -388,9 +404,9 @@ io.on("connection", (socket) => {
   socket.on("disconnect", (reason) => {
     console.log(`[backend] client disconnected: ${socket.id} (${reason})`);
     const playerId = socketPlayer.get(socket.id);
-    leaveQueue(socket.id);
+    // Socket-scoped: never drop another live player's queue entry.
+    leaveQueueBySocket(socket.id);
     if (playerId !== undefined) {
-      leaveQueue(playerId);
       socketPlayer.delete(socket.id);
       if (playerSocket.get(playerId) === socket.id) {
         playerSocket.delete(playerId);

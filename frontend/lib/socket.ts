@@ -137,8 +137,15 @@ function wrapSocket(s: Socket | null): SocketClient {
     },
     onMatched: (cb) => {
       if (!s) return () => {};
+      // Both twins can fire for the same match. The canonical `queue:matched`
+      // carries the authoritative side; the legacy twin must never flip it
+      // (that bug put BOTH players on blue).
+      let canonical = "";
       const handler = (payload: { matchId: string; opponentId?: string; side?: "blue" | "red" }) => {
-        cb(payload.matchId, payload.side ?? "blue", payload.opponentId);
+        const side = payload.side ?? "blue";
+        if (payload.side !== undefined) canonical = payload.matchId;
+        else if (canonical === payload.matchId) return;
+        cb(payload.matchId, side, payload.opponentId);
       };
       s.on("queue:matched", handler);
       s.on("match:found", handler);
@@ -347,12 +354,22 @@ export function onStateUpdate(cb: (state: StateUpdate) => void): Unsubscribe {
 /** Subscribe to matchmaking hits (canonical queue:matched + legacy match:found). */
 export function onMatched(cb: (m: QueueMatched) => void): Unsubscribe {
   const s = requireSocket();
+  let canonical = "";
   const handler = (m: QueueMatched): void => {
     trackServerTime(m?.serverTimeMs);
+    if (typeof m?.side === "string") canonical = m.matchId;
     cb(m);
   };
-  const legacy = (m: { matchId: string; opponentId: string }): void => {
-    cb({ matchId: m.matchId, opponentId: m.opponentId, side: "blue", serverTimeMs: getLastServerTimeMs() });
+  // Legacy twin: same match, no authoritative side -> never override.
+  const legacy = (m: { matchId: string; opponentId: string; side?: "blue" | "red"; serverTimeMs?: number }): void => {
+    if (canonical === m.matchId) return;
+    trackServerTime(m?.serverTimeMs);
+    cb({
+      matchId: m.matchId,
+      opponentId: m.opponentId,
+      side: m.side ?? "blue",
+      serverTimeMs: getLastServerTimeMs(),
+    });
   };
   s.on("queue:matched", handler);
   s.on("match:found", legacy);
