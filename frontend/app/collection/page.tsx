@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PageShell, CardArt, CardFrame, CRButton } from "../../components/ui";
+import { PageShell, CardTile, CRButton } from "../../components/ui";
 import { backendUrl, getCatalog, type CatalogEntry } from "../../lib/api";
 
 // Collection: full catalog (108), filters by elixir/rarity, grid of CardArt.
@@ -89,11 +89,14 @@ export default function CollectionPage() {
             data-count={filtered.length}
           >
             {filtered.map((c) => (
-              <li key={c.name} data-testid={`collection-card-${c.name}`}>
-                <CardFrame rarity={c.rarity as "common" | "rare" | "epic" | "legendary" | "champion"}>
-                  <CardArt name={c.name} rarity={c.rarity as "common" | "rare" | "epic" | "legendary" | "champion"} cost={c.elixir} />
-                  <div className="mt-1 text-center text-[10px] font-bold text-white">{c.name}</div>
-                </CardFrame>
+              <li key={c.name} className="flex justify-center">
+                <CardTile
+                  name={c.name}
+                  rarity={c.rarity}
+                  cost={c.elixir}
+                  level={15}
+                  testId={`collection-card-${c.name}`}
+                />
               </li>
             ))}
             {filtered.length === 0 && <li className="col-span-4 py-4 text-center text-sm text-slate-300">No cards match those filters.</li>}
@@ -104,7 +107,7 @@ export default function CollectionPage() {
           Source: <span data-testid="collection-source">{source}</span> • playable = full game stats; others are display-only
         </p>
         <div className="mt-2 flex justify-center">
-          <CRButton variant="blue" size="sm" href="/deck" testId="collection-go-deck" icon="🃏">
+          <CRButton variant="blue" size="sm" href="/decks" testId="collection-go-deck" icon="🃏">
             Edit Deck
           </CRButton>
         </div>

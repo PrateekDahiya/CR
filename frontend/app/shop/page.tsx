@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PageShell, CardArt, CRButton } from "../../components/ui";
+import { PageShell, CardTile, CRButton } from "../../components/ui";
 import { backendUrl, getCatalog, type CatalogEntry } from "../../lib/api";
 
 interface Deal {
@@ -49,7 +49,7 @@ export default function ShopPage() {
               <div key={d.name} data-testid={`deal-${d.name}`} className="rounded-lg border border-emerald-500/60 bg-emerald-700/30 p-2 text-center">
                 <div className="text-[10px] font-extrabold uppercase text-emerald-100">{d.rarity}</div>
                 <div className="mx-auto my-1 inline-block">
-                  <CardArt name={d.name} rarity={d.rarity} size="sm" level={0} />
+                  <CardTile name={d.name} rarity={d.rarity} level={0} size="sm" testId={`deal-card-${d.name}`} />
                 </div>
                 <div className="text-base font-extrabold text-white">x{d.x}</div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-700">
