@@ -158,6 +158,45 @@ test.describe("CR Clone battle /battle (chromium)", () => {
     await expectFourHands(page);
   });
 
+  test("live AI match: bot opponent, player can deploy, no BAD_DECK", async ({ page }) => {
+    await seedAndGoto(page, `${BASE}/battle`);
+    await expect(page.getByTestId("battle-join")).toBeVisible();
+
+    // Single viewport: the battle screen never scrolls (even before the match).
+    const sizes = await page.evaluate(() => ({
+      scroll: document.documentElement.scrollHeight,
+      client: document.documentElement.clientHeight,
+    }));
+    expect(sizes.scroll).toBeLessThanOrEqual(sizes.client + 2);
+
+    await page.getByTestId("battle-join").click();
+
+    // Real server-side room: idle overlay disappears, timer starts.
+    await expect(page.getByTestId("battle-join")).toHaveCount(0, { timeout: 15000 });
+    await expect(page.getByTestId("enemy-info")).toContainText("AI", { timeout: 15000 });
+
+    // Player deploy: select a card, tap own half -> accepted by the server.
+    await page.getByTestId("card-hand-0").click();
+    await canvasLocator(page).evaluate((el, frac) => {
+      const r = el.getBoundingClientRect();
+      el.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          clientX: r.left + r.width * frac.x,
+          clientY: r.top + r.height * frac.y,
+        }),
+      );
+    }, { x: 0.3, y: 0.8 });
+    await page.waitForTimeout(800);
+    // count() does not auto-wait: absent notice = clean deploy.
+    const errLoc = page.getByTestId("battle-error");
+    const notice = (await errLoc.count()) > 0 ? ((await errLoc.textContent()) ?? "") : "";
+    expect(notice).not.toContain("Not in a match");
+    expect(notice).not.toContain("BAD_DECK");
+    expect(notice).not.toContain("unknown card id");
+  });
+
   test("battle-canvas render check with elixir pips count 10", async ({ page }) => {
     await seedAndGoto(page, `${BASE}/battle`);
     // Canvas visible in either contract (battle-canvas OR arena-canvas + wrap).

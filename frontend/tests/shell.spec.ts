@@ -89,7 +89,7 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await page.goto(`${BASE}/decks`);
     await expect(page.locator('[data-testid^="deck-card-"]')).toHaveCount(8, { timeout: 15000 });
     await page.getByTestId("deck-tab-collection").click();
-    const fresh = page.locator('[data-testid^="collection-card-"]:not([data-in-deck])').first();
+    const fresh = page.locator('[data-testid^="collection-card-"]:not([data-in-deck]):not([data-locked])').first();
     await expect(fresh).toBeVisible({ timeout: 15000 });
     const picked = (await fresh.getAttribute("data-testid"))!.replace("collection-card-", "");
     await fresh.click();
@@ -135,7 +135,7 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await page.getByTestId("card-info-remove").click();
     await expect(page.getByTestId("deck-empty-slot")).toHaveCount(1);
     await page.getByTestId("deck-tab-collection").click();
-    const fresh = page.locator('[data-testid^="collection-card-"]:not([data-in-deck])').first();
+    const fresh = page.locator('[data-testid^="collection-card-"]:not([data-in-deck]):not([data-locked])').first();
     const picked = (await fresh.getAttribute("data-testid"))!.replace("collection-card-", "");
     await fresh.click();
     await page.getByTestId("card-info-use").click();
@@ -147,22 +147,47 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
   test("decks: every edit closes the overlay and shows a toast", async ({ page }) => {
     await page.goto(`${BASE}/decks`);
     await expect(page.locator('[data-testid^="deck-card-"]')).toHaveCount(8, { timeout: 15000 });
+    // A card already in the deck must NOT offer "Use" (only Remove).
     await page.getByTestId("deck-card-0").click();
-    await page.getByTestId("card-info-use").click();
-    await expect(page.getByTestId("replace-picker")).toBeVisible();
-    await page.getByTestId("replace-slot-1").click();
-    await expect(page.getByTestId("replace-picker")).toHaveCount(0);
+    await expect(page.getByTestId("card-info-overlay")).toBeVisible();
+    await expect(page.getByTestId("card-info-use")).toHaveCount(0);
+    await expect(page.getByTestId("card-info-remove")).toBeVisible();
+    await page.getByTestId("card-info-remove").click();
     await expect(page.getByTestId("card-info-overlay")).toHaveCount(0);
     await expect(page.getByTestId("deck-toast")).toBeVisible();
-    // The whole screen is interactive again after the swap.
+    // Now add a fresh card: the deck has a free slot so it lands directly.
+    await page.getByTestId("deck-tab-collection").click();
+    const fresh = page.locator('[data-testid^="collection-card-"]:not([data-in-deck]):not([data-locked])').first();
+    const picked = (await fresh.getAttribute("data-testid"))!.replace("collection-card-", "");
+    await fresh.click();
+    await page.getByTestId("card-info-use").click();
+    await expect(page.getByTestId("card-info-overlay")).toHaveCount(0);
+    await expect(page.getByTestId("deck-card-0")).toHaveAttribute("aria-label", new RegExp(picked, "i"));
+    // The whole screen is interactive again after the edit.
     await page.getByTestId("deck-tab-collection").click();
     await expect(page.getByTestId("collection-list")).toBeVisible();
+  });
+
+  test("decks: display-only catalog cards cannot be added", async ({ page }) => {
+    await page.goto(`${BASE}/decks`);
+    await expect(page.locator('[data-testid^="deck-card-"]')).toHaveCount(8, { timeout: 15000 });
+    await page.getByTestId("deck-tab-collection").click();
+    await expect(page.getByTestId("collection-list")).toBeVisible({ timeout: 15000 });
+    const locked = page.locator('[data-testid^="collection-card-"][data-locked]').first();
+    await expect(locked).toBeVisible({ timeout: 15000 });
+    const name = (await locked.getAttribute("data-testid"))!.replace("collection-card-", "");
+    await locked.click();
+    await expect(page.getByTestId("card-info-overlay")).toBeVisible();
+    // No Use button for cards the engine does not know.
+    await expect(page.getByTestId("card-info-use")).toHaveCount(0);
+    await page.getByTestId("card-info-close").click();
+    await expect(page.locator(`[data-testid="deck-card-"][aria-label*="${name}"]`)).toHaveCount(0);
   });
 
   test("collection /collection can add and remove cards in My Deck", async ({ page }) => {
     await page.goto(`${BASE}/collection`);
     await expect(page.getByTestId("collection-grid")).toBeVisible({ timeout: 15000 });
-    const fresh = page.locator('[data-testid^="collection-card-"]:not([data-in-deck])').first();
+    const fresh = page.locator('[data-testid^="collection-card-"]:not([data-in-deck]):not([data-locked])').first();
     await expect(fresh).toBeVisible();
     const picked = (await fresh.getAttribute("data-testid"))!.replace("collection-card-", "");
     // Deck is full -> the picker appears and the chosen slot is replaced.
