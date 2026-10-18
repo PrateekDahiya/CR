@@ -85,6 +85,65 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
       .toBeGreaterThan(100);
   });
 
+  test("decks: Use on a full deck asks which slot to replace", async ({ page }) => {
+    await page.goto(`${BASE}/decks`);
+    await expect(page.locator('[data-testid^="deck-card-"]')).toHaveCount(8, { timeout: 15000 });
+    await page.getByTestId("deck-tab-collection").click();
+    const fresh = page.locator('[data-testid^="collection-card-"]:not([data-in-deck])').first();
+    await expect(fresh).toBeVisible({ timeout: 15000 });
+    const picked = (await fresh.getAttribute("data-testid"))!.replace("collection-card-", "");
+    await fresh.click();
+    await expect(page.getByTestId("card-info-overlay")).toBeVisible();
+    await page.getByTestId("card-info-use").click();
+    // Deck is full -> the user must choose the slot to replace.
+    await expect(page.getByTestId("replace-picker")).toBeVisible();
+    await page.getByTestId("replace-slot-2").click();
+    await expect(page.getByTestId("replace-picker")).toHaveCount(0);
+    await expect(page.getByTestId("deck-card-2")).toHaveAttribute("aria-label", new RegExp(picked, "i"));
+    await expect(page.locator('[data-testid^="deck-card-"]')).toHaveCount(8);
+  });
+
+  test("decks: Remove clears a card from My Deck (slot tap + collection tab)", async ({ page }) => {
+    await page.goto(`${BASE}/decks`);
+    await expect(page.locator('[data-testid^="deck-card-"]')).toHaveCount(8, { timeout: 15000 });
+    // 1) Remove straight from a deck slot.
+    await page.getByTestId("deck-card-0").click();
+    await page.getByTestId("card-info-remove").click();
+    await expect(page.locator('[data-testid^="deck-card-"]')).toHaveCount(7);
+    await expect(page.getByTestId("deck-empty-slot")).toHaveCount(1);
+    // 2) Remove from the Collection tab; the card leaves the deck there too.
+    await page.getByTestId("deck-tab-collection").click();
+    const owned = page.locator('[data-testid^="collection-card-"][data-in-deck]').first();
+    await expect(owned).toBeVisible({ timeout: 15000 });
+    const name = (await owned.getAttribute("data-testid"))!.replace("collection-card-", "");
+    await owned.click();
+    await expect(page.getByTestId("card-info-overlay")).toBeVisible();
+    await page.getByTestId("card-info-remove").click();
+    await expect(page.locator('[data-testid^="deck-card-"]')).toHaveCount(6);
+    await expect(page.getByTestId("deck-empty-slot")).toHaveCount(2);
+    await expect(page.locator(`[data-testid="collection-card-${name}"]`)).not.toHaveAttribute(
+      "data-in-deck",
+      "true",
+    );
+  });
+
+  test("decks: Use fills the first free slot without asking", async ({ page }) => {
+    await page.goto(`${BASE}/decks`);
+    await expect(page.locator('[data-testid^="deck-card-"]')).toHaveCount(8, { timeout: 15000 });
+    // Free slot 0, then add a card from the collection.
+    await page.getByTestId("deck-card-0").click();
+    await page.getByTestId("card-info-remove").click();
+    await expect(page.getByTestId("deck-empty-slot")).toHaveCount(1);
+    await page.getByTestId("deck-tab-collection").click();
+    const fresh = page.locator('[data-testid^="collection-card-"]:not([data-in-deck])').first();
+    const picked = (await fresh.getAttribute("data-testid"))!.replace("collection-card-", "");
+    await fresh.click();
+    await page.getByTestId("card-info-use").click();
+    await expect(page.getByTestId("replace-picker")).toHaveCount(0);
+    await expect(page.getByTestId("deck-card-0")).toHaveAttribute("aria-label", new RegExp(picked, "i"));
+    await expect(page.locator('[data-testid^="deck-card-"]')).toHaveCount(8);
+  });
+
   test("deck /deck redirects to /decks", async ({ page }) => {
     await page.goto(`${BASE}/deck`);
     await expect(page).toHaveURL(/\/decks$/);
