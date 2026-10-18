@@ -148,6 +148,24 @@ export default function BattlePage() {
   const battle = useBattle({ backendUrl, playerId, deck });
   const { phase, matchId, side, opponentId, renderState, displayElixir } = battle;
 
+  // Adopt the match from the matchmaking redirect (client-side only, after
+  // mount): the red player must render/deploy on their own half.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const mid = params.get("matchId");
+      if (!mid) return;
+      battle.adoptMatch({
+        matchId: mid,
+        side: params.get("side") === "red" ? "red" : "blue",
+        opponentId: params.get("opponent") ?? undefined,
+      });
+    } catch {
+      // ignore malformed query
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // "Battle!" banner on match start.
   const inMatch = phase === "in-match";
   useEffect(() => {

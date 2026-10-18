@@ -44,7 +44,10 @@ export function joinQueue(
   playerId: string = socketId,
   deck: string[] = [],
 ): { position: number; size: number } {
-  const existing = queue.findIndex((p) => p.playerId === playerId || p.socketId === socketId);
+  // Dedupe by SOCKET only. Two tabs (or two machines) can share a playerId, and
+  // collapsing them into one queue entry meant the second player could never be
+  // paired. Socket is the only thing that identifies a live client.
+  const existing = queue.findIndex((p) => p.socketId === socketId);
   if (existing === -1) {
     queue.push({ socketId, playerId, deck: [...deck], joinedAt: Date.now() });
   } else {
@@ -54,7 +57,7 @@ export function joinQueue(
       queue[existing].deck = [...deck];
     }
   }
-  const position = queue.findIndex((p) => p.playerId === playerId) + 1;
+  const position = queue.findIndex((p) => p.socketId === socketId) + 1;
   return { position, size: queue.length };
 }
 
@@ -62,6 +65,20 @@ export function leaveQueue(socketIdOrPlayerId: string): { removed: boolean; size
   const idx = queue.findIndex(
     (p) => p.socketId === socketIdOrPlayerId || p.playerId === socketIdOrPlayerId,
   );
+  if (idx === -1) {
+    return { removed: false, size: queue.length };
+  }
+  queue.splice(idx, 1);
+  return { removed: true, size: queue.length };
+}
+
+/**
+ * Socket-scoped leave. A disconnect must only drop THAT socket's queue entry:
+ * a by-playerId leave would pull an unrelated player (same id, other tab) out
+ * of the queue. O(q).
+ */
+export function leaveQueueBySocket(socketId: string): { removed: boolean; size: number } {
+  const idx = queue.findIndex((p) => p.socketId === socketId);
   if (idx === -1) {
     return { removed: false, size: queue.length };
   }

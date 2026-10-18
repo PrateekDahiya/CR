@@ -438,6 +438,18 @@ export function getSide(room: Room, playerId: string): PlayerSide | null {
   return room.players.find((p) => p.playerId === playerId)?.side ?? null;
 }
 
+/**
+ * Authoritative side for a live client. SOCKET first: two players can share a
+ * playerId (two tabs, same browser profile), and resolving by playerId gave both
+ * of them the same side, so one player could never deploy. Falls back to
+ * playerId for non-socket callers (tests, tools). O(p), p = 2.
+ */
+export function getSideForClient(room: Room, socketId: string, playerId: string): PlayerSide | null {
+  const bySocket = room.players.find((p) => p.socketId === socketId);
+  if (bySocket !== undefined) return bySocket.side;
+  return getSide(room, playerId);
+}
+
 /** Authoritative hand: engine sim wins when present, else the STUB mirror. */
 // O(1) time/space (direct indexed access, no copy).
 export function getHand(room: Room, side: PlayerSide): string[] {

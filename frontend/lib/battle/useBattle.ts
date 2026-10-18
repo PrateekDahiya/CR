@@ -264,6 +264,8 @@ export interface UseBattle {
   join: () => Promise<void>;
   /** Starts a real authoritative match vs the server-side AI bot. */
   joinPractice: (difficulty?: "easy" | "medium" | "hard") => Promise<void>;
+  /** Adopt a known match id/side (matchmaking redirect). */
+  adoptMatch: (m: { matchId?: string; side?: PlayerSide; opponentId?: string }) => void;
   leave: () => void;
   resync: () => void;
 }
@@ -297,6 +299,23 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
   sideRef.current = side;
   const matchIdRef = useRef<string | null>(null);
   matchIdRef.current = matchId;
+
+  /**
+   * Adopt a match we already know about (matchmaking redirect `?matchId=&side=`).
+   * Runs client-side after mount: the red player must not stay on the default
+   * blue side, otherwise their taps are validated against the wrong half.
+   */
+  const adoptMatch = useCallback((m: { matchId?: string; side?: PlayerSide; opponentId?: string }) => {
+    if (typeof m.side === "string") {
+      sideRef.current = m.side;
+      setSide(m.side);
+    }
+    if (typeof m.opponentId === "string" && m.opponentId.length > 0) setOpponentId(m.opponentId);
+    if (typeof m.matchId === "string" && m.matchId.length > 0) {
+      matchIdRef.current = m.matchId;
+      setMatchId(m.matchId);
+    }
+  }, []);
   const playerIdRef = useRef(playerId);
   playerIdRef.current = playerId;
   const deckRef = useRef(deck);
@@ -746,6 +765,7 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
     clearError,
     join,
     joinPractice,
+    adoptMatch,
     leave,
     resync,
   };

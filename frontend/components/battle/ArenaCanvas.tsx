@@ -834,6 +834,7 @@ export default function ArenaCanvas({
         className="h-full max-h-full w-auto max-w-full touch-manipulate rounded-lg"
         style={{ aspectRatio: "18 / 32", background: GRASS_A }}
         data-testid="arena-canvas"
+        data-my-side={mySide}
         aria-label="Battle arena 18 by 32 portrait"
       />
     </div>
