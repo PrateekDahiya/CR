@@ -4,7 +4,7 @@
 // `npm test` pass without install; memory/local fallback mirrors GAME_DESIGN §1.
 // All ops O(1) pool + O(c) roster reads (c=12). Big-O per function (MEMORY#20).
 
-import { CARDS } from "./game/cards.js";
+import { CARDS, type CardDef } from "./game/cards.js";
 
 export interface ContentCard {
   name: string;
@@ -103,20 +103,10 @@ export async function pingMysql(): Promise<boolean> {
 }
 
 function localCards(): ContentCard[] {
-  // O(c) c=12 from canonical engine table. Zero I/O fallback.
-  return Object.values(CARDS).map((c) => ({
-    name: c.id,
-    displayName: c.name,
-    cardType: c.type,
-    elixir: c.cost,
-    hp: c.hp,
-    dps: Math.round(c.dps),
-    speedLabel: c.speed === 0 ? "static" : c.speed >= 1.1 ? "fast" : c.speed >= 0.8 ? "med" : "slow",
-    rangeTiles: c.range,
-    targets: c.targets,
-    unitCount: c.count,
-    rarity: c.rarity,
-  }));
+  // O(n) n=108 from the canonical engine table. Zero I/O fallback.
+  return Object.values(CARDS)
+    .map((c) => cardToContent(c.id, c))
+    .filter((c): c is ContentCard => c !== null);
 }
 
 const LOCAL_SPRITES: SpriteMeta[] = [
@@ -155,37 +145,41 @@ const LOCAL_CATALOG: CatalogEntry[] = Object.values(CARDS).map((c) => ({
 }));
 
 export async function getContentCards(): Promise<{ cards: ContentCard[]; source: string }> {
-  // O(c) rows. MySQL first, local fallback on any failure.
-  const p = getPool();
-  if (p) {
-    try {
-      const [rows] = await p.query(
-        "SELECT name,card_type,elixir,hp,dps,speed_label,range_tiles,targets,unit_count,rarity FROM cards ORDER BY elixir,name"
-      );
-      const list = rows as Record<string, unknown>[];
-      if (list.length > 0) {
-        return {
-          source: "mysql",
-          cards: list.map((r) => ({
-            name: String(r["name"]),
-            displayName: String(r["name"]).split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ").replace("Mini Pekka", "Mini P.E.K.K.A").replace("Baby Dragon", "Baby Dragon"),
-            cardType: String(r["card_type"]),
-            elixir: Number(r["elixir"]),
-            hp: Number(r["hp"]),
-            dps: Number(r["dps"]),
-            speedLabel: String(r["speed_label"] ?? ""),
-            rangeTiles: Number(r["range_tiles"] ?? 0),
-            targets: String(r["targets"] ?? ""),
-            unitCount: Number(r["unit_count"] ?? 1),
-            rarity: String(r["rarity"]),
-          })),
-        };
-      }
-    } catch {
-      // fall through to local
-    }
+  // Every catalog card is playable now: the canonical CARDS table (108 defs,
+  // generated from the catalog by scripts/generate_card_table.py) is the single
+  // source of stats. MySQL supplies the roster + source label.
+  // O(n) over the catalog, n = 108.
+  const catalog = await getCatalog();
+  const names = catalog.catalog.map((c) => c.name);
+  if (catalog.source === "mysql") {
+    const cards = names
+      .map((name) => cardToContent(name, CARDS[name]))
+      .filter((c): c is ContentCard => c !== null);
+    if (cards.length > 0) return { source: "mysql", cards };
   }
   return { source: "local", cards: localCards() };
+}
+
+/** Canonical engine def -> client ContentCard shape (null when unknown). O(1). */
+function cardToContent(name: string, def: CardDef | undefined): ContentCard | null {
+  if (def === undefined) return null;
+  return {
+    name: def.id,
+    displayName: def.id
+      .split("-")
+      .map((w) => (w[0] ? w[0].toUpperCase() + w.slice(1) : w))
+      .join(" ")
+      .replace("Mini Pekka", "Mini P.E.K.K.A"),
+    cardType: def.type,
+    elixir: def.cost,
+    hp: def.hp,
+    dps: Math.round(def.dps),
+    speedLabel: def.speed === 0 ? "static" : def.speed >= 1.1 ? "fast" : def.speed >= 0.8 ? "med" : "slow",
+    rangeTiles: def.range,
+    targets: def.targets,
+    unitCount: def.count,
+    rarity: def.rarity,
+  };
 }
 
 export async function getContentSprites(): Promise<{ sprites: SpriteMeta[]; source: string }> {
@@ -227,13 +221,20 @@ export async function getCatalog(): Promise<{ catalog: CatalogEntry[]; source: s
       if (list.length > 0) {
         return {
           source: "mysql",
-          catalog: list.map((r) => ({
-            name: String(r["name"]),
-            cardType: String(r["card_type"]),
-            elixir: Number(r["elixir"]),
-            rarity: String(r["rarity"]),
-            playable: Number(r["playable"] ?? 0) === 1,
-          })),
+          catalog: list.map((r) => {
+            const name = String(r["name"]);
+            const def = CARDS[name];
+            return {
+              name,
+              cardType: String(r["card_type"]),
+              // Battle cost comes from the canonical table (tower troops are
+              // catalogued at 0 elixir but cost 4 in a deck).
+              elixir: def?.cost ?? Number(r["elixir"]),
+              rarity: String(r["rarity"]),
+              // Every catalog card has full stats now, so all are playable.
+              playable: def !== undefined,
+            };
+          }),
         };
       }
     } catch {

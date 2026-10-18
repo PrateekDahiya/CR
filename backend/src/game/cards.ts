@@ -16,6 +16,8 @@
  *   points, documented here so playtests can adjust without touching engine.
  */
 
+import { GENERATED_CARDS } from "./cards.generated.js";
+
 export type CardKind = "troop" | "spell" | "building";
 
 /** What this entity can target. 'all' only appears on spells (hit anything). */
@@ -284,21 +286,43 @@ export const CARDS: Record<string, CardDef> = {
   },
 };
 
-/** Canonical 12-card pool in GAME_DESIGN §1 table order. */
-export const CARD_LIST: CardDef[] = [
-  CARDS["knight"],
-  CARDS["archers"],
-  CARDS["giant"],
-  CARDS["skeletons"],
-  CARDS["musketeer"],
-  CARDS["baby-dragon"],
-  CARDS["mini-pekka"],
-  CARDS["rock-golem"],
-  CARDS["fireball"],
-  CARDS["arrows"],
-  CARDS["zap"],
-  CARDS["cannon"],
-];
+/**
+ * Merge the generated full-catalog table (scripts/generate_card_table.py) with
+ * the hand-tuned baseline above. Baseline ids win, so the 12 tournament cards
+ * keep their exact stats while every other catalog card becomes playable.
+ * O(n) once at module load, n = catalog size (108).
+ */
+function mergeGenerated(): void {
+  for (const [id, g] of Object.entries(GENERATED_CARDS)) {
+    if (CARDS[id] !== undefined) continue; // hand-tuned baseline wins
+    CARDS[id] = {
+      id: g.id,
+      name: g.name,
+      type: g.type,
+      cost: g.cost,
+      rarity: g.rarity as Rarity,
+      hp: g.hp,
+      damage: g.damage,
+      hitSpeed: g.hitSpeed,
+      dps: g.dps,
+      speed: g.speed,
+      range: g.range,
+      sightRange: g.sightRange,
+      targets: g.targets as TargetMask,
+      count: g.count,
+      radius: g.radius,
+      ...(g.flying ? { flying: true } : {}),
+      ...(g.towerDamage !== undefined ? { towerDamage: g.towerDamage } : {}),
+      ...(g.durationMs !== undefined ? { durationMs: g.durationMs } : {}),
+      ...(g.stunSec !== undefined ? { stunSec: g.stunSec } : {}),
+    };
+  }
+}
+
+mergeGenerated();
+
+/** Every playable card id (catalog order is alphabetical from the generator). */
+export const CARD_LIST: CardDef[] = Object.values(CARDS);
 
 export function getCard(id: string): CardDef | undefined {
   return CARDS[id];

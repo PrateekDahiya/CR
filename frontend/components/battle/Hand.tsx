@@ -49,6 +49,7 @@ const RARITY_RING: Record<CardRarity, string> = {
   rare: "ring-1 ring-orange-400/60",
   epic: "ring-1 ring-purple-400/60",
   legendary: "ring-2 ring-yellow-300/70",
+  champion: "ring-2 ring-amber-300/80",
 };
 
 export default function Hand({

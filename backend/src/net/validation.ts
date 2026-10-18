@@ -30,23 +30,26 @@ export interface ValidationResult {
 
 export type PlayerSide = "blue" | "red";
 
-/** Elixir cost per card id (§1). Cannon is a building, NOT a spell (§4). */
-export const CARD_COSTS: Record<string, number> = {
-  knight: 3,
-  archers: 3,
-  giant: 5,
-  skeletons: 1,
-  musketeer: 4,
-  "baby-dragon": 4,
-  "mini-pekka": 4,
-  "rock-golem": 6,
-  fireball: 4,
-  arrows: 3,
-  zap: 2,
-  cannon: 3,
-};
+import { CARDS } from "../game/cards.js";
 
-const SPELL_IDS = new Set(["fireball", "arrows", "zap"]);
+/**
+ * Elixir cost per card id. Derived from the canonical engine table (108 cards)
+ * so validation can never drift from what the engine charges.
+ * O(1) build once, then O(1) lookups.
+ */
+export const CARD_COSTS: Record<string, number> = Object.fromEntries(
+  Object.values(CARDS).map((c) => [c.id, c.cost]),
+);
+
+/** Spell ids from the canonical table (Cannon etc. are buildings, §4). */
+const SPELL_IDS = new Set(Object.values(CARDS).filter((c) => c.type === "spell").map((c) => c.id));
+
+/** All playable card ids — O(1) membership test used by deck validation. */
+const KNOWN_IDS = new Set(Object.keys(CARD_COSTS));
+
+export function isKnownCard(cardId: string): boolean {
+  return KNOWN_IDS.has(cardId);
+}
 
 export function isSpellCard(cardId: string): boolean {
   return SPELL_IDS.has(cardId);

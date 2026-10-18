@@ -168,20 +168,22 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(page.getByTestId("collection-list")).toBeVisible();
   });
 
-  test("decks: display-only catalog cards cannot be added", async ({ page }) => {
+  test("decks: every catalog card is playable (no locked cards)", async ({ page }) => {
     await page.goto(`${BASE}/decks`);
     await expect(page.locator('[data-testid^="deck-card-"]')).toHaveCount(8, { timeout: 15000 });
     await page.getByTestId("deck-tab-collection").click();
     await expect(page.getByTestId("collection-list")).toBeVisible({ timeout: 15000 });
-    const locked = page.locator('[data-testid^="collection-card-"][data-locked]').first();
-    await expect(locked).toBeVisible({ timeout: 15000 });
-    const name = (await locked.getAttribute("data-testid"))!.replace("collection-card-", "");
-    await locked.click();
-    await expect(page.getByTestId("card-info-overlay")).toBeVisible();
-    // No Use button for cards the engine does not know.
-    await expect(page.getByTestId("card-info-use")).toHaveCount(0);
-    await page.getByTestId("card-info-close").click();
-    await expect(page.locator(`[data-testid="deck-card-"][aria-label*="${name}"]`)).toHaveCount(0);
+    // No card is locked/unplayable any more.
+    await expect(page.locator('[data-testid^="collection-card-"][data-locked]')).toHaveCount(0);
+    // A non-baseline card (mega-knight) can be added like any other.
+    const target = page.locator('[data-testid="collection-card-mega-knight"]');
+    await expect(target).toBeVisible();
+    await target.click();
+    await expect(page.getByTestId("card-info-use")).toBeVisible();
+    await page.getByTestId("card-info-use").click();
+    await expect(page.getByTestId("replace-picker")).toBeVisible();
+    await page.getByTestId("replace-slot-5").click();
+    await expect(page.getByTestId("deck-card-5")).toHaveAttribute("aria-label", /mega-knight/i);
   });
 
   test("collection /collection can add and remove cards in My Deck", async ({ page }) => {

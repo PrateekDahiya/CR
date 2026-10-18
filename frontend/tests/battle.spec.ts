@@ -197,6 +197,37 @@ test.describe("CR Clone battle /battle (chromium)", () => {
     expect(notice).not.toContain("unknown card id");
   });
 
+  test("deployed units use the real card art (no dummy emoji only)", async ({ page }) => {
+    const artRequests: string[] = [];
+    page.on("request", (req) => {
+      const url = req.url();
+      if (url.includes("/cards/") && url.endsWith(".png")) artRequests.push(url);
+    });
+    await seedAndGoto(page, `${BASE}/battle`);
+    await expect(page.getByTestId("battle-join")).toBeVisible();
+    await page.getByTestId("battle-join").click();
+    await expect(page.getByTestId("battle-join")).toHaveCount(0, { timeout: 15000 });
+
+    // Deploy a card and let the bot answer: both sides must request card PNGs
+    // for the arena to draw real art instead of placeholder glyphs.
+    await page.getByTestId("card-hand-0").click();
+    await canvasLocator(page).evaluate((el, frac) => {
+      const r = el.getBoundingClientRect();
+      el.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          clientX: r.left + r.width * frac.x,
+          clientY: r.top + r.height * frac.y,
+        }),
+      );
+    }, { x: 0.3, y: 0.8 });
+
+    await expect
+      .poll(() => artRequests.length, { timeout: 20000 })
+      .toBeGreaterThan(0);
+  });
+
   test("battle-canvas render check with elixir pips count 10", async ({ page }) => {
     await seedAndGoto(page, `${BASE}/battle`);
     // Canvas visible in either contract (battle-canvas OR arena-canvas + wrap).
