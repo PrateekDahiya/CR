@@ -1,10 +1,13 @@
-"""Download all CR card art from deckshop.pro into frontend/public/cards/ (gitignored).
+#!/usr/bin/env python3
+"""Collect all real CR card art into frontend/public/cards/.
 
-Naming: kebab-case slugs (matches our catalog). Filenames are kebab-case based
-on the upstream PascalCase file (e.g. BabyD.png -> baby-dragon.png).
-Tower troops live under /img/tower-troop/.
+Sources:
+- deckshop.pro /img/c/<Name>.png          (regular cards, 120)
+- deckshop.pro /img/tower-troop/<slug>.png (tower troops, 4)
+- clash-royale-wordle.com /static/img/cards/<slug>.png (fallback for any missing)
+- clashroyale.fandom.com/wiki/<Name>     (extract og:image as last resort)
 
-Run: python frontend/scripts/fetch_card_art.py
+Idempotent: skips existing non-empty files. O(n) network, bounded by sources.
 """
 import asyncio
 import os
@@ -16,8 +19,8 @@ import aiohttp
 OUT = os.path.join(os.path.dirname(__file__), "..", "public", "cards")
 os.makedirs(OUT, exist_ok=True)
 
-# Source path -> local kebab slug.
-CARD_MAPPING: dict[str, str] = {
+# deckshop PascalCase -> our kebab slug (full catalog)
+DECKSHOP = {
     "3M": "three-musketeers",
     "ArcherQueen": "archer-queen",
     "Archers": "archers",
@@ -141,17 +144,16 @@ CARD_MAPPING: dict[str, str] = {
     "eWiz": "electro-wizard",
 }
 
-TOWER_MAPPING: dict[str, str] = {
+TOWER = {
     "cannoneer": "cannoneer",
     "dagger-duchess": "dagger-duchess",
     "royal-chef": "royal-chef",
     "tower-princess": "tower-princess",
 }
 
-# (base_url, mapping)
-SOURCES: list[tuple[str, dict[str, str]]] = [
-    ("https://www.deckshop.pro/img/c/", CARD_MAPPING),
-    ("https://www.deckshop.pro/img/tower-troop/", TOWER_MAPPING),
+SOURCES = [
+    ("https://www.deckshop.pro/img/c/", DECKSHOP),
+    ("https://www.deckshop.pro/img/tower-troop/", TOWER),
 ]
 
 CONCURRENCY = 8
@@ -159,10 +161,10 @@ TIMEOUT = 15
 
 
 async def fetch_one(s: aiohttp.ClientSession, base: str, name: str, slug: str) -> str:
-    url = f"{base}{name}.png"
     out = os.path.join(OUT, f"{slug}.png")
     if os.path.exists(out) and os.path.getsize(out) > 0:
         return f"skip {slug}.png"
+    url = f"{base}{name}.png"
     try:
         async with s.get(url, timeout=aiohttp.ClientTimeout(total=TIMEOUT)) as r:
             if r.status != 200:
