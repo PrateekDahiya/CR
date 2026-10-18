@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import {
   PageShell,
-  CardArt,
+  CardTile,
   CRButton,
   CardInfoOverlay,
   type CardInfoOverlayProps,
 } from "../../components/ui";
-import { backendUrl, getContentCards, type ContentCard } from "../../lib/api";
+import { backendUrl, getContentCards, getCatalog, type ContentCard, type CatalogEntry } from "../../lib/api";
 
 const DECK_KEY = "cr-clone-deck-v1";
 const DECK_SIZE = 8;
@@ -25,6 +25,7 @@ const STARTER: string[] = [
 
 export default function DecksPage() {
   const [cards, setCards] = useState<ContentCard[]>([]);
+  const [catalog, setCatalog] = useState<CatalogEntry[]>([]);
   const [deck, setDeck] = useState<string[]>(STARTER);
   const [info, setInfo] = useState<{ name: string; slot: number | "list" } | null>(null);
   const [matchmaking, setMatchmaking] = useState(false);
@@ -34,6 +35,9 @@ export default function DecksPage() {
     let cancelled = false;
     getContentCards(backendUrl())
       .then((d) => !cancelled && setCards(d.cards))
+      .catch(() => {});
+    getCatalog(backendUrl())
+      .then((d) => !cancelled && setCatalog(d.catalog))
       .catch(() => {});
     if (typeof window !== "undefined") {
       try {
@@ -63,7 +67,22 @@ export default function DecksPage() {
   }, [deck]);
 
   const cardByName: Record<string, ContentCard> = {};
-  for (const c of cards) cardByName[c.name] = c;
+for (const c of cards) cardByName[c.name] = c;
+
+  // Collection grid = full catalog (108) when available, else the playable roster.
+  // Facts are looked up from the catalog so display-only cards still open the overlay.
+  const collection: (CatalogEntry & { playable: boolean })[] =
+    catalog.length > 0
+      ? catalog
+      : cards.map((c) => ({
+          name: c.name,
+          cardType: c.cardType,
+          elixir: c.elixir,
+          rarity: c.rarity,
+          playable: c.playable ?? true,
+        }));
+  const factsByName: Record<string, CatalogEntry> = {};
+  for (const c of collection) factsByName[c.name] = c;
 
   const onCardClick = (slotOrList: number | "list", name: string) => {
     setInfo({ name, slot: slotOrList });
@@ -127,27 +146,28 @@ export default function DecksPage() {
             {Array.from({ length: DECK_SIZE }).map((_, i) => {
               const name = deck[i];
               const c = name ? cardByName[name] : null;
-              return (
+              return c ? (
+                <CardTile
+                  key={`slot-${i}`}
+                  name={c.name}
+                  rarity={c.rarity}
+                  cost={c.elixir}
+                  level={15}
+                  testId={`deck-card-${i}`}
+                  ariaLabel={`Card slot ${i + 1}: ${c.name}`}
+                  onClick={() => setInfo({ name: c.name, slot: i })}
+                />
+              ) : (
                 <button
                   key={`slot-${i}`}
                   type="button"
-                  data-testid={`deck-card-${i}`}
-                  onClick={() => {
-                    if (c) setInfo({ name: c.name, slot: i });
-                  }}
-                  className="flex flex-col items-center gap-0.5 active:scale-95"
-                  aria-label={c ? `Card slot ${i + 1}: ${c.name}` : `Empty slot ${i + 1}`}
+                  data-testid="deck-empty-slot"
+                  data-slot={i}
+                  onClick={() => setTab("collection")}
+                  className="grid h-20 w-16 place-items-center rounded-lg border-2 border-dashed border-slate-600 bg-slate-800/40 text-xs text-slate-500 active:scale-95"
+                  aria-label={`Empty slot ${i + 1}`}
                 >
-                  {c ? (
-                    <CardArt name={c.name} rarity={c.rarity as CardInfoOverlayProps["rarity"]} cost={c.elixir} level={15} showLevel showCost />
-                  ) : (
-                    <div
-                      data-testid="deck-empty-slot"
-                      className="grid h-20 w-16 place-items-center rounded-lg border-2 border-dashed border-slate-600 bg-slate-800/40 text-xs text-slate-500"
-                    >
-                      +
-                    </div>
-                  )}
+                  +
                 </button>
               );
             })}
@@ -182,21 +202,23 @@ export default function DecksPage() {
           </p>
         ) : (
           <section data-testid="collection-list">
-            <div className="grid grid-cols-4 gap-2">
-              {cards.map((c) => (
-                <button
+            <div className="grid grid-cols-4 gap-2" data-count={collection.length}>
+              {collection.map((c) => (
+                <CardTile
                   key={c.name}
-                  type="button"
-                  data-testid={`collection-card-${c.name}`}
+                  name={c.name}
+                  rarity={c.rarity}
+                  cost={c.elixir}
+                  level={15}
+                  testId={`collection-card-${c.name}`}
+                  inDeck={deck.includes(c.name)}
                   onClick={() => setInfo({ name: c.name, slot: "list" })}
-                  className="active:scale-95"
-                >
-                  <CardArt name={c.name} rarity={c.rarity as CardInfoOverlayProps["rarity"]} cost={c.elixir} level={15} showLevel showCost size="sm" />
-                </button>
+                />
               ))}
             </div>
             <p className="mt-3 text-center text-[11px] text-slate-400">
-              Source: <span data-testid="collection-source">{/* live */}mysql</span> • {cards.length} cards ({cards.filter((c) => c.playable).length} playable)
+              Source: <span data-testid="collection-source">mysql</span> • {collection.length} cards (
+              {collection.filter((c) => c.playable).length} playable) — tap a card to add it to My Deck
             </p>
           </section>
         )}
@@ -205,17 +227,18 @@ export default function DecksPage() {
       {info
         ? (() => {
             const c = cards.find((cc) => cc.name === info.name);
-            if (!c) return null;
-            const inDeck = deck.includes(c.name);
+            const f = factsByName[info.name];
+            if (!c && !f) return null;
+            const inDeck = deck.includes(info.name);
             return (
               <CardInfoOverlay
-                name={c.name}
-                rarity={c.rarity as CardInfoOverlayProps["rarity"]}
-                cardType={c.cardType as CardInfoOverlayProps["cardType"]}
-                elixir={c.elixir}
+                name={info.name}
+                rarity={(c?.rarity ?? f?.rarity ?? "common") as CardInfoOverlayProps["rarity"]}
+                cardType={(c?.cardType ?? f?.cardType ?? "troop") as CardInfoOverlayProps["cardType"]}
+                elixir={c?.elixir ?? f?.elixir ?? 0}
                 level={15}
                 onClose={() => setInfo(null)}
-                onUse={() => onUseInSlot(c.name)}
+                onUse={() => onUseInSlot(info.name)}
                 onRemove={() => removeCard(typeof info.slot === "number" ? info.slot : -1)}
                 onUpgrade={() => setInfo(null)}
                 inDeck={inDeck}

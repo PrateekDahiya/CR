@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   PageShell,
-  CardArt,
+  CardTile,
   CRButton,
   MatchmakingLoader,
   CardInfoOverlay,
@@ -163,24 +163,17 @@ export default function Home() {
                 const c = playableByName.get(name);
                 if (!c) return null;
                 return (
-                  <button
+                  <CardTile
                     key={name}
-                    type="button"
-                    data-testid={`home-playing-${name}`}
+                    name={c.name}
+                    rarity={c.rarity}
+                    cost={c.elixir}
+                    level={15}
+                    size="sm"
+                    testId={`home-playing-${name}`}
+                    ariaLabel={name}
                     onClick={() => showInfo(name)}
-                    aria-label={name}
-                    className="active:scale-95"
-                  >
-                    <CardArt
-                      name={c.name}
-                      rarity={c.rarity as CardInfoOverlayProps["rarity"]}
-                      cost={c.elixir}
-                      level={15}
-                      showLevel
-                      showCost
-                      size="sm"
-                    />
-                  </button>
+                  />
                 );
               })}
             </div>

@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 const TABS = [
   { key: "shop", label: "Shop", icon: "🛒", route: "/shop" },
   { key: "cards", label: "Deck", icon: "🃏", route: "/decks" },
-  { key: "battle", label: "Battle", icon: "⚔️", route: "/battle" },
+  { key: "battle", label: "Battle", icon: "⚔️", route: "/" },
   { key: "social", label: "Clan", icon: "👥", route: "/social" },
   { key: "ranked", label: "Rank", icon: "🏆", route: "/leaderboard" },
 ] as const;
@@ -19,7 +19,8 @@ export default function BottomNav({ active }: { active?: BottomNavKey }) {
   const pathname = usePathname();
   const current =
     active ??
-    (TABS.find((t) => pathname?.startsWith(t.route))?.key) ??
+    // "/" only matches exactly, otherwise every route would match the home tab.
+    (TABS.find((t) => (t.route === "/" ? pathname === "/" : pathname?.startsWith(t.route)))?.key) ??
     "battle";
   return (
     <nav
