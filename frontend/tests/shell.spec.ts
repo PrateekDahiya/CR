@@ -27,7 +27,7 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(page.getByTestId("topbar-coins")).toBeVisible();
     await expect(page.getByTestId("topbar-gems")).toBeVisible();
     await expect(page.getByTestId("bottom-nav")).toBeVisible();
-    for (const t of ["cards", "collection", "battle", "shop", "social", "ranked"]) {
+    for (const t of ["shop", "cards", "battle", "social", "ranked"]) {
       await expect(page.getByTestId(`nav-tab-${t}`)).toBeVisible();
     }
     await expect(page.getByTestId("home-playing-deck")).toBeVisible();
@@ -36,30 +36,30 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(page.getByTestId("matchmaking-loader")).toBeVisible();
   });
 
-  test("decks /decks has tabs 6/7/8/9/10 + grid + card-info overlay", async ({ page }) => {
+  test("decks /decks has Deck/Collection tabs + grid + card-info overlay", async ({ page }) => {
     await page.goto(`${BASE}/decks`);
     await expect(page.getByTestId("deck-tabs")).toBeVisible();
-    for (const n of [6, 7, 8, 9, 10]) {
-      await expect(page.getByTestId(`deck-tab-${n}`)).toBeVisible();
-    }
-    await expect(page.getByTestId("deck-grid")).toBeVisible();
+    await expect(page.getByTestId("deck-tab-deck")).toBeVisible();
+    await expect(page.getByTestId("deck-tab-collection")).toBeVisible();
+    await expect(page.getByTestId("my-deck-strip")).toBeVisible();
     const firstCard = page.locator('[data-testid^="deck-card-"]').first();
     await expect(firstCard).toBeVisible();
-    // Card click opens the info overlay.
     await firstCard.click();
     await expect(page.getByTestId("card-info-overlay")).toBeVisible();
     await expect(page.getByTestId("card-info-name")).toBeVisible();
-    await expect(page.getByTestId("card-info-rarity")).toBeVisible();
-    await expect(page.getByTestId("card-info-type")).toBeVisible();
-    // Close via the X button.
     await page.getByTestId("card-info-close").click();
     await expect(page.getByTestId("card-info-overlay")).toHaveCount(0);
+    // Switch to Collection tab.
+    await page.getByTestId("deck-tab-collection").click();
+    await expect(page.getByTestId("collection-list")).toBeVisible();
+    const collectionCard = page.locator('[data-testid^="collection-card-"]').first();
+    await expect(collectionCard).toBeVisible();
   });
 
-  test("deck /deck still has 8 card slots (legacy)", async ({ page }) => {
+  test("deck /deck redirects to /decks", async ({ page }) => {
     await page.goto(`${BASE}/deck`);
-    const slots = page.locator('[data-testid="card-slot"]');
-    await expect(slots).toHaveCount(8);
+    await expect(page).toHaveURL(/\/decks$/);
+    await expect(page.getByTestId("my-deck-strip")).toBeVisible();
   });
 
   test("collection /collection lists cards with filters", async ({ page }) => {

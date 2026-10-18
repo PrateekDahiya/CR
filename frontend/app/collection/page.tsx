@@ -37,7 +37,7 @@ export default function CollectionPage() {
   const playable = catalog.filter((c) => c.playable).length;
 
   return (
-    <PageShell active="collection" topBarCurrencies={{ cards: found, coins: 0, gems: 0 }}>
+    <PageShell active="cards" topBarCurrencies={{ cards: found, coins: 0, gems: 0 }}>
       <div className="px-3 py-3">
         <header className="mb-2 flex items-center justify-between">
           <h1 className="text-2xl font-extrabold tracking-tight">Card Collection</h1>
