@@ -18,8 +18,11 @@ import {
   applyEnginePlay,
   broadcastState,
   startTickLoop,
+  createRoom,
+  setRoomEndedHandler,
   type PlayerSide,
 } from "./net/rooms.js";
+import { botDeckFor, startBotLoop, stopBotLoop, stopAllBotLoops } from "./ai.js";
 import {
   validateDeck,
   validateHand,
@@ -118,6 +121,60 @@ function emitErrorTwins(socket: Socket, code: string, message: string, matchId?:
 function fail(socket: Socket, ack: AckFn | undefined, code: string, message: string, matchId?: string): void {
   ack?.({ ok: false, error: { code, message } });
   emitErrorTwins(socket, code, message, matchId);
+}
+
+/**
+ * Practice match vs the AI bot: the player is always blue and the server owns
+ * the red side. The room is a normal authoritative room (same engine, same
+ * validation), so `card:play`, `state:update` and `match:end` all work exactly
+ * like PvP — no fake match ids, no client-side simulation.
+ */
+function handlePracticeMatch(
+  socket: Socket,
+  payload: { playerId?: string; deck?: string[]; difficulty?: string },
+  ack?: AckFn,
+): void {
+  const playerId = payload?.playerId;
+  if (typeof playerId !== "string" || playerId.length === 0) {
+    fail(socket, ack, "BAD_PLAYER", "playerId is required");
+    return;
+  }
+  const deck = payload?.deck ?? getDeck(playerId);
+  const checked = validateDeck(deck);
+  if (!checked.ok) {
+    fail(socket, ack, checked.code ?? "BAD_DECK", checked.message ?? "invalid deck");
+    return;
+  }
+  const validDeck = deck as string[];
+  const difficulty = payload?.difficulty === "hard" || payload?.difficulty === "easy"
+    ? payload.difficulty
+    : "medium";
+  const matchId = `ai-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const botDeck = botDeckFor(matchId);
+  const room = createRoom(
+    matchId,
+    { playerId, socketId: socket.id, deck: validDeck },
+    { playerId: `bot-${matchId}`, socketId: `bot-${matchId}`, deck: botDeck },
+  );
+  socketPlayer.set(socket.id, playerId);
+  playerSocket.set(playerId, socket.id);
+  socket.join(matchId);
+  const serverTimeMs = Date.now();
+  const opponentId = `AI (${difficulty})`;
+  socket.emit("queue:matched", {
+    matchId,
+    opponentId,
+    side: "blue" satisfies PlayerSide,
+    serverTimeMs,
+    mode: "ai",
+    difficulty,
+  });
+  socket.emit("match:found", { matchId, opponentId });
+  socket.emit("match:start", { matchId, state: room.state });
+  broadcastState(io, room);
+  startTickLoop(io, matchId);
+  startBotLoop(io, room, difficulty);
+  ack?.({ ok: true });
 }
 
 function handleQueueJoin(socket: Socket, payload: QueueJoinPayload, ack?: AckFn): void {
@@ -271,6 +328,14 @@ io.on("connection", (socket) => {
     handleQueueJoin(socket, payload, ack);
   });
 
+  // Practice vs AI: instant real match against the server-side bot.
+  socket.on("match:practice", (payload: { playerId?: string; deck?: string[]; difficulty?: string }, ack?: AckFn) => {
+    handlePracticeMatch(socket, payload, ack);
+  });
+  socket.on("queue:ai", (payload: { playerId?: string; deck?: string[]; difficulty?: string }, ack?: AckFn) => {
+    handlePracticeMatch(socket, payload, ack);
+  });
+
   // Legacy alias: matchId is ignored, treated as queue:join (§11/§12.3).
   socket.on("match:join", (payload: LegacyJoinPayload, ack?: AckFn) => {
     handleQueueJoin(socket, { playerId: payload?.playerId, deck: payload?.deck }, ack);
@@ -337,3 +402,14 @@ io.on("connection", (socket) => {
 httpServer.listen(PORT, () => {
   console.log(`[backend] listening on :${PORT}`);
 });
+
+// Let the room registry notify the bot brain when a match ends.
+setRoomEndedHandler((matchId) => stopBotLoop(matchId));
+
+// Free every bot think loop on shutdown (dev restarts keep the process clean).
+for (const sig of ["SIGINT", "SIGTERM"] as const) {
+  process.on(sig, () => {
+    stopAllBotLoops();
+    httpServer.close(() => process.exit(0));
+  });
+}

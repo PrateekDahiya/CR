@@ -24,6 +24,7 @@ import {
   disconnect,
   getSocket,
   joinQueue,
+  joinAiMatch,
   leaveQueue,
   onGameError,
   onMatchEnd,
@@ -38,6 +39,7 @@ import {
   type StateUpdate,
 } from "../socket";
 import { getCard } from "../cards";
+import { toBattleDeck } from "../battleDeck";
 
 export type BattlePhase = "idle" | "searching" | "in-match" | "ended";
 
@@ -260,6 +262,8 @@ export interface UseBattle {
   error: string | null;
   clearError: () => void;
   join: () => Promise<void>;
+  /** Starts a real authoritative match vs the server-side AI bot. */
+  joinPractice: (difficulty?: "easy" | "medium" | "hard") => Promise<void>;
   leave: () => void;
   resync: () => void;
 }
@@ -367,6 +371,49 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
     }
   }, [backendUrl]);
 
+  /**
+   * Starts a real match against the server-side bot (`match:practice`).
+   * Used by the BATTLE button on /battle: PvP needs two clients, so a solo
+   * player always gets an authoritative AI game instead of an empty queue.
+   */
+  const joinPractice = useCallback(
+    async (difficulty: "easy" | "medium" | "hard" = "medium") => {
+      const id = playerIdRef.current.trim();
+      const raw = deckRef.current;
+      const d = toBattleDeck(raw);
+      if (id.length === 0) {
+        setError("Missing playerId.");
+        return;
+      }
+      setError(null);
+      setResult(null);
+      setSnapshot(null);
+      setPrevSnapshot(null);
+      matchStartMsRef.current = 0;
+      snapshotRef.current = null;
+      prevSnapshotRef.current = null;
+      try {
+        const sock = connect(backendUrl);
+        setConnected(sock.connected);
+        const sel = await selectDeck(id, d);
+        if (!sel.ok) {
+          setError(sel.error ? `${sel.error.code}: ${sel.error.message}` : "deck:select rejected");
+          return;
+        }
+        const ack = await joinAiMatch(id, d, difficulty);
+        if (!ack.ok) {
+          setError(ack.error ? `${ack.error.code}: ${ack.error.message}` : "match:practice rejected");
+          return;
+        }
+        setQueuePosition(null);
+        setPhase("searching");
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "practice match failed");
+      }
+    },
+    [backendUrl],
+  );
+
   const leave = useCallback(() => {
     const id = playerIdRef.current.trim();
     if (id.length > 0) {
@@ -454,6 +501,14 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
         }
         snapshotRef.current = s;
         setSnapshot(s);
+        // Adopting a snapshot means we are IN that match. Without this the
+        // matchId stays null when the page mounts after match:start (the usual
+        // case when arriving from the matchmaking loader) and every deploy is
+        // rejected with "Not in a match yet".
+        if (s.matchId && matchIdRef.current !== s.matchId) {
+          matchIdRef.current = s.matchId;
+          setMatchId(s.matchId);
+        }
         setReconnecting(false);
         setPhase((p) => (p === "ended" ? p : "in-match"));
         if (s.matchId && !matchStartMsRef.current) matchStartMsRef.current = s.serverTimeMs;
@@ -690,6 +745,7 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
     error,
     clearError,
     join,
+    joinPractice,
     leave,
     resync,
   };

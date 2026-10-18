@@ -105,6 +105,8 @@ export function getSocket(): Socket | null {
 export interface SocketClient {
   socket: Socket | null;
   joinQueue: (playerId: string, deck?: string[]) => void;
+  /** Instant real match vs the server-side bot (match:practice). */
+  joinAiMatch: (playerId: string, deck: string[], difficulty?: "easy" | "medium" | "hard") => void;
   leaveQueue: (playerId?: string) => void;
   selectDeck: (playerId: string, deck: string[]) => void;
   onMatched: (cb: (matchId: string, side: "blue" | "red", opponentId?: string) => void) => Unsubscribe;
@@ -120,6 +122,10 @@ function wrapSocket(s: Socket | null): SocketClient {
       const payload: Record<string, unknown> = { playerId };
       if (deck) payload.deck = deck;
       s.emit("queue:join", payload);
+    },
+    joinAiMatch: (playerId, deck, difficulty) => {
+      if (!s) return;
+      s.emit("match:practice", { playerId, deck, ...(difficulty ? { difficulty } : {}) });
     },
     leaveQueue: (playerId) => {
       if (!s) return;
@@ -260,6 +266,19 @@ function emitWithAck(event: string, payload: unknown, timeoutMs = 5000): Promise
 /** Request matchmaking. Deck must be 8 distinct card ids (GAME_DESIGN §4/§11). */
 export function joinQueue(playerId: string, deck: string[]): Promise<Ack> {
   return emitWithAck("queue:join", { playerId, deck });
+}
+
+/**
+ * Instant practice match against the server-side AI bot. The server creates a
+ * real authoritative room (blue = you, red = bot) and answers with
+ * queue:matched — so every gameplay event works exactly like PvP.
+ */
+export function joinAiMatch(
+  playerId: string,
+  deck: string[],
+  difficulty: "easy" | "medium" | "hard" = "medium",
+): Promise<Ack> {
+  return emitWithAck("match:practice", { playerId, deck, difficulty });
 }
 
 /** Leave matchmaking. Idempotent — server acks ok even if not queued. */

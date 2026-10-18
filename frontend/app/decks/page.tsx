@@ -103,6 +103,11 @@ export default function DecksPage() {
   // "Use": fills the first free slot; a full deck (or moving a card already in
   // the deck) opens the slot picker so the user always chooses what is replaced.
   const requestUse = (name: string) => {
+    if (factsByName[name]?.playable === false) {
+      setInfo(null);
+      say(`${pretty(name)} can't be used in battles yet`);
+      return;
+    }
     const res = useCard(name);
     if (res.kind === "placed") {
       setInfo(null);
@@ -245,6 +250,7 @@ export default function DecksPage() {
                   level={15}
                   testId={`collection-card-${c.name}`}
                   inDeck={deck.includes(c.name)}
+                  locked={!c.playable}
                   onClick={() => setInfo({ name: c.name, slot: "list" })}
                 />
               ))}
@@ -283,7 +289,7 @@ export default function DecksPage() {
                     : undefined
                 }
                 onClose={() => setInfo(null)}
-                onUse={() => requestUse(info.name)}
+                onUse={f.playable === false ? undefined : () => requestUse(info.name)}
                 onRemove={inDeck ? () => doRemove(info.slot, info.name) : undefined}
                 onUpgrade={() => setInfo(null)}
                 inDeck={inDeck}

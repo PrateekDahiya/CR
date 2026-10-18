@@ -53,7 +53,7 @@ import {
   playWin,
   toggleMute,
 } from "../../lib/battle/sfx";
-import { sendEmote } from "../../lib/socket";
+import { requestSync, sendEmote } from "../../lib/socket";
 import { crBgStyle } from "../../lib/crTheme";
 import { CRButton } from "../../components/ui";
 import type { Tower, Unit } from "../../../shared/types";
@@ -103,9 +103,14 @@ function loadDeck(): string[] {
 
 function loadPlayerId(): string {
   try {
-    return window.localStorage.getItem(PLAYER_STORAGE_KEY) ?? "";
+    const existing = window.localStorage.getItem(PLAYER_STORAGE_KEY);
+    if (existing && existing.length > 0) return existing;
+    // Always have an id so card deploys are accepted by the server.
+    const generated = `guest-${Math.random().toString(36).slice(2, 8)}`;
+    window.localStorage.setItem(PLAYER_STORAGE_KEY, generated);
+    return generated;
   } catch {
-    return "";
+    return "guest";
   }
 }
 
@@ -127,6 +132,17 @@ export default function BattlePage() {
     setPlayerId(loadPlayerId());
     setMutedState(isMuted());
     setReady(true);
+    // Arriving from the matchmaking loader (or reloading mid-match): ask the
+    // server for that match's snapshot so the hook adopts it and deploys work.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const mid = params.get("matchId");
+      if (mid) {
+        requestSync(mid);
+      }
+    } catch {
+      // ignore
+    }
   }, []);
 
   const battle = useBattle({ backendUrl, playerId, deck });
@@ -280,11 +296,11 @@ export default function BattlePage() {
     prevResultRef.current = null;
     seenUnitsRef.current = new Set();
     battle.leave();
-    await battle.join();
+    await battle.joinPractice("medium");
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-2 text-white" style={crBgStyle()}>
+    <main className="relative h-[100dvh] w-full overflow-hidden text-white" style={crBgStyle()}>
       <style>{`
         @keyframes battle-shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { transform: translateX(-4px); } }
         .battle-shake { animation: battle-shake 0.4s ease; }
@@ -296,77 +312,12 @@ export default function BattlePage() {
 
       <div
         data-testid="battle-page"
-        className="flex w-full max-w-[440px] flex-col gap-2"
+        className="relative h-[100dvh] w-full max-w-[440px] overflow-hidden"
       >
-        <div className="flex items-center justify-between rounded-lg border border-slate-600/60 bg-[#12224a]/90 px-2 py-1.5 shadow-md">
-          <Link
-            href="/"
-            data-testid="battle-home-link"
-            className="rounded-md border border-slate-600 bg-gradient-to-b from-slate-500 to-slate-700 px-2 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white active:translate-y-0.5"
-          >
-            ← Menu
-          </Link>
-          <span className="text-xs font-extrabold uppercase tracking-[0.2em] text-amber-300 [text-shadow:1px_1px_0_rgba(0,0,0,0.6)]">
-            ⚔️ Battle
-          </span>
-          <Link
-            href="/decks"
-            data-testid="battle-deck-link"
-            className="rounded-md border border-sky-800 bg-gradient-to-b from-sky-400 to-sky-600 px-2 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white active:translate-y-0.5"
-          >
-            Deck
-          </Link>
-        </div>
-
-        <BattleTopBar
-          enemyName={opponentId ?? "??? (searching)"}
-          enemyTrophies={0}
-          playerName={playerId || "you"}
-          playerTrophies={0}
-          timeLeftSec={battle.timeLeftSec}
-          isOvertime={battle.isOvertime}
-          isMuted={muted}
-          onToggleMute={() => setMutedState(toggleMute())}
-          onEmote={() => {
-            if (matchId && playerId) {
-              try {
-                void sendEmote(matchId, playerId, "wave");
-              } catch {
-                // cosmetic only
-              }
-            }
-          }}
-        />
-
-        {battle.isDoubleElixir && !battle.isOvertime && phase === "in-match" && (
-          <div
-            data-testid="double-elixir-badge"
-            className="rounded-lg border border-fuchsia-400 bg-fuchsia-950 px-3 py-1 text-center text-[11px] font-extrabold text-fuchsia-200"
-          >
-            ⚡ 2x Elixir — last minute + overtime rate
-          </div>
-        )}
-
-        {battle.reconnecting && (
-          <div data-testid="reconnect-banner" className="rounded-lg border border-amber-500 bg-amber-950 px-3 py-2 text-center text-xs font-bold text-amber-200">
-            Reconnecting… requesting latest snapshot{" "}
-            <button type="button" onClick={battle.resync} className="underline hover:text-amber-100">
-              Retry sync
-            </button>
-          </div>
-        )}
-
-        {showBanner && phase === "in-match" && (
-          <div data-testid="battle-banner" className="rounded-xl border-b-4 border-amber-700 bg-gradient-to-b from-amber-300 to-amber-500 px-3 py-2 text-center text-2xl font-extrabold text-red-900 [text-shadow:1px_1px_0_rgba(255,255,255,0.5)]">
-            Battle! ⚔️
-            <span className="block text-xs font-bold text-red-950">
-              {playerId || "you"} vs {opponentId ?? "opponent"}
-            </span>
-          </div>
-        )}
-
+        {/* Arena fills the viewport; the bottom HUD overlaps only its lower edge so the
+            player's king tower stays visible and the page never scrolls. */}
         <div
-          className={`relative overflow-hidden rounded-xl border-2 border-slate-600/70 shadow-lg ${
+          className={`absolute inset-x-0 top-0 flex h-[calc(100%-86px)] items-center justify-center ${
             invalidFlash ? "battle-shake" : ""
           }`}
           onMouseMove={(e) => {
@@ -382,60 +333,107 @@ export default function BattlePage() {
             selectedCell={hover}
             mySide={side}
             onTileClick={(x, y) => void handleTile(x, y)}
+            className="h-full"
           />
           {phase === "idle" && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-lg bg-[#050b1c]/85 p-4 text-center backdrop-blur-[2px]">
-              <p className="text-sm font-bold text-slate-200">
-                {playerId ? `Ready as ${playerId}` : "Tap BATTLE to find an opponent."}
-              </p>
+            <div className="absolute inset-0 flex items-center justify-center bg-[#050b1c]/55">
               <CRButton
                 variant="gold"
-                size="lg"
+                size="xl"
                 testId="battle-join"
-                onClick={() => void battle.join()}
+                onClick={() => void battle.joinPractice("medium")}
                 icon="⚔️"
               >
                 Battle
               </CRButton>
-              <Link href="/decks" className="text-xs font-bold text-amber-300 underline">
-                Change deck
-              </Link>
             </div>
           )}
           {phase === "searching" && (
             <div
               data-testid="queue-status"
-              className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-lg bg-[#050b1c]/85 p-4 text-center backdrop-blur-[2px]"
+              className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#050b1c]/70 text-center"
             >
               <span className="battle-spinner inline-block text-3xl">🌀</span>
               <p className="text-sm font-extrabold uppercase tracking-wide text-amber-300">
-                Searching for opponent…
+                Searching…
               </p>
-              {battle.queuePosition !== null && (
-                <p className="text-xs font-bold text-slate-300">#{battle.queuePosition} in queue</p>
-              )}
               <CRButton variant="red" size="sm" testId="queue-cancel" onClick={battle.leave}>
                 Cancel
               </CRButton>
             </div>
           )}
+          {showBanner && phase === "in-match" && (
+            <div
+              data-testid="battle-banner"
+              className="absolute inset-x-0 top-24 mx-auto w-fit rounded-xl border-b-4 border-amber-700 bg-gradient-to-b from-amber-300 to-amber-500 px-5 py-1.5 text-2xl font-extrabold uppercase text-red-900 [text-shadow:1px_1px_0_rgba(255,255,255,0.5)]"
+            >
+              Battle! ⚔️
+            </div>
+          )}
         </div>
 
-        <ElixirBar elixir={ready ? displayElixir : 5} max={10} opponentElixir={opponentElixir} />
+        {/* Top HUD — translucent strip over the arena. */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
+          <BattleTopBar
+            enemyName={opponentId ?? "Opponent"}
+            enemyTrophies={0}
+            playerName={playerId || "you"}
+            playerTrophies={0}
+            timeLeftSec={battle.timeLeftSec}
+            isOvertime={battle.isOvertime}
+            isMuted={muted}
+            onToggleMute={() => setMutedState(toggleMute())}
+            onEmote={() => {
+              if (matchId && playerId) {
+                try {
+                  void sendEmote(matchId, playerId, "wave");
+                } catch {
+                  // cosmetic only
+                }
+              }
+            }}
+          />
+          {battle.isDoubleElixir && !battle.isOvertime && phase === "in-match" && (
+            <div
+              data-testid="double-elixir-badge"
+              className="mx-auto mt-0.5 w-fit rounded-full bg-fuchsia-950/85 px-3 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-fuchsia-200"
+            >
+              ⚡ 2x Elixir
+            </div>
+          )}
+          {battle.reconnecting && (
+            <div
+              data-testid="reconnect-banner"
+              className="mx-auto mt-1 w-fit rounded-full bg-amber-950/90 px-3 py-0.5 text-[10px] font-bold text-amber-200"
+            >
+              Reconnecting…{" "}
+              <button type="button" onClick={battle.resync} className="underline hover:text-amber-100">
+                Retry
+              </button>
+            </div>
+          )}
+        </div>
 
-        <Hand
-          hand={handCards}
-          elixir={displayElixir}
-          selectedIndex={battle.selected}
-          nextCard={nextCardInfo}
-          onSelect={battle.selectCard}
-        />
+        {/* Bottom HUD — elixir bar + hand float over the arena with a scrim. */}
+        <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-[#050b1c] via-[#050b1c]/80 to-transparent px-1 pb-1 pt-7">
+          <ElixirBar elixir={ready ? displayElixir : 5} max={10} opponentElixir={opponentElixir} />
+          <div className="mt-1">
+            <Hand
+              hand={handCards}
+              elixir={displayElixir}
+              selectedIndex={battle.selected}
+              nextCard={nextCardInfo}
+              onSelect={battle.selectCard}
+            />
+          </div>
+        </div>
 
+        {/* Transient notices sit just above the hand. */}
         {(battle.error || notice) && (
           <div
             data-testid="battle-error"
             role={battle.error ? "alert" : "status"}
-            className="flex items-start justify-between gap-2 rounded-lg border border-red-700 bg-red-950 px-3 py-2 text-xs text-red-200"
+            className="absolute inset-x-4 bottom-28 z-20 flex items-start justify-between gap-2 rounded-lg border border-red-700 bg-red-950/95 px-3 py-1.5 text-[11px] text-red-100"
           >
             <span>{battle.error ?? notice}</span>
             <button
@@ -453,7 +451,9 @@ export default function BattlePage() {
         )}
 
         {!battle.connected && phase !== "idle" && (
-          <p className="text-center text-[11px] text-white/70">Socket offline — check the backend at {backendUrl}.</p>
+          <p className="absolute inset-x-0 bottom-32 z-20 text-center text-[11px] text-white/70">
+            Socket offline — backend at {backendUrl}
+          </p>
         )}
 
         {battle.result && (

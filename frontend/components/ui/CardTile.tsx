@@ -21,6 +21,8 @@ export interface CardTileProps {
   /** Selected state (battle hand): sets data-selected + aria-pressed and the gold ring. */
   selected?: boolean;
   dimmed?: boolean;
+  /** Display-only card (not usable in battles yet): dimmed with a "Soon" chip. */
+  locked?: boolean;
   testId?: string;
   className?: string;
   ariaLabel?: string;
@@ -43,6 +45,7 @@ export default function CardTile({
   inDeck = false,
   selected = false,
   dimmed = false,
+  locked = false,
   testId,
   className = "",
   ariaLabel,
@@ -52,12 +55,13 @@ export default function CardTile({
       type="button"
       data-testid={testId}
       data-in-deck={inDeck || undefined}
+      data-locked={locked || undefined}
       data-selected={selected || undefined}
       aria-pressed={selected || undefined}
       onClick={onClick}
       aria-label={ariaLabel ?? `${name}${cost > 0 ? `, ${cost} elixir` : ""}`}
       className={`relative flex flex-col items-center gap-0.5 rounded-lg transition active:scale-95 ${
-        dimmed ? "opacity-45" : ""
+        dimmed || locked ? "opacity-45" : ""
       } ${className}`}
     >
       <CardArt
@@ -72,6 +76,15 @@ export default function CardTile({
       />
       {showName && (
         <span className="max-w-full truncate text-[10px] font-bold text-white/90">{name}</span>
+      )}
+      {locked && (
+        <span
+          data-testid={`card-tile-locked-${name}`}
+          className="absolute inset-x-0 bottom-0 rounded-b-lg bg-slate-900/85 py-0.5 text-center text-[8px] font-black uppercase tracking-wide text-slate-200"
+          aria-hidden="true"
+        >
+          soon
+        </span>
       )}
       {inDeck && (
         <span

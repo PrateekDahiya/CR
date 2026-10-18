@@ -182,7 +182,9 @@ export default function CardInfoOverlay({
             <div className="text-[10px] font-extrabold uppercase tracking-wide">Upgrade</div>
             <div className="text-xs font-extrabold">60000 🪙</div>
           </button>
-          {onUse && (
+          {/* Use is hidden for cards that are already in My Deck — the card is
+              already there, so only Move/Remove actions make sense. */}
+          {onUse && !inDeck && (
             <button
               type="button"
               data-testid="card-info-use"

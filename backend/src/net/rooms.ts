@@ -471,6 +471,16 @@ export function getPocketFor(room: Room, side: PlayerSide): { left: boolean; rig
 
 export const TICK_MS = 100;
 
+/**
+ * End-of-match hook so the bot brain (ai.ts) can stop its think loop without
+ * rooms.ts importing it (avoids a cycle). Registered once by index.ts.
+ */
+let onRoomEnded: ((matchId: string) => void) | null = null;
+
+export function setRoomEndedHandler(fn: ((matchId: string) => void) | null): void {
+  onRoomEnded = fn;
+}
+
 /** Advance one tick via engine.tickGame, else tick-counter STUB. */
 // O(1) registry work + O(u*(u+t)) engine tick (see engine.tickGame) + O(u+t)
 // syncWire + one redis publish (stringify lives in redis.publishState).
@@ -558,6 +568,8 @@ export function startTickLoop(io: Server, matchId: string): void {
         crowns: current.state.crowns,
       });
       stopTickLoop(matchId);
+      // Bot brain (ai.ts) listens for room end and stops thinking.
+      onRoomEnded?.(matchId);
     }
   }, TICK_MS);
   const timer = room.timer as unknown as { unref?: () => void };

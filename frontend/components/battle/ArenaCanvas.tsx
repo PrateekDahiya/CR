@@ -230,6 +230,7 @@ export default function ArenaCanvas({
   const towersRef = useRef<Tower[]>(towers);
   const liveRef = useRef<Unit[]>(live);
   const selRef = useRef<Vec2 | null>(selectedCell);
+  const sideRef = useRef<PlayerSide>(mySide);
   const spellsRef = useRef<SpellFx[]>(spells);
   const extDmgRef = useRef<DamageNumber[] | undefined>(damageNumbers);
   const particlesRef = useRef<Particle[]>([]);
@@ -243,6 +244,7 @@ export default function ArenaCanvas({
   towersRef.current = towers;
   liveRef.current = live;
   selRef.current = selectedCell;
+  sideRef.current = mySide;
   spellsRef.current = spells;
   extDmgRef.current = damageNumbers;
 
@@ -411,6 +413,28 @@ export default function ArenaCanvas({
       const prev = prevRef.current;
       const curr = currRef.current;
 
+      // Player's half is always at the BOTTOM (like real CR). The server keeps
+      // blue = server-y 0..14; when the player is blue the board is drawn
+      // mirrored so y0 lands at the bottom. O(1) transform, geometry untouched.
+      c.save();
+      if (sideRef.current === "blue") {
+        c.translate(0, H);
+        c.scale(1, -1);
+      }
+
+      // Glyphs must stay upright even when the board is mirrored.
+      const upright = (tx: number, ty: number, paint: () => void): void => {
+        if (sideRef.current !== "blue") {
+          paint();
+          return;
+        }
+        c.save();
+        c.translate(tx, ty);
+        c.scale(1, -1);
+        paint();
+        c.restore();
+      };
+
       // --- static terrain: O(1) blit (pre-rendered grass/river/bridges) ---
       if (bg) {
         c.save();
@@ -445,7 +469,7 @@ export default function ArenaCanvas({
       }
 
       // --- deploy tint: own half blue, enemy half red (on selection) ---
-      const ownTop = mySide === "blue"; // blue deploys y0-14 (server coords §5.3)
+      const ownTop = sideRef.current === "blue"; // blue deploys y0-14 (server coords §5.3)
       const ownY: [number, number] = ownTop ? [0, 14] : [17, 31];
       const foeY: [number, number] = ownTop ? [17, 31] : [0, 14];
       if (sel) {
@@ -462,7 +486,7 @@ export default function ArenaCanvas({
       c.setLineDash([4, 3]);
       // Blue pocket y17-20 / Red pocket y11-14, split at x=9
       const pockets: Array<[number, number, number, number]> =
-        mySide === "blue"
+        sideRef.current === "blue"
           ? [
               [0, 17, 9, 20],
               [9, 17, 18, 20],
@@ -534,7 +558,7 @@ export default function ArenaCanvas({
           c.font = `${t.kind === "king" ? 20 : 17}px serif`;
           c.textAlign = "center";
           c.textBaseline = "middle";
-          c.fillText(t.kind === "king" ? "👑" : "🏰", cx, cy + 1);
+          upright(cx, cy + 1, () => c.fillText(t.kind === "king" ? "👑" : "🏰", 0, 0));
           drawTowerHpBar(c, t, cx, cy - baseR - 4, TW * 2.4);
         } else {
           // rubble
@@ -552,7 +576,7 @@ export default function ArenaCanvas({
           c.font = `${Math.round(18 * pulse)}px serif`;
           c.textAlign = "center";
           c.textBaseline = "middle";
-          c.fillText("👑", cx, cy - baseR - 12);
+          upright(cx, cy - baseR - 12, () => c.fillText("👑", 0, 0));
         }
       }
 
@@ -586,7 +610,7 @@ export default function ArenaCanvas({
         c.font = "13px serif";
         c.textAlign = "center";
         c.textBaseline = "middle";
-        c.fillText(emojiFor(u.cardId), cx, cy + 0.5);
+        upright(cx, cy + 0.5, () => c.fillText(emojiFor(u.cardId), 0, 0));
         // HP bar
         const max = Math.max(1, u.maxHitPoints);
         const pct = clamp(u.hitPoints / max, 0, 1);
@@ -622,7 +646,7 @@ export default function ArenaCanvas({
           c.font = "18px serif";
           c.textAlign = "center";
           c.textBaseline = "middle";
-          c.fillText("⚡", cx, cy);
+          upright(cx, cy, () => c.fillText("⚡", 0, 0));
         } else if (s.kind === "arrows") {
           c.strokeStyle = "#f8fafc";
           c.lineWidth = 2;
@@ -633,7 +657,7 @@ export default function ArenaCanvas({
           }
           c.font = "14px serif";
           c.textAlign = "center";
-          c.fillText("➶", cx, cy);
+          upright(cx, cy, () => c.fillText("➶", 0, 0));
         } else {
           // fireball default
           c.strokeStyle = "#f97316";
@@ -649,7 +673,7 @@ export default function ArenaCanvas({
           c.font = "16px serif";
           c.textAlign = "center";
           c.textBaseline = "middle";
-          c.fillText("🔥", cx, cy);
+          upright(cx, cy, () => c.fillText("🔥", 0, 0));
         }
         c.restore();
       }
@@ -724,14 +748,17 @@ export default function ArenaCanvas({
           c.globalAlpha = 1 - age;
           c.lineWidth = 3;
           c.strokeStyle = "rgba(0,0,0,0.8)";
-          c.strokeText(f.text, fx, fy);
           c.fillStyle = f.color;
-          c.fillText(f.text, fx, fy);
+          upright(fx, fy, () => {
+            c.strokeText(f.text, 0, 0);
+            c.fillText(f.text, 0, 0);
+          });
         }
       }
       c.restore();
 
-      // --- wooden border ---
+      // Wooden border (unflipped so it always frames the canvas).
+      c.restore();
       c.save();
       c.strokeStyle = "#7c4a21";
       c.lineWidth = 6;
@@ -754,18 +781,20 @@ export default function ArenaCanvas({
     const px = e.clientX - rect.left;
     const py = e.clientY - rect.top;
     const tx = clamp(Math.floor((px / rect.width) * COLS), 0, COLS - 1);
-    const ty = clamp(Math.floor((py / rect.height) * ROWS), 0, ROWS - 1);
+    // Mirrored board (player = blue): invert the row so taps map back to server-y.
+    const rawY = clamp(Math.floor((py / rect.height) * ROWS), 0, ROWS - 1);
+    const ty = mySide === "blue" ? ROWS - 1 - rawY : rawY;
     onTileClick(tx, ty);
   };
 
   return (
-    <div className={`mx-auto w-full max-w-[420px] ${className}`} data-testid="arena-canvas-wrap">
+<div className={`mx-auto flex h-full w-full max-w-[420px] items-center justify-center ${className}`} data-testid="arena-canvas-wrap">
       <canvas
         ref={canvasRef}
         width={W}
         height={H}
         onClick={handleClick}
-        className="h-auto w-full touch-manipulation rounded-lg"
+        className="h-full max-h-full w-auto max-w-full touch-manipulate rounded-lg"
         style={{ aspectRatio: "18 / 32", background: GRASS_A }}
         data-testid="arena-canvas"
         aria-label="Battle arena 18 by 32 portrait"

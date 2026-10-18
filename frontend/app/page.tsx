@@ -10,6 +10,7 @@ import {
   type CardInfoOverlayProps,
 } from "../components/ui";
 import { backendUrl, getCatalog, getProfile, type CatalogEntry, type ProfileResponse } from "../lib/api";
+import { useDeckState } from "../lib/useDeck";
 
 // Home: matches docs/gameUI/03-home-battle-tab.png + 04-game-modes-sheet.png
 // (knight hero, big gold BATTLE, Game Modes sheet, Pass Royale widget).
@@ -21,6 +22,7 @@ export default function Home() {
   const [matchmaking, setMatchmaking] = useState<null | "pvp" | "ai">(null);
   const [modesOpen, setModesOpen] = useState(false);
   const [info, setInfo] = useState<{ name: string; rarity: CardInfoOverlayProps["rarity"]; cardType: CardInfoOverlayProps["cardType"]; elixir: number } | null>(null);
+  const { deck } = useDeckState();
 
   useEffect(() => {
     let cancelled = false;
@@ -59,19 +61,22 @@ export default function Home() {
   }, []);
 
   const playable = catalog.filter((c) => c.playable);
-  const playableNames = playable.map((c) => c.name);
-  // Pick the 8 playable cards in canonical order (knight first).
-  const playingDeck = playableNames.slice(0, 8);
   const playableByName = new Map(playable.map((c) => [c.name, c]));
+  const factsByName = new Map(catalog.map((c) => [c.name, c]));
+  // Playing Deck = the real saved deck (My Deck), 4 per row like /decks.
+  const playingDeck = deck.filter(Boolean);
+  const avgElixir = playingDeck.length
+    ? (playingDeck.reduce((a, n) => a + (factsByName.get(n)?.elixir ?? 0), 0) / 8).toFixed(1)
+    : "—";
 
   const showInfo = (name: string) => {
-    const c = playableByName.get(name);
-    if (!c) return;
+    const f = factsByName.get(name);
+    if (!f) return;
     setInfo({
-      name: c.name,
-      rarity: c.rarity as CardInfoOverlayProps["rarity"],
-      cardType: c.cardType as CardInfoOverlayProps["cardType"],
-      elixir: c.elixir,
+      name: f.name,
+      rarity: f.rarity as CardInfoOverlayProps["rarity"],
+      cardType: f.cardType as CardInfoOverlayProps["cardType"],
+      elixir: f.elixir,
     });
   };
 
@@ -136,44 +141,59 @@ export default function Home() {
         <button
           type="button"
           data-testid="home-battle"
-          onClick={() => setMatchmaking("pvp")}
+onClick={() => setMatchmaking("ai")}
           className="mt-3 block w-full rounded-2xl border-b-4 border-amber-800 bg-gradient-to-b from-amber-300 to-amber-600 px-4 py-3 text-center text-2xl font-extrabold uppercase tracking-wider text-amber-950 shadow-md active:translate-y-0.5"
         >
           ⚔️ Battle
         </button>
 
-        {/* Playing-deck preview (8 cards) - click to view info. */}
+        {/* Playing-deck preview (the real My Deck) - click a card for info. */}
         <section
           data-testid="home-playing-deck"
-          className="mt-3 rounded-2xl border-2 border-slate-700 bg-slate-900/60 p-2"
+          className="mt-3 rounded-xl border-2 border-amber-600/50 bg-[#12224a]/80 p-2 shadow-[0_2px_0_rgba(0,0,0,0.4)]"
         >
-          <header className="mb-1 flex items-center justify-between text-xs font-extrabold uppercase tracking-wider text-slate-200">
-            <span>Playing Deck</span>
-            <a href="/deck" data-testid="home-edit-deck" className="text-amber-300 underline">
-              Edit
-            </a>
+          <header className="mb-1.5 flex items-center justify-between">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-100">
+              Playing Deck
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-fuchsia-300">🟣 {avgElixir} / 10</span>
+              <a
+                href="/decks"
+                data-testid="home-edit-deck"
+                className="rounded-md border border-sky-800 bg-gradient-to-b from-sky-400 to-sky-600 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white"
+              >
+                Edit
+              </a>
+            </span>
           </header>
           {playingDeck.length === 0 ? (
             <p className="py-3 text-center text-xs text-slate-400" data-testid="home-playing-empty">
               Loading deck…
             </p>
           ) : (
-            <div className="grid grid-cols-8 gap-1" data-testid="home-playing-grid">
-              {playingDeck.map((name) => {
-                const c = playableByName.get(name);
-                if (!c) return null;
-                return (
+            <div className="grid grid-cols-4 gap-2" data-testid="home-playing-grid">
+              {Array.from({ length: 8 }).map((_, i) => {
+                const name = playingDeck[i];
+                const f = name ? factsByName.get(name) : null;
+                return f ? (
                   <CardTile
-                    key={name}
-                    name={c.name}
-                    rarity={c.rarity}
-                    cost={c.elixir}
+                    key={`${f.name}-${i}`}
+                    name={f.name}
+                    rarity={f.rarity}
+                    cost={f.elixir}
                     level={15}
-                    size="sm"
-                    testId={`home-playing-${name}`}
-                    ariaLabel={name}
-                    onClick={() => showInfo(name)}
+                    testId={`home-playing-${f.name}`}
+                    ariaLabel={f.name}
+                    onClick={() => showInfo(f.name)}
                   />
+                ) : (
+                  <div
+                    key={`empty-${i}`}
+                    className="grid h-20 w-16 place-items-center rounded-lg border-2 border-dashed border-slate-500/70 bg-slate-800/40 text-sm text-slate-400"
+                  >
+                    +
+                  </div>
                 );
               })}
             </div>
