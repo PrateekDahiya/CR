@@ -195,7 +195,30 @@ export function costOf(cardId: string): number | null {
   return COSTS[cardId] ?? null;
 }
 
-function toHandPayload(room: Room, side: PlayerSide): Array<{ card: string; handIndex: number; cost: number }> {
+export type HandEntry = { card: string; handIndex: number; cost: number };
+
+/**
+ * The AI service may answer with a stale/aliased card name while returning a
+ * valid handIndex. The hand slot is authoritative, so the server always plays
+ * the card that is actually in that slot.
+ */
+export function normalizeBotMove(
+  hand: readonly HandEntry[],
+  data: { card?: string; handIndex?: number; x?: number; y?: number },
+): BotMove | null {
+  const idx = typeof data.handIndex === "number" ? data.handIndex : -1;
+  if (!Number.isInteger(idx) || idx < 0 || idx >= hand.length) return null;
+  const handCard = hand[idx]?.card;
+  if (handCard === undefined) return null;
+  return {
+    card: handCard,
+    handIndex: idx,
+    x: typeof data.x === "number" ? data.x : 9,
+    y: typeof data.y === "number" ? data.y : 18,
+  };
+}
+
+function toHandPayload(room: Room, side: PlayerSide): HandEntry[] {
   const hand = getHand(room, side);
   const out: Array<{ card: string; handIndex: number; cost: number }> = [];
   for (let i = 0; i < hand.length; i += 1) {
@@ -233,15 +256,7 @@ export async function requestBotMove(
     });
     if (!res.ok) return fallbackMove(room, side);
     const data = (await res.json()) as { card?: string; handIndex?: number; x?: number; y?: number };
-    const idx = typeof data.handIndex === "number" ? data.handIndex : -1;
-    const card = typeof data.card === "string" ? data.card : hand[0]?.card;
-    if (card === undefined || idx < 0 || idx >= hand.length) return fallbackMove(room, side);
-    return {
-      card,
-      handIndex: idx,
-      x: typeof data.x === "number" ? data.x : 9,
-      y: typeof data.y === "number" ? data.y : 18,
-    };
+    return normalizeBotMove(hand, data) ?? fallbackMove(room, side);
   } catch {
     return fallbackMove(room, side);
   } finally {

@@ -13,11 +13,21 @@ import { CARDS, CARD_LIST } from "./game/cards.js";
 export const DECK_SIZE = 8;
 const isBattleCard = (id: string): boolean => CARDS[id] !== undefined;
 
-/** Starter deck (same list as the frontend fallback). */
-const DECK_FALLBACK: string[] = CARD_LIST
-  .filter((card) => card.type !== "tower")
-  .slice(0, DECK_SIZE)
-  .map((card) => card.id);
+/**
+ * Starter deck: 8 cards from the starter collection (all owned on day one).
+ * Keep this in sync with the frontend `STARTER_DECK_BALANCED` list.
+ */
+const DECK_FALLBACK: string[] = [
+  "knight",
+  "archers",
+  "musketeer",
+  "baby-dragon",
+  "giant",
+  "skeletons",
+  "fireball",
+  "cannon",
+];
+const STARTER_CARD_LEVEL = 9;
 
 export interface Player {
   playerId: string;
@@ -66,7 +76,12 @@ function defaultName(playerId: string): string {
 }
 
 function starterDeck(name = "Battle Deck"): Deck {
-  return { id: nextId("deck"), name, cards: [...DECK_FALLBACK], levels: Object.fromEntries(DECK_FALLBACK.map((id) => [id, 1])) };
+  return {
+    id: nextId("deck"),
+    name,
+    cards: [...DECK_FALLBACK],
+    levels: Object.fromEntries(DECK_FALLBACK.map((id) => [id, STARTER_CARD_LEVEL])),
+  };
 }
 
 /**

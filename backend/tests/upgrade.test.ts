@@ -12,6 +12,15 @@ import {
 describe("card upgrades", () => {
   beforeEach(() => resetPlayers());
 
+  it("gives new players a full deck of owned starter cards", () => {
+    const player = ensurePlayer("starter-account");
+    assert.equal(player.decks[0].cards.length, 8);
+    for (const id of player.decks[0].cards) {
+      assert.ok((player.cards[id] ?? 0) > 0, `${id} must be owned`);
+      assert.equal(player.decks[0].levels[id], player.cards[id]);
+    }
+  });
+
   it("charges coins, raises the owned level, and updates deck snapshots", () => {
     const pid = "upgrade-ok";
     const player = ensurePlayer(pid);
