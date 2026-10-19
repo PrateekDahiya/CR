@@ -211,7 +211,7 @@ export default function CollectionPage() {
     );
     return (
       <>
-        <ul className="grid grid-cols-4 gap-2" data-testid={`${groupId}-matched`} data-count={matched.length}>
+        <ul className="grid grid-cols-4 gap-2" data-testid={`matched-${groupId}`} data-count={matched.length}>
           {matched.map(tile)}
         </ul>
         {rest.length > 0 && (
@@ -219,7 +219,7 @@ export default function CollectionPage() {
             <p className="mb-1 mt-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
               Other cards
             </p>
-            <ul className="grid grid-cols-4 gap-2 opacity-80" data-testid={`${groupId}-rest`} data-count={rest.length}>
+            <ul className="grid grid-cols-4 gap-2 opacity-80" data-testid={`rest-${groupId}`} data-count={rest.length}>
               {rest.map(tile)}
             </ul>
           </>

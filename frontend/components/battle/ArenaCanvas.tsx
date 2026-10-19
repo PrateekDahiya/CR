@@ -65,6 +65,8 @@ export interface ArenaCanvasProps {
   selectedCell?: Vec2 | null;
   /** Viewer side — controls which half gets the blue deploy tint. Default "blue". */
   mySide?: PlayerSide;
+  /** Selected crown tower troop; used to draw the Princess tower icon. */
+  towerTroopId?: string;
   /** Active spell visuals (rings/flash). Optional — canvas also auto-flashes on HP drops. */
   spells?: SpellFx[];
   /** Floating combat text. Optional — canvas auto-spawns on HP drops if omitted. */
@@ -307,6 +309,7 @@ export default function ArenaCanvas({
   units,
   selectedCell = null,
   mySide = "blue",
+  towerTroopId,
   spells = [],
   damageNumbers,
   serverTimeMs,
@@ -334,6 +337,7 @@ export default function ArenaCanvas({
   const inspectEnabledRef = useRef<boolean>(inspectEnabled);
   const onInspectRef = useRef<ArenaCanvasProps["onInspect"]>(onInspect);
   const sideRef = useRef<PlayerSide>(mySide);
+  const towerTroopRef = useRef<string | undefined>(towerTroopId);
   const spellsRef = useRef<SpellFx[]>(spells);
   const extDmgRef = useRef<DamageNumber[] | undefined>(damageNumbers);
   const particlesRef = useRef<Particle[]>([]);
@@ -352,6 +356,7 @@ export default function ArenaCanvas({
   inspectEnabledRef.current = inspectEnabled;
   onInspectRef.current = onInspect;
   sideRef.current = mySide;
+  towerTroopRef.current = towerTroopId;
   spellsRef.current = spells;
   extDmgRef.current = damageNumbers;
 
@@ -721,6 +726,22 @@ export default function ArenaCanvas({
             c.textBaseline = "middle";
             c.fillText(t.kind === "king" ? "👑" : "🏰", 0, 1);
           });
+          // Tower troop icon: Princess towers show the selected troop art; the
+          // King tower always keeps the standard crown glyph.
+          if (t.kind === "princess" && towerTroopRef.current !== undefined) {
+            const troopArt = artFor(towerTroopRef.current);
+            if (troopArt !== null && troopArt.complete && troopArt.naturalWidth > 0) {
+              upright(cx, cy, () => {
+                const d = size * 0.68;
+                c.save();
+                c.beginPath();
+                c.arc(0, 0, d / 2, 0, Math.PI * 2);
+                c.clip();
+                c.drawImage(troopArt, -d / 2, -d / 2, d, d);
+                c.restore();
+              });
+            }
+          }
           // HP bar + level badge, always visually ABOVE the tower. The blue view
           // is mirrored, so "up on screen" is +y in board space there.
           const barOffset = sideRef.current === "blue" ? half + 8 : -(half + 8);

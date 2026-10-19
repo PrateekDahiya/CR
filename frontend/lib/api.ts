@@ -299,6 +299,7 @@ export interface PlayerProfile {
   activeDeck: DeckRecord;
   cards: Record<string, number>;
   towerLevels?: Record<string, number>;
+  kingLevel?: number;
   season: string;
 }
 
@@ -306,6 +307,8 @@ export interface DeckRecord {
   id: string;
   name: string;
   cards: string[];
+  levels?: Record<string, number>;
+  towerTroopId?: string;
 }
 
 export interface PlayerRow {
@@ -353,6 +356,7 @@ export interface UpgradeTowerResponse {
   level: number;
   cost: number;
   coins: number;
+  kingLevel: number;
 }
 
 /** POST /profile/:id/towers/:towerId/upgrade — crown-tower progression. */
@@ -382,7 +386,12 @@ export function createPlayerDeck(playerId: string, name?: string, cards?: string
   });
 }
 
-export function updatePlayerDeck(playerId: string, deckId: string, patch: { name?: string; cards?: string[] }, baseUrl?: string): Promise<DeckRecord> {
+export function updatePlayerDeck(
+  playerId: string,
+  deckId: string,
+  patch: { name?: string; cards?: string[]; levels?: Record<string, number>; towerTroopId?: string },
+  baseUrl?: string,
+): Promise<DeckRecord> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
   return putJson(`${base}/decks/${encodeURIComponent(playerId)}/${deckId}`, patch);
 }

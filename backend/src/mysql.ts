@@ -163,6 +163,11 @@ function getPool(): Pool | null {
   }
 }
 
+/** Persistence layer accessor (playerStore). Null when MySQL is unconfigured. */
+export function getMysqlPool(): Pool | null {
+  return getPool();
+}
+
 export function isMysqlConfigured(): boolean {
   // O(1): env presence only, no I/O.
   return env("DB_HOST").length > 0;

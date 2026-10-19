@@ -9,6 +9,12 @@
  */
 
 import { CARDS, CARD_LIST } from "./game/cards.js";
+import {
+  savePlayerDecks,
+  savePlayerProfile,
+  type StoredDeck,
+  type StoredPlayer,
+} from "./playerStore.js";
 
 export const DECK_SIZE = 8;
 const isBattleCard = (id: string): boolean => CARDS[id] !== undefined;
@@ -42,6 +48,8 @@ export interface Player {
   cards: Record<string, number>;
   /** Crown-tower troop id -> level (1..16); progressed independently. */
   towerLevels: Record<string, number>;
+  /** King Tower level. Side towers cannot exceed this. */
+  kingLevel: number;
   decks: Deck[];
   activeDeckId: string | null;
   createdAtMs: number;
@@ -129,12 +137,108 @@ export function ensurePlayer(playerId: string): Player {
         .filter((card) => card.type === "tower")
         .map((card) => [card.id, 1]),
     ),
+    kingLevel: 1,
     decks: [deck],
     activeDeckId: deck.id,
     createdAtMs: Date.now(),
   };
   players.set(playerId, player);
+  markDirty(playerId);
   return player;
+}
+
+/** Rebuild the in-memory store from MySQL rows at startup. */
+export function hydratePlayers(profiles: StoredPlayer[], decks: StoredDeck[]): number {
+  const byPlayer = new Map<string, Deck[]>();
+  for (const row of decks) {
+    const list = byPlayer.get(row.playerId) ?? [];
+    list.push({
+      id: row.id,
+      name: row.name,
+      cards: [...row.cards],
+      levels: { ...row.levels },
+      ...(row.towerTroopId ? { towerTroopId: row.towerTroopId } : {}),
+    });
+    byPlayer.set(row.playerId, list);
+  }
+  for (const row of profiles) {
+    const towerDefaults = Object.fromEntries(
+      Object.values(CARDS)
+        .filter((card) => card.type === "tower")
+        .map((card) => [card.id, 1]),
+    );
+    const restoredDecks = byPlayer.get(row.playerId) ?? [];
+    const player: Player = {
+      playerId: row.playerId,
+      name: row.name,
+      trophies: row.trophies,
+      coins: row.coins,
+      gems: row.gems,
+      wins: row.wins,
+      losses: row.losses,
+      draws: row.draws,
+      cards: { ...row.cards },
+      towerLevels: { ...towerDefaults, ...row.towerLevels },
+      kingLevel: Math.max(1, Math.min(CARD_MAX_LEVEL, row.kingLevel || 1)),
+      decks: restoredDecks.length > 0 ? restoredDecks : [starterDeck()],
+      activeDeckId:
+        row.activeDeckId !== null && restoredDecks.some((deck) => deck.id === row.activeDeckId)
+          ? row.activeDeckId
+          : restoredDecks[0]?.id ?? null,
+      createdAtMs: row.createdAtMs || Date.now(),
+    };
+    players.set(row.playerId, player);
+  }
+  return players.size;
+}
+
+function toStoredPlayer(player: Player): StoredPlayer {
+  return {
+    playerId: player.playerId,
+    name: player.name,
+    trophies: player.trophies,
+    coins: player.coins,
+    gems: player.gems,
+    wins: player.wins,
+    losses: player.losses,
+    draws: player.draws,
+    cards: { ...player.cards },
+    towerLevels: { ...player.towerLevels },
+    kingLevel: player.kingLevel,
+    activeDeckId: player.activeDeckId,
+    createdAtMs: player.createdAtMs,
+  };
+}
+
+const dirty = new Set<string>();
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Coalesced write-through persistence (O(1) mutation, batched DB writes). */
+function markDirty(playerId: string): void {
+  dirty.add(playerId);
+  if (flushTimer !== null) return;
+  flushTimer = setTimeout(() => {
+    flushTimer = null;
+    const ids = [...dirty];
+    dirty.clear();
+    for (const id of ids) {
+      const player = players.get(id);
+      if (player === undefined) continue;
+      savePlayerProfile(toStoredPlayer(player));
+      savePlayerDecks(
+        id,
+        player.decks.map((deck) => ({
+          id: deck.id,
+          playerId: id,
+          name: deck.name,
+          cards: deck.cards,
+          levels: deck.levels,
+          ...(deck.towerTroopId ? { towerTroopId: deck.towerTroopId } : {}),
+        })),
+      );
+    }
+  }, 200);
+  (flushTimer as unknown as { unref?: () => void }).unref?.();
 }
 
 export function getPlayer(playerId: string): Player | undefined {
@@ -145,6 +249,7 @@ export function setName(playerId: string, name: string): Player {
   const p = ensurePlayer(playerId);
   const clean = name.trim().slice(0, 16);
   if (clean.length > 0) p.name = clean;
+  markDirty(playerId);
   return p;
 }
 
@@ -176,6 +281,7 @@ export function createDeck(playerId: string, name?: string, cards?: string[]): D
   };
   p.decks.push(deck);
   if (p.activeDeckId === null) p.activeDeckId = deck.id;
+  markDirty(playerId);
   return { ...deck, cards: [...deck.cards], levels: { ...deck.levels } };
 }
 
@@ -200,6 +306,7 @@ export function updateDeck(
   }
   if (patch.levels !== undefined) deck.levels = { ...deck.levels, ...patch.levels };
   if (patch.towerTroopId !== undefined) deck.towerTroopId = patch.towerTroopId;
+  markDirty(playerId);
   return { ...deck, cards: [...deck.cards], levels: { ...deck.levels } };
 }
 
@@ -209,7 +316,8 @@ export function selectDeck(playerId: string, deckId: string): Deck | null {
   if (!p.decks.some((d) => d.id === deckId)) return null;
   p.activeDeckId = deckId;
   const deck = p.decks.find((d) => d.id === deckId);
-  return deck === undefined ? null : { ...deck, cards: [...deck.cards] };
+  markDirty(playerId);
+  return deck === undefined ? null : { ...deck, cards: [...deck.cards], levels: { ...deck.levels } };
 }
 
 export function deleteDeck(playerId: string, deckId: string): boolean {
@@ -219,6 +327,7 @@ export function deleteDeck(playerId: string, deckId: string): boolean {
   if (idx === -1) return false;
   p.decks.splice(idx, 1);
   if (p.activeDeckId === deckId) p.activeDeckId = p.decks[0]?.id ?? null;
+  markDirty(playerId);
   return true;
 }
 
@@ -249,6 +358,7 @@ export function adjustWallet(
   if (p.coins + coins < 0 || p.gems + gems < 0) return false;
   p.coins += coins;
   p.gems += gems;
+  markDirty(playerId);
   return true;
 }
 
@@ -257,8 +367,9 @@ export function grantCards(playerId: string, ids: string[], level = 1): void {
   const p = ensurePlayer(playerId);
   for (const id of ids) {
     if (!isBattleCard(id)) continue;
-    p.cards[id] = Math.min(15, (p.cards[id] ?? 0) + level);
+    p.cards[id] = Math.min(CARD_MAX_LEVEL, (p.cards[id] ?? 0) + level);
   }
+  markDirty(playerId);
 }
 
 export function ownsCard(playerId: string, cardId: string): boolean {
@@ -273,26 +384,64 @@ export function cardUpgradeCost(level: number): number {
 }
 
 export type TowerUpgradeResult =
-  | { ok: true; towerId: string; level: number; cost: number; coins: number }
-  | { ok: false; code: "BAD_TOWER" | "MAX_LEVEL" | "NO_COINS"; message: string; level: number; cost: number };
+  | { ok: true; towerId: string; level: number; cost: number; coins: number; kingLevel: number }
+  | {
+      ok: false;
+      code: "BAD_TOWER" | "MAX_LEVEL" | "NO_COINS" | "KING_LEVEL_REQUIRED";
+      message: string;
+      level: number;
+      cost: number;
+      kingLevel: number;
+    };
 
-/** Upgrade one crown tower troop by one level (separate from card levels). */
+/**
+ * Upgrade the King Tower (`towerId === "king"`) or a selected side tower.
+ * Side towers are capped at the King Tower level, so the King must be upgraded
+ * first before side towers can exceed it.
+ */
 export function upgradeTower(playerId: string, towerId: string): TowerUpgradeResult {
   const p = ensurePlayer(playerId);
+  const kingLevel = p.kingLevel;
+
+  if (towerId === "king") {
+    if (kingLevel >= CARD_MAX_LEVEL) {
+      return { ok: false, code: "MAX_LEVEL", message: "king tower is already at max level", level: kingLevel, cost: 0, kingLevel };
+    }
+    const cost = cardUpgradeCost(kingLevel);
+    if (p.coins < cost) {
+      return { ok: false, code: "NO_COINS", message: "not enough coins", level: kingLevel, cost, kingLevel };
+    }
+    p.coins -= cost;
+    p.kingLevel = kingLevel + 1;
+    markDirty(playerId);
+    return { ok: true, towerId, level: p.kingLevel, cost, coins: p.coins, kingLevel: p.kingLevel };
+  }
+
   if (CARDS[towerId]?.type !== "tower") {
-    return { ok: false, code: "BAD_TOWER", message: "unknown tower troop", level: 0, cost: 0 };
+    return { ok: false, code: "BAD_TOWER", message: "unknown tower troop", level: 0, cost: 0, kingLevel };
   }
   const current = p.towerLevels[towerId] ?? 1;
   if (current >= CARD_MAX_LEVEL) {
-    return { ok: false, code: "MAX_LEVEL", message: "tower is already at max level", level: current, cost: 0 };
+    return { ok: false, code: "MAX_LEVEL", message: "tower is already at max level", level: current, cost: 0, kingLevel };
+  }
+  if (current >= kingLevel) {
+    return {
+      ok: false,
+      code: "KING_LEVEL_REQUIRED",
+      message: "Upgrade the King Tower first",
+      level: current,
+      cost: 0,
+      kingLevel,
+    };
   }
   const cost = cardUpgradeCost(current);
   if (p.coins < cost) {
-    return { ok: false, code: "NO_COINS", message: "not enough coins", level: current, cost };
+    return { ok: false, code: "NO_COINS", message: "not enough coins", level: current, cost, kingLevel };
   }
   p.coins -= cost;
   p.towerLevels[towerId] = current + 1;
-  return { ok: true, towerId, level: current + 1, cost, coins: p.coins };
+  markDirty(playerId);
+  return { ok: true, towerId, level: current + 1, cost, coins: p.coins, kingLevel };
 }
 
 export type UpgradeResult =
@@ -323,6 +472,7 @@ export function upgradeCard(playerId: string, cardId: string): UpgradeResult {
   for (const deck of p.decks) {
     if (deck.cards.includes(cardId)) deck.levels[cardId] = next;
   }
+  markDirty(playerId);
   return { ok: true, cardId, level: next, cost, coins: p.coins };
 }
 
@@ -346,6 +496,7 @@ export function applyMatchResult(input: {
     if (result === "win") p.wins += 1;
     else if (result === "loss") p.losses += 1;
     else p.draws += 1;
+    markDirty(pid);
     out.push({ playerId: pid, trophyDelta: reward.trophies, coinDelta: reward.coins });
   };
   if (input.winner === "draw") {
@@ -384,5 +535,10 @@ export function allCardIds(): string[] {
 
 export function resetPlayers(): void {
   players.clear();
+  dirty.clear();
+  if (flushTimer !== null) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
   seq = 0;
 }

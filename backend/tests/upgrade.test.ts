@@ -69,11 +69,19 @@ describe("card upgrades", () => {
     assert.equal(player.cards.knight, CARD_MAX_LEVEL);
   });
 
-  it("upgrades crown towers independently of card levels", () => {
+  it("requires the King Tower upgrade before side towers", () => {
     const pid = "tower-upgrade";
     const player = ensurePlayer(pid);
-    player.coins = 100_000;
+    player.coins = 1_000_000;
     const before = player.towerLevels["tower-princess"];
+
+    const blocked = upgradeTower(pid, "tower-princess");
+    assert.equal(blocked.ok, false);
+    if (!blocked.ok) assert.equal(blocked.code, "KING_LEVEL_REQUIRED");
+
+    const king = upgradeTower(pid, "king");
+    assert.equal(king.ok, true);
+    if (king.ok) assert.equal(king.level, 2);
 
     const result = upgradeTower(pid, "tower-princess");
     assert.equal(result.ok, true);

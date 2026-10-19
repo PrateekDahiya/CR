@@ -81,22 +81,7 @@ export default function ShopPage() {
       <div className="px-3 py-3">
         <header className="mb-2 flex items-center justify-between">
           <h1 className="text-2xl font-extrabold tracking-tight text-white">Shop</h1>
-          <div className="flex gap-1.5">
-            <Link
-              href="/decks"
-              data-testid="shop-open-decks"
-              className="rounded-md border border-sky-700 bg-sky-500/20 px-2 py-1 text-[10px] font-extrabold uppercase text-sky-100"
-            >
-              Decks
-            </Link>
-            <Link
-              href="/collection"
-              data-testid="shop-open-cards"
-              className="rounded-md border border-amber-700 bg-amber-500/20 px-2 py-1 text-[10px] font-extrabold uppercase text-amber-100"
-            >
-              Cards
-            </Link>
-          </div>
+          <span className="text-[11px] font-bold text-slate-400">Prices are server-owned</span>
         </header>
 
         <div
@@ -131,7 +116,7 @@ export default function ShopPage() {
                 <div
                   key={d.id}
                   data-testid={`deal-${d.cardId ?? d.id}`}
-                  className="rounded-lg border border-emerald-500/60 bg-emerald-700/25 p-1.5 text-center"
+                  className="flex flex-col items-center justify-between rounded-lg border border-emerald-500/60 bg-emerald-700/25 p-1.5 text-center"
                 >
                   <CardTile
                     name={d.cardId ?? "knight"}
@@ -221,7 +206,7 @@ export default function ShopPage() {
           </header>
           <div className="grid grid-cols-4 gap-2">
             {towers.map((tower) => (
-              <div key={tower.id} className="rounded-lg border border-cyan-500/50 bg-cyan-900/25 p-1.5 text-center">
+              <div key={tower.id} className="flex flex-col items-center justify-between rounded-lg border border-cyan-500/50 bg-cyan-900/25 p-1.5 text-center">
                 <CardTile
                   name={tower.id}
                   rarity={tower.rarity}

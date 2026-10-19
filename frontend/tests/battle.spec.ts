@@ -181,7 +181,7 @@ test.describe("CR Clone battle /battle (chromium)", () => {
     await expect(page.locator('[data-testid^="deck-card-"]')).toHaveCount(8, { timeout: 15000 });
 
     // Swap the first deck slot for a card that is NOT in the starter deck.
-    const NEW_CARD = "mega-knight";
+    const NEW_CARD = "arrows";
     await page.getByTestId("deck-card-0").click();
     await expect(page.getByTestId("card-info-overlay")).toBeVisible();
     await page.getByTestId("card-info-remove").click();
@@ -190,7 +190,7 @@ test.describe("CR Clone battle /battle (chromium)", () => {
     await expect(fresh).toBeVisible();
     await fresh.click();
     await page.getByTestId("card-info-use").click();
-    await expect(page.getByTestId("deck-card-0")).toHaveAttribute("aria-label", /mega-knight/i, {
+    await expect(page.getByTestId("deck-card-0")).toHaveAttribute("aria-label", /arrows/i, {
       timeout: 10000,
     });
     await page.waitForTimeout(700); // let the debounced server save settle

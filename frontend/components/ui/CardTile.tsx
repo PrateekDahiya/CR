@@ -23,7 +23,7 @@ export interface CardTileProps {
   /** Selected state (battle hand): sets data-selected + aria-pressed and the gold ring. */
   selected?: boolean;
   dimmed?: boolean;
-  /** Display-only card (not usable in battles yet): dimmed with a "Soon" chip. */
+  /** Locked card (not owned): dimmed with a "Locked" chip. */
   locked?: boolean;
   testId?: string;
   className?: string;
@@ -87,7 +87,7 @@ export default function CardTile({
           className="absolute inset-x-0 bottom-0 rounded-b-lg bg-slate-900/85 py-0.5 text-center text-[8px] font-black uppercase tracking-wide text-slate-200"
           aria-hidden="true"
         >
-          soon
+          locked
         </span>
       )}
       {inDeck && (

@@ -218,3 +218,41 @@ CREATE TABLE IF NOT EXISTS spawn_template_level_stats (
   FOREIGN KEY (template_id) REFERENCES card_spawn_templates(template_id) ON DELETE CASCADE,
   INDEX idx_spawn_level_lookup (template_id, level, mode, stat_version)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Persistent player state (accounts are normally managed by the Node backend,
+-- but this keeps credentials and progress in the same store as content).
+CREATE TABLE IF NOT EXISTS player_accounts (
+  username VARCHAR(32) PRIMARY KEY,
+  player_id VARCHAR(64) NOT NULL UNIQUE,
+  salt VARCHAR(64) NOT NULL,
+  password_hash VARCHAR(128) NOT NULL,
+  created_at_ms BIGINT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS player_profiles (
+  player_id VARCHAR(64) PRIMARY KEY,
+  name VARCHAR(64) NOT NULL DEFAULT 'Player',
+  trophies INT NOT NULL DEFAULT 0,
+  coins BIGINT NOT NULL DEFAULT 500,
+  gems INT NOT NULL DEFAULT 20,
+  wins INT NOT NULL DEFAULT 0,
+  losses INT NOT NULL DEFAULT 0,
+  draws INT NOT NULL DEFAULT 0,
+  cards JSON NOT NULL,
+  tower_levels JSON NOT NULL,
+  king_level TINYINT NOT NULL DEFAULT 1,
+  active_deck_id VARCHAR(64) NULL,
+  created_at_ms BIGINT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS player_decks (
+  id VARCHAR(64) PRIMARY KEY,
+  player_id VARCHAR(64) NOT NULL,
+  name VARCHAR(64) NOT NULL DEFAULT 'Battle Deck',
+  cards JSON NOT NULL,
+  levels JSON NOT NULL,
+  tower_troop_id VARCHAR(40) NULL,
+  created_at_ms BIGINT NOT NULL DEFAULT 0,
+  FOREIGN KEY (player_id) REFERENCES player_profiles(player_id) ON DELETE CASCADE,
+  INDEX idx_player_decks (player_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

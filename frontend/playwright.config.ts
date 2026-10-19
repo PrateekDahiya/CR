@@ -11,6 +11,9 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./tests",
+  // Tests share one backend matchmaking queue and player store; parallel files
+  // can pair with each other's clients and make side assertions flaky.
+  workers: 1,
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000",
   },

@@ -148,6 +148,9 @@ export default function DecksPage() {
   const towers = useMemo(() => CARD_LIST.filter((c) => c.type === "tower"), []);
   const levelOfCard = (name: string): number => profile?.cards?.[name] ?? 1;
   const towerLevel = (id: string): number => profile?.towerLevels?.[id] ?? 1;
+  const kingLevel = profile?.kingLevel ?? 1;
+  const towerUpgradeCost = (level: number): number =>
+    Math.round(200 * Math.pow(1.35, Math.max(0, level - 1)));
 
   const matchesFilters = useCallback(
     (c: CatalogEntry): boolean => {
@@ -291,6 +294,12 @@ export default function DecksPage() {
   const selectTower = (towerId: string) => {
     setSelectedTower(towerId);
     saveTowerSelection(towerId);
+    if (activeDeckId !== null) {
+      setDecks((prev) => prev.map((deck) => (deck.id === activeDeckId ? { ...deck, towerTroopId: towerId } : deck)));
+      void updatePlayerDeck(playerId, activeDeckId, { towerTroopId: towerId }, backendUrl())
+        .then(() => refreshProfile())
+        .catch(() => undefined);
+    }
     say(`${pretty(towerId)} selected as crown tower`);
   };
 
@@ -326,6 +335,10 @@ export default function DecksPage() {
         // `cr-clone-deck-v1` is the ONE client-side source for the deck used in
         // battle (loadDeckInto -> saveDeck writes it). No second key to drift.
         loadDeckInto(active.cards);
+        if (active.towerTroopId) {
+          setSelectedTower(active.towerTroopId);
+          saveTowerSelection(active.towerTroopId);
+        }
       }
     }
   }, []);
@@ -513,7 +526,7 @@ export default function DecksPage() {
     );
     return (
       <>
-        <div className="grid grid-cols-4 gap-2" data-testid={`${groupTestId}-matched`} data-count={matched.length}>
+        <div className="grid grid-cols-4 gap-2" data-testid={`matched-${groupTestId}`} data-count={matched.length}>
           {matched.map(tile)}
         </div>
         {rest.length > 0 && (
@@ -521,7 +534,7 @@ export default function DecksPage() {
             <p className="mb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
               Other cards
             </p>
-            <div className="grid grid-cols-4 gap-2 opacity-80" data-testid={`${groupTestId}-rest`} data-count={rest.length}>
+            <div className="grid grid-cols-4 gap-2 opacity-80" data-testid={`rest-${groupTestId}`} data-count={rest.length}>
               {rest.map(tile)}
             </div>
           </div>
@@ -711,13 +724,38 @@ export default function DecksPage() {
               Crown Towers
             </h3>
             <p className="mb-2 text-[10px] text-slate-400">
-              Upgrades are separate from card levels. Select one tower profile for battle.
+              The King Tower sets the cap. Side towers can only be upgraded up to the King level.
             </p>
+
+            {/* King Tower: always the standard King, upgraded first. */}
+            <div
+              data-testid="tower-row-king"
+              className="mb-2 flex items-center gap-2 rounded-lg border border-amber-500/70 bg-amber-500/10 p-2"
+            >
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg border-2 border-amber-400 bg-gradient-to-b from-amber-300 to-amber-600 text-2xl">
+                ♛
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-extrabold text-white">King Tower</p>
+                <p className="text-[10px] font-bold text-amber-200">Level {kingLevel} · sets the side-tower cap</p>
+              </div>
+              <button
+                type="button"
+                data-testid="tower-upgrade-king"
+                onClick={() => void doUpgradeTower("king")}
+                disabled={kingLevel >= 16}
+                className="rounded-md border border-amber-700 bg-gradient-to-b from-amber-300 to-amber-500 px-2 py-1 text-[10px] font-extrabold uppercase text-amber-950 active:translate-y-0.5 disabled:opacity-50"
+              >
+                {kingLevel >= 16 ? "Max" : `Upgrade ${towerUpgradeCost(kingLevel)}`}
+              </button>
+            </div>
+
             <div className="space-y-2">
               {towers.map((tower) => {
                 const lvl = towerLevel(tower.id);
                 const selected = selectedTower === tower.id;
-                const cost = Math.round(200 * Math.pow(1.35, Math.max(0, lvl - 1)));
+                const capped = lvl >= kingLevel;
+                const cost = towerUpgradeCost(lvl);
                 return (
                   <div
                     key={tower.id}
@@ -736,7 +774,12 @@ export default function DecksPage() {
                     />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-extrabold text-white">{pretty(tower.id)}</p>
-                      <p className="text-[10px] font-bold text-sky-300">Level {lvl}</p>
+                      <p className="text-[10px] font-bold text-sky-300">
+                        Level {lvl} / {kingLevel}
+                      </p>
+                      {capped && lvl < 16 && (
+                        <p className="text-[9px] font-bold text-rose-300">Upgrade King Tower first</p>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -750,10 +793,10 @@ export default function DecksPage() {
                       type="button"
                       data-testid={`tower-upgrade-${tower.id}`}
                       onClick={() => void doUpgradeTower(tower.id)}
-                      disabled={lvl >= 16}
+                      disabled={lvl >= 16 || capped}
                       className="rounded-md border border-purple-700 bg-gradient-to-b from-purple-400 to-purple-700 px-2 py-1 text-[10px] font-extrabold uppercase text-white active:translate-y-0.5 disabled:opacity-50"
                     >
-                      {lvl >= 16 ? "Max" : `Upgrade ${cost}`}
+                      {lvl >= 16 ? "Max" : capped ? "King first" : `Upgrade ${cost}`}
                     </button>
                   </div>
                 );

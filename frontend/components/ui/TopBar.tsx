@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { CR_COLORS } from "../../lib/crTheme";
 import { usePlayer } from "../../lib/playerContext";
 
@@ -77,22 +78,35 @@ export default function TopBar({ cards, coins, gems }: TopBarCurrencies) {
         )}
       </div>
       <div className="flex flex-1 items-center justify-end gap-2">
-        <Pill icon="🃏" value={cardsValue} tone="blue" testid="topbar-cards" />
-        <Pill icon="🪙" value={coinsValue} tone="gold" testid="topbar-coins" />
-        <Pill icon="💎" value={gemsValue} tone="emerald" testid="topbar-gems" />
+        <Pill icon="?" value={cardsValue} tone="blue" testid="topbar-cards" href="/collection" />
+        <Pill icon="?" value={coinsValue} tone="gold" testid="topbar-coins" href="/shop" />
+        <Pill icon="?" value={gemsValue} tone="emerald" testid="topbar-gems" href="/shop" />
       </div>
     </div>
   );
 }
 
-function Pill({ icon, value, tone, testid }: { icon: string; value: number; tone: "blue" | "gold" | "emerald"; testid: string }) {
+function Pill({
+  icon,
+  value,
+  tone,
+  testid,
+  href,
+}: {
+  icon: string;
+  value: number;
+  tone: "blue" | "gold" | "emerald";
+  testid: string;
+  href: string;
+}) {
   const colors: Record<typeof tone, string> = {
     blue: "from-sky-500 to-blue-700",
     gold: "from-amber-400 to-yellow-600",
     emerald: "from-emerald-400 to-green-700",
   } as const;
   return (
-    <div
+    <Link
+      href={href}
       data-testid={testid}
       className={`flex items-center gap-1 rounded-full border border-black/30 bg-gradient-to-b ${colors[tone]} px-2 py-1 text-sm font-extrabold text-white shadow-inner`}
       style={{ textShadow: "0 1px 0 rgba(0,0,0,0.6)" }}
@@ -104,6 +118,6 @@ function Pill({ icon, value, tone, testid }: { icon: string; value: number; tone
       <span aria-hidden="true" className="text-xs opacity-80">
         +
       </span>
-    </div>
+    </Link>
   );
 }

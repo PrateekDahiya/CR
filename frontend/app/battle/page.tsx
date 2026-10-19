@@ -175,15 +175,18 @@ export default function BattlePage() {
   useEffect(() => {
     setTowerTroopId(loadTowerSelection());
   }, []);
-  const battleLevels = useMemo(
-    () => ({
-      ...(profile?.cards ?? {}),
-      ...(profile?.towerLevels?.[towerTroopId] !== undefined
-        ? { [towerTroopId]: profile.towerLevels[towerTroopId] }
-        : {}),
-    }),
-    [profile, towerTroopId],
-  );
+  // Only deck cards plus the selected tower profile may be sent to the server;
+  // other owned cards would fail server level validation.
+  const battleLevels = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const id of deck) {
+      const level = profile?.cards?.[id];
+      if (level !== undefined) out[id] = level;
+    }
+    const towerLevel = profile?.towerLevels?.[towerTroopId];
+    if (towerLevel !== undefined) out[towerTroopId] = towerLevel;
+    return out;
+  }, [deck, profile, towerTroopId]);
   const battle = useBattle({
     backendUrl,
     playerId,
@@ -514,6 +517,7 @@ export default function BattlePage() {
             entities={entities}
             selectedCell={hover}
             mySide={side}
+            towerTroopId={towerTroopId}
             selectedRadius={selectedRadius}
             inspectRange={inspectRange}
             inspectEnabled={battle.selected === null}

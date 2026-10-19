@@ -45,7 +45,9 @@ import { initRedis } from "./net/redis.js";
 import { mountMeta } from "./meta.js";
 import { mountContent } from "./content.js";
 import { mountShop } from "./shop.js";
-import { ensurePlayer } from "./players.js";
+import { ensurePlayer, hydratePlayers } from "./players.js";
+import { hydrateAccounts } from "./accounts.js";
+import { loadPlayerState } from "./playerStore.js";
 import { ensureMysqlDatabase, hydrateLevelStatsFromMysql, hydrateMechanicsFromMysql, hydrateSpawnTemplatesFromMysql, isMysqlConfigured } from "./mysql.js";
 import { CARD_LIST } from "./game/cards.js";
 
@@ -517,10 +519,16 @@ io.on("connection", (socket) => {
   });
 });
 
-void ensureMysqlDatabase().then((bootstrap) => {
+void ensureMysqlDatabase().then(async (bootstrap) => {
   if (isMysqlConfigured() && !bootstrap.tables) {
     console.error("[backend] database configured but full schema bootstrap failed; refusing to start");
     return null;
+  }
+  const stored = await loadPlayerState();
+  const playerCount = hydratePlayers(stored.players, stored.decks);
+  const accountCount = hydrateAccounts(stored.accounts);
+  if (isMysqlConfigured()) {
+    console.log(`[backend] restored ${playerCount} players, ${accountCount} accounts, ${stored.decks.length} decks`);
   }
   return Promise.all([hydrateMechanicsFromMysql(), hydrateSpawnTemplatesFromMysql(), hydrateLevelStatsFromMysql()]);
 }).then((result) => {

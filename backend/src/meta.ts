@@ -103,6 +103,7 @@ export function mountMeta(app: Express): void {
       activeDeck: activeDeck(p.playerId),
       cards: p.cards,
       towerLevels: p.towerLevels,
+      kingLevel: p.kingLevel,
       season: SEASON,
       db: isDbLive(),
     });

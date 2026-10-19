@@ -30,7 +30,7 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     for (const t of ["shop", "cards", "battle", "social", "ranked"]) {
       await expect(page.getByTestId(`nav-tab-${t}`)).toBeVisible();
     }
-    await expect(page.getByTestId("home-playing-deck")).toBeVisible();
+    await expect(page.getByTestId("home-deck-stack")).toBeVisible();
     // BATTLE button opens the matchmaking loader.
     await page.getByTestId("home-battle").click();
     await expect(page.getByTestId("matchmaking-loader")).toBeVisible();
@@ -79,9 +79,15 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(collectionTile.locator('[data-testid="card-level"]')).toBeVisible();
     // Cost drops render on every non-0-elixir card (same chrome as My Deck).
     await expect
-      .poll(async () => page.locator('[data-testid^="collection-card-"] [data-testid="card-cost"]').count(), {
-        timeout: 15000,
-      })
+      .poll(
+        async () =>
+          page
+            .locator(
+              '[data-testid^="collection-card-"] [data-testid="card-cost"], [data-testid^="locked-card-"] [data-testid="card-cost"]',
+            )
+            .count(),
+        { timeout: 15000 },
+      )
       .toBeGreaterThan(100);
   });
 
@@ -216,7 +222,9 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(page.getByTestId("collection-grid")).toBeVisible({ timeout: 15000 });
     // Wait for catalog to load (Found: 108/N badge in the header).
     await expect(page.getByText(/Found:\s*108/)).toBeVisible({ timeout: 15000 });
-    const count = await page.locator('[data-testid^="collection-card-"]').count();
+    const count = await page
+      .locator('[data-testid^="collection-card-"], [data-testid^="locked-card-"]')
+      .count();
     expect(count).toBeGreaterThanOrEqual(100);
     await expect(page.getByTestId("filter-rarity-rare")).toBeVisible();
     await expect(page.getByTestId("filter-cost-3")).toBeVisible();
@@ -255,15 +263,20 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(page.getByTestId("topbar-name")).toHaveText("Arena King", { timeout: 15000 });
   });
 
-  test("shop: buying a card spends coins and grants the card", async ({ page }) => {
+  test("shop: buying a coin bundle spends gems and adds coins", async ({ page }) => {
     await page.goto(`${BASE}/shop`);
     await expect(page.getByTestId("shop-coins")).toBeVisible({ timeout: 15000 });
     const coinsBefore = Number(((await page.getByTestId("shop-coins").textContent()) ?? "").replace(/[^\d]/g, ""));
-    // Deals for cards you already own are disabled — pick an affordable one.
-    const buy = page.locator('[data-testid^="deal-buy-"]:not([disabled])').first();
+    // Starter wallet has 20 gems; the 500-coin bundle costs 5 gems.
+    const buy = page.getByTestId("bundle-buy-coins-500");
     await expect(buy).toBeEnabled();
     await buy.click();
-    await expect(page.getByTestId("shop-coins")).not.toHaveText(String(coinsBefore), { timeout: 15000 });
+    await expect
+      .poll(async () => {
+        const text = (await page.getByTestId("shop-coins").textContent()) ?? "";
+        return Number(text.replace(/[^\d]/g, ""));
+      }, { timeout: 15000 })
+      .toBeGreaterThan(coinsBefore);
   });
 
   test("decks: multiple decks, select the deck used for battle", async ({ page }) => {
