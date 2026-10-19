@@ -1,6 +1,6 @@
 # Level-Normalized Card Stats Plan
 
-Status: Phase 1 complete, Phase 2 pending
+Status: Phase 2 in progress
 Branch: `card-mechanics`
 
 ## Goal
@@ -186,3 +186,11 @@ DPS, or attack speed is never trusted.
   a deterministic local fallback for development without MySQL.
 - Existing combat still uses the legacy stat block until Phase 3 resolves and
   snapshots these rows at match creation.
+
+Phase 2 checkpoint:
+
+- Shared level-stat contracts are additive in `shared/types.ts`.
+- Backend exposes `GET /content/cards/:id/levels` for UI/stat inspection.
+- Frontend API exposes `getCardLevels`.
+- Match level-map validation and authoritative snapshot wiring are next in this
+  phase; combat still uses the legacy stat block until Phase 3.

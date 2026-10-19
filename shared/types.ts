@@ -5,7 +5,7 @@
  */
 
 /** Card archetype. Phase 2 will enumerate the real card list. */
-export type CardType = 'troop' | 'spell' | 'building';
+export type CardType = 'troop' | 'spell' | 'building' | 'tower';
 
 /** Which tower slot. Each player owns 1 king + 2 princess towers. */
 export type TowerKind = 'king' | 'princess';
@@ -108,6 +108,35 @@ export interface CardStats {
   deathBurst?: number; // Rock Golem 280 lives here
 }
 
+/** Complete database-resolved stat row for one card level. */
+export interface CardLevelStats extends CardStats {
+  cardId: string;
+  level: number;
+  mode: string;
+  statVersion: number;
+  hitPoints: number;
+  damage: number;
+  dps: number;
+  hitSpeedMs: number;
+  moveSpeed: number;
+  towerDamage?: number;
+  deathBurst?: number;
+  deathBurstRadius?: number;
+  flying?: boolean;
+  attackPattern?: string;
+  source?: string;
+  approximation?: boolean;
+}
+
+/** Immutable level selection carried into a match snapshot. */
+export interface ResolvedCardStats {
+  cardId: string;
+  level: number;
+  mode: string;
+  statVersion: number;
+  stats: CardLevelStats;
+}
+
 /** Card with optional normative stats — old `Card` imports still compile. */
 export interface CardWithStats extends Card {
   stats?: CardStats;
@@ -141,9 +170,9 @@ export type CardPlayPayload = DeployRequest & { cardId?: string; at?: Vec2 };
 /** Socket map extension — every key in SocketEvents is kept (Omit avoids conflicting overrides). */
 export interface SocketEventsV2 extends Omit<SocketEvents, 'card:play' | 'state:update'> {
   // client -> server (new canonical)
-  'queue:join': { playerId: string; deck: string[] };
+  'queue:join': { playerId: string; deck: string[]; levels?: Record<string, number>; towerTroopId?: string };
   'queue:leave': { playerId: string };
-  'deck:select': { playerId: string; deck: string[] };
+  'deck:select': { playerId: string; deck: string[]; levels?: Record<string, number>; towerTroopId?: string };
   // server -> client (new canonical)
   'queue:matched': { matchId: string; opponentId: string; side: PlayerSide; serverTimeMs: number };
   'error': { code: string; message: string; matchId?: string };
