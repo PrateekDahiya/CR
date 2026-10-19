@@ -68,6 +68,9 @@ export interface GameState {
   crowns: Record<PlayerSide, number>;
   winner?: PlayerSide | 'draw';
   endsAtMs?: number; // overtime / timer end
+  cardLevels?: Record<PlayerSide, Record<string, number>>;
+  towerTroopId?: Record<PlayerSide, string | undefined>;
+  statVersion?: number;
 }
 
 /**

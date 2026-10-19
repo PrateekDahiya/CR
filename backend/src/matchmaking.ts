@@ -17,6 +17,8 @@ export interface QueuedPlayer {
   playerId: string;
   deck: string[];
   joinedAt: number;
+  levels?: Record<string, number>;
+  towerTroopId?: string;
 }
 
 export interface MatchedPair {
@@ -43,19 +45,23 @@ export function joinQueue(
   socketId: string,
   playerId: string = socketId,
   deck: string[] = [],
+  levels?: Record<string, number>,
+  towerTroopId?: string,
 ): { position: number; size: number } {
   // Dedupe by SOCKET only. Two tabs (or two machines) can share a playerId, and
   // collapsing them into one queue entry meant the second player could never be
   // paired. Socket is the only thing that identifies a live client.
   const existing = queue.findIndex((p) => p.socketId === socketId);
   if (existing === -1) {
-    queue.push({ socketId, playerId, deck: [...deck], joinedAt: Date.now() });
+    queue.push({ socketId, playerId, deck: [...deck], joinedAt: Date.now(), levels: levels ? { ...levels } : undefined, towerTroopId });
   } else {
     // Re-join on the same socket refreshes routing; longest wait is kept.
     queue[existing].socketId = socketId;
     if (deck.length > 0) {
       queue[existing].deck = [...deck];
     }
+    if (levels !== undefined) queue[existing].levels = { ...levels };
+    if (towerTroopId !== undefined) queue[existing].towerTroopId = towerTroopId;
   }
   const position = queue.findIndex((p) => p.socketId === socketId) + 1;
   return { position, size: queue.length };
@@ -120,8 +126,8 @@ export function tryMatch(): MatchedPair | null {
   const matchId = newMatchId();
   createRoom(
     matchId,
-    { playerId: blue.playerId, socketId: blue.socketId, deck: blue.deck },
-    { playerId: red.playerId, socketId: red.socketId, deck: red.deck },
+    { playerId: blue.playerId, socketId: blue.socketId, deck: blue.deck, levels: blue.levels, towerTroopId: blue.towerTroopId },
+    { playerId: red.playerId, socketId: red.socketId, deck: red.deck, levels: red.levels, towerTroopId: red.towerTroopId },
   );
   return { matchId, blue, red };
 }

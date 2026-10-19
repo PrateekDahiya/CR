@@ -17,6 +17,7 @@ import assert from 'node:assert/strict';
 import { createGame, playCard } from '../src/game/engine.js';
 import type { EngineState } from '../src/game/engine.js';
 import { forceInHand } from './deckHelpers.js';
+import { validateCardLevels, validateTowerTroopId } from '../src/net/validation.js';
 
 const BLUE_DECK = [
   'knight',
@@ -29,6 +30,38 @@ const BLUE_DECK = [
   'cannon',
 ];
 const RED_DECK = [...BLUE_DECK];
+
+describe('level selection validation', () => {
+  it('fills omitted deck levels with level 1', () => {
+    const result = validateCardLevels({ knight: 7 }, BLUE_DECK);
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.levels.knight, 7);
+      assert.equal(result.levels.giant, 1);
+      assert.equal(Object.keys(result.levels).length, 8);
+    }
+  });
+
+  it('rejects invalid, out-of-deck, and tower troop selections', () => {
+    assert.equal(validateCardLevels({ knight: 0 }, BLUE_DECK).ok, false);
+    assert.equal(validateCardLevels({ miner: 4 }, BLUE_DECK).ok, false);
+    assert.equal(validateTowerTroopId('tower-princess').ok, true);
+    assert.equal(validateTowerTroopId('knight').ok, false);
+  });
+
+  it('keeps validated levels as an immutable match-start snapshot', () => {
+    const state = createGame('level-snapshot', BLUE_DECK, RED_DECK, {
+      blueCardLevels: { knight: 9 },
+      redCardLevels: { giant: 11 },
+      blueTowerTroopId: 'tower-princess',
+      redTowerTroopId: 'cannoneer',
+    });
+    assert.equal(state.cardLevels.blue.knight, 9);
+    assert.equal(state.cardLevels.red.giant, 11);
+    assert.equal(state.towerTroopId.blue, 'tower-princess');
+    assert.equal(state.statVersion, 1);
+  });
+});
 
 let gameSeq = 1000;
 /** Phase 14: the opening hand is shuffled, so position tests must pick a

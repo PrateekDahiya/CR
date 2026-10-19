@@ -83,6 +83,42 @@ export function validateDeck(deck: unknown): ValidationResult {
   return { ok: true };
 }
 
+export interface ValidatedCardLevels {
+  ok: true;
+  levels: Record<string, number>;
+}
+
+/** Validate the optional per-card level map before a match is created. */
+export function validateCardLevels(
+  levels: unknown,
+  deck: readonly string[],
+): ValidatedCardLevels | ValidationResult {
+  const result: Record<string, number> = {};
+  if (levels !== undefined && (typeof levels !== "object" || levels === null || Array.isArray(levels))) {
+    return { ok: false, code: "BAD_DECK", message: "levels must be an object" };
+  }
+  const input = (levels ?? {}) as Record<string, unknown>;
+  for (const [cardId, value] of Object.entries(input)) {
+    if (!deck.includes(cardId)) {
+      return { ok: false, code: "BAD_DECK", message: `level provided for card outside deck: ${cardId}` };
+    }
+    if (!Number.isInteger(value) || Number(value) < 1 || Number(value) > 16) {
+      return { ok: false, code: "BAD_DECK", message: `invalid level for ${cardId}; expected integer 1..16` };
+    }
+    result[cardId] = Number(value);
+  }
+  for (const cardId of deck) result[cardId] ??= 1;
+  return { ok: true, levels: result };
+}
+
+export function validateTowerTroopId(towerTroopId: unknown): ValidationResult {
+  if (towerTroopId === undefined) return { ok: true };
+  if (typeof towerTroopId !== "string" || CARDS[towerTroopId]?.type !== "tower") {
+    return { ok: false, code: "BAD_DECK", message: "towerTroopId must identify a tower troop" };
+  }
+  return { ok: true };
+}
+
 /** Hand/cooldown check (§11.3): slot 0..3, optional cardId echo must match. */
 export function validateHand(
   handIndex: unknown,

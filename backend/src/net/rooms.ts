@@ -60,6 +60,9 @@ export interface GameState {
   crowns: Record<PlayerSide, number>;
   winner?: PlayerSide | "draw";
   endsAtMs?: number;
+  cardLevels?: Record<PlayerSide, Record<string, number>>;
+  towerTroopId?: Record<PlayerSide, string | undefined>;
+  statVersion?: number;
 }
 
 export interface RoomPlayer {
@@ -67,6 +70,8 @@ export interface RoomPlayer {
   side: PlayerSide;
   socketId: string;
   deck: string[];
+  levels?: Record<string, number>;
+  towerTroopId?: string;
 }
 
 export interface Room {
@@ -137,6 +142,9 @@ export interface SimState {
   over?: boolean;
   hands: Record<PlayerSide, string[]>;
   queue: Record<PlayerSide, string[]>;
+  cardLevels?: Record<PlayerSide, Record<string, number>>;
+  towerTroopId?: Record<PlayerSide, string | undefined>;
+  statVersion?: number;
 }
 
 export interface DeployInput {
@@ -163,7 +171,16 @@ interface EngineHooks {
     matchId: string,
     blueDeck: string[],
     redDeck: string[],
-    opts?: { bluePlayerId?: string; redPlayerId?: string; startTimeMs?: number },
+    opts?: {
+      bluePlayerId?: string;
+      redPlayerId?: string;
+      startTimeMs?: number;
+      blueCardLevels?: Record<string, number>;
+      redCardLevels?: Record<string, number>;
+      blueTowerTroopId?: string;
+      redTowerTroopId?: string;
+      statVersion?: number;
+    },
   ) => SimState;
   createInitialState?: (matchId: string) => SimState;
   tickGame?: (state: SimState, dt?: number) => SimState | void;
@@ -331,6 +348,9 @@ function syncWire(room: Room): void {
   s.crowns.red = sim.crowns.red;
   s.winner = sim.winner;
   s.endsAtMs = sim.endsAtMs;
+  s.cardLevels = sim.cardLevels;
+  s.towerTroopId = sim.towerTroopId;
+  s.statVersion = sim.statVersion;
   // Hands/queues: fixed small arrays — copy in place (no spread allocs).
   const hb = sim.hands.blue;
   const hr = sim.hands.red;
@@ -356,6 +376,8 @@ export interface RoomSeed {
   playerId: string;
   socketId: string;
   deck: string[];
+  levels?: Record<string, number>;
+  towerTroopId?: string;
 }
 
 export function createRoom(matchId: string, blue: RoomSeed, red: RoomSeed): Room {
@@ -372,6 +394,10 @@ export function createRoom(matchId: string, blue: RoomSeed, red: RoomSeed): Room
           bluePlayerId: blue.playerId,
           redPlayerId: red.playerId,
           startTimeMs: Date.now(),
+          blueCardLevels: blue.levels,
+          redCardLevels: red.levels,
+          blueTowerTroopId: blue.towerTroopId,
+          redTowerTroopId: red.towerTroopId,
         }) ?? null;
     } catch {
       sim = null;
@@ -387,8 +413,8 @@ export function createRoom(matchId: string, blue: RoomSeed, red: RoomSeed): Room
   const room: Room = {
     matchId,
     players: [
-      { playerId: blue.playerId, side: "blue", socketId: blue.socketId, deck: [...blue.deck] },
-      { playerId: red.playerId, side: "red", socketId: red.socketId, deck: [...red.deck] },
+      { playerId: blue.playerId, side: "blue", socketId: blue.socketId, deck: [...blue.deck], levels: blue.levels, towerTroopId: blue.towerTroopId },
+      { playerId: red.playerId, side: "red", socketId: red.socketId, deck: [...red.deck], levels: red.levels, towerTroopId: red.towerTroopId },
     ],
     state: buildInitialState(matchId, startedAtMs),
     sim,

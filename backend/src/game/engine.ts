@@ -152,6 +152,9 @@ export interface EngineState {
   nextFieldId: number;
   bluePlayerId?: string;
   redPlayerId?: string;
+  cardLevels: Record<PlayerSide, Record<string, number>>;
+  towerTroopId: Record<PlayerSide, string | undefined>;
+  statVersion: number;
 }
 
 /* ---------------- locked constants (§0) ---------------- */
@@ -332,7 +335,16 @@ export function createGame(
   matchId: string,
   blueDeck: string[],
   redDeck: string[],
-  opts?: { bluePlayerId?: string; redPlayerId?: string; startTimeMs?: number },
+  opts?: {
+    bluePlayerId?: string;
+    redPlayerId?: string;
+    startTimeMs?: number;
+    blueCardLevels?: Record<string, number>;
+    redCardLevels?: Record<string, number>;
+    blueTowerTroopId?: string;
+    redTowerTroopId?: string;
+    statVersion?: number;
+  },
 ): EngineState {
   for (const [label, deck] of [
     ["blue", blueDeck],
@@ -370,6 +382,9 @@ export function createGame(
     nextFieldId: 1,
     bluePlayerId: opts?.bluePlayerId,
     redPlayerId: opts?.redPlayerId,
+    cardLevels: { blue: { ...(opts?.blueCardLevels ?? {}) }, red: { ...(opts?.redCardLevels ?? {}) } },
+    towerTroopId: { blue: opts?.blueTowerTroopId, red: opts?.redTowerTroopId },
+    statVersion: opts?.statVersion ?? 1,
   };
 }
 
