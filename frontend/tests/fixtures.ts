@@ -7,7 +7,7 @@
  * (via addInitScript) still win, because their script is registered after this
  * one and overwrites the value.
  */
-import { test as base, expect } from "@playwright/test";
+import { test as base, expect, type Page } from "@playwright/test";
 
 let seq = 0;
 
@@ -31,3 +31,8 @@ export const test = base.extend({
 });
 
 export { expect };
+
+/** Navigate with the signed-in fixture already in place. */
+export async function seedAndGoto(page: Page, url: string): Promise<void> {
+  await page.goto(url);
+}

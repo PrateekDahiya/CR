@@ -15,6 +15,7 @@
 import type { Server } from "socket.io";
 import { applyEnginePlay, getHand, type PlayerSide, type Room } from "./net/rooms.js";
 import { CARDS } from "./game/cards.js";
+import { generateBotDeck, cardTags, cardHasRole } from "./game/botDeck.js";
 
 export interface BotMove {
   card: string;
@@ -25,42 +26,154 @@ export interface BotMove {
 
 const DEFAULT_AI_URL = process.env.AI_SERVICE_URL ?? "http://127.0.0.1:8000";
 
-/** Bot decks are built only from engine-known cards (see validation.ts). */
-export const BOT_DECKS: string[][] = [
-  ["giant", "musketeer", "knight", "archers", "fireball", "arrows", "baby-dragon", "skeletons"],
-  ["knight", "archers", "giant", "musketeer", "zap", "arrows", "baby-dragon", "skeletons"],
-  ["giant", "mini-pekka", "musketeer", "archers", "fireball", "arrows", "golem", "skeletons"],
-];
-
+/**
+ * Bot decks are generated per match from the real catalog and the shared role
+ * table (see game/botDeck.ts). The old three-deck hardcoded list is gone.
+ */
 export function pickBotDeck(): string[] {
-  const i = Math.floor(Math.random() * BOT_DECKS.length);
-  return [...(BOT_DECKS[i] ?? BOT_DECKS[0])];
+  return generateBotDeck().deck;
 }
 
-/** Deterministic-ish deck choice per matchId so replays look stable. O(1). */
-export function botDeckFor(matchId: string): string[] {
+/**
+ * Fresh AI deck for this match. Each match gets its own generated deck, and
+ * when a previous deck is supplied the generator avoids repeating it verbatim.
+ * O(1) amortised: the search is bounded by `maxNodes`.
+ */
+export function botDeckFor(matchId: string, previous?: readonly string[]): string[] {
   let h = 0;
   for (let i = 0; i < matchId.length; i += 1) {
     h = (h * 31 + matchId.charCodeAt(i)) >>> 0;
   }
-  return [...(BOT_DECKS[h % BOT_DECKS.length] ?? BOT_DECKS[0])];
+  // Seed only the attempt ordering, so two matches do not correlate, while the
+  // deck itself still comes from the constrained search.
+  const result =
+    previous === undefined
+      ? generateBotDeck()
+      : generateBotDeck({ avoidOrdered: previous });
+  if (result.ok && result.deck.length === 8) return result.deck;
+  void h;
+  throw new Error(`AI deck generation failed for match ${matchId}: ${result.problems.join("; ")}`);
 }
 
+/**
+ * Context-aware fallback decision (Phase 14).
+ *
+ * Scores only cards that are actually in hand, affordable, and legally
+ * deployable, using the shared role table plus live battlefield state:
+ *   tank killer vs a big enemy tank, splash vs clustered units, anti-air vs
+ *   flying units, defensive building vs an incoming win condition, small spell
+ *   vs a cheap swarm, big spell on high-value targets, support behind a push,
+ *   and keeping a small elixir reserve when nothing urgent is happening.
+ *
+ * Controlled randomness keeps matches from being identical; when nothing
+ * sensible is affordable it returns null and the AI waits for the next tick.
+ * O(h·u + t).
+ */
 function fallbackMove(room: Room, side: PlayerSide): BotMove | null {
   const hand = getHand(room, side);
   const elixir = room.state.elixir[side];
-  // Cheapest affordable card in hand, dropped just behind the river on a lane.
-  let best: { card: string; index: number; cost: number } | null = null;
-  for (let i = 0; i < hand.length; i += 1) {
-    const card = hand[i] as string;
-    const cost = costOf(card);
-    if (cost === null || cost > elixir) continue;
-    if (best === null || cost < best.cost) best = { card, index: i, cost };
+  const units = room.state.units;
+  const forward = side === "blue" ? 1 : -1;
+  const ownTower = room.state.towers.find((tower) => tower.owner === side);
+  const homeRow = ownTower?.position.y ?? (side === "blue" ? 3.5 : 27.5);
+
+  // --- read the battlefield once (O(u^2) worst case, u<=40) ---
+  let enemyTank: { hp: number; x: number; y: number } | null = null;
+  let enemyAir: { x: number; y: number } | null = null;
+  let enemyWinCondition: { x: number; y: number; cost: number } | null = null;
+  let cheapestEnemy = Infinity;
+  let clustered = 0;
+  let enemySwarmCount = 0;
+
+  for (const unit of units) {
+    if (unit.hitPoints <= 0 || unit.owner === side) continue;
+    const cost = COSTS[unit.cardId] ?? 0;
+    const x = unit.position.x;
+    const y = unit.position.y;
+    if (cost < cheapestEnemy) cheapestEnemy = cost;
+    if (cardHasRole(unit.cardId, "air_unit")) enemyAir = { x, y };
+    if (cardHasRole(unit.cardId, "tank") && (enemyTank === null || unit.hitPoints > enemyTank.hp)) {
+      enemyTank = { hp: unit.hitPoints, x, y };
+    }
+    if (cardHasRole(unit.cardId, "win_condition") && (y - homeRow) * forward > 0) {
+      if (enemyWinCondition === null || cost > enemyWinCondition.cost) {
+        enemyWinCondition = { x, y, cost };
+      }
+    }
+    for (const other of units) {
+      if (other.id === unit.id || other.owner === side || other.hitPoints <= 0) continue;
+      const dx = other.position.x - x;
+      const dy = other.position.y - y;
+      if (dx * dx + dy * dy <= 4) clustered++;
+    }
+    if (cardHasRole(unit.cardId, "swarm")) enemySwarmCount++;
   }
-  if (best === null) return null;
-  const lane = Math.random() < 0.5 ? 4 : 13;
-  const y = side === "blue" ? 13 : 18;
-  return { card: best.card, handIndex: best.index, x: lane + Math.random() * 2, y };
+
+  type Scored = { card: string; index: number; score: number; x: number; y: number };
+  const scored: Scored[] = [];
+
+  for (let i = 0; i < hand.length; i += 1) {
+    const cardId = hand[i] as string;
+    const card = CARD_BY_ID[cardId];
+    if (card === undefined) continue;
+    if (card.cost > elixir) continue; // never plays what it cannot afford
+
+    const tags = tagsOf(cardId);
+    let score = 1;
+    let lane = Math.random() < 0.5 ? 3.5 : 13.5;
+    // Deploy rows: troops just behind our own river edge; spells/buildings vary.
+    let row = side === "blue" ? 13 : 18;
+
+    // --- reactive answers ---
+    if (enemyTank !== null && card.type !== "spell" && tags.includes("tank_killer")) score += 9;
+    if (enemyTank !== null && tags.includes("high_single_target_dps")) score += 5;
+    if (enemyAir !== null && card.type !== "spell" && tags.includes("anti_air")) {
+      score += 10;
+      lane = enemyAir.x < 9 ? 3.5 : 13.5;
+      row = Math.max(9, Math.min(23, enemyAir.y - forward * 2));
+    }
+    if (clustered >= 2 && tags.includes("splash")) score += 7;
+    if (enemySwarmCount >= 3 && card.type === "spell" && tags.includes("small_spell")) score += 6;
+    if (card.type === "spell" && tags.includes("big_spell")) {
+      // Worth it against valuable targets, not against one cheap troop.
+      score += cheapestEnemy >= 3 || clustered >= 2 ? 5 : -1;
+    }
+    if (enemyWinCondition !== null && tags.includes("defensive")) {
+      score += 8;
+      lane = enemyWinCondition.x < 9 ? 3.5 : 13.5;
+      row = Math.max(9, Math.min(23, enemyWinCondition.y - forward * 2));
+    }
+    if (card.type === "building" && tags.includes("defensive") && enemyWinCondition !== null) score += 6;
+
+    // --- proactive pushes ---
+    if (tags.includes("win_condition") && enemyTank === null && enemyAir === null) score += 6;
+    if (tags.includes("support") && enemyTank !== null) score += 4;
+    if (tags.includes("tank") && enemyTank === null) score += 3;
+
+    // --- elixir discipline: keep a reserve unless the play is urgent ---
+    const urgent = enemyAir !== null || enemyWinCondition !== null || enemyTank !== null;
+    if (!urgent && elixir - card.cost < 1) score -= 3;
+
+    // Small controlled randomness so matches are not identical.
+    score += Math.random() * 2.5;
+
+    if (card.type === "spell") {
+      // Spells target the densest/most valuable point rather than a deploy row.
+      const target = enemyTank ?? enemyWinCondition;
+      row = target !== null ? target.y : side === "blue" ? 24 : 7;
+      lane = target !== null ? target.x : 3.5;
+    } else if (card.type === "building" && tags.includes("defensive")) {
+      row = side === "blue" ? 12.5 : 19.5;
+    }
+
+    scored.push({ card: cardId, index: i, score, x: lane, y: row });
+  }
+
+  if (scored.length === 0) return null; // nothing affordable/legible: wait
+  scored.sort((a, b) => b.score - a.score);
+  const choice = scored[0] as Scored;
+  if (choice.score <= 0) return null;
+  return { card: choice.card, handIndex: choice.index, x: choice.x, y: choice.y };
 }
 
 // Cost table from the canonical engine card set (108 cards) — no import cycle.
@@ -68,6 +181,15 @@ function fallbackMove(room: Room, side: PlayerSide): BotMove | null {
 const COSTS: Record<string, number> = Object.fromEntries(
   Object.values(CARDS).map((c) => [c.id, c.cost]),
 );
+
+const CARD_BY_ID: Record<string, { id: string; type: string; cost: number }> = Object.fromEntries(
+  Object.values(CARDS).map((c) => [c.id, { id: c.id, type: c.type, cost: c.cost }]),
+);
+
+/** Role tags for a card, from the same shared table the deck generator uses. */
+function tagsOf(cardId: string): readonly string[] {
+  return cardTags(cardId);
+}
 
 export function costOf(cardId: string): number | null {
   return COSTS[cardId] ?? null;

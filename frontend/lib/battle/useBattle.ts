@@ -19,6 +19,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { rotateCard } from "../cardCycle";
 import {
   connect,
   disconnect,
@@ -766,17 +767,16 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
         // Flat updates (ISS-F5-006): compute from refs/locals, then sequential
         // setHand/setQueue — never nested — so StrictMode double-invoke cannot
         // rotate twice per deploy.
+        // Phase 14: the rotation rule itself lives in lib/cardCycle.ts so the
+        // player and the AI share one implementation.
         const curHand = handRef.current;
         const curQueue = queueRef.current;
         if (curQueue.length > 0) {
-          const incoming = curQueue[0];
-          const rest = curQueue.slice(1);
-          const played = curHand[handIndex];
-          const nextHand = curHand.slice();
-          nextHand[handIndex] = incoming;
-          const nextQueue = [...rest, played];
-          handRef.current = nextHand;
-          queueRef.current = nextQueue;
+          const rotated = rotateCard({ hand: curHand, queue: curQueue }, handIndex);
+          handRef.current = rotated.hand;
+          queueRef.current = rotated.queue;
+          const nextHand = rotated.hand;
+          const nextQueue = rotated.queue;
           setHand(nextHand);
           setQueue(nextQueue);
         }

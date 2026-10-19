@@ -22,7 +22,8 @@ import {
   type CatalogEntry,
   type DeckRecord,
 } from "../../lib/api";
-import { CARDS } from "../../lib/cards";
+import { CARDS, CARD_LIST } from "../../lib/cards";
+import { generateRandomDeck } from "../../lib/deckGenerator";
 import { useDeckState, DECK_SIZE } from "../../lib/useDeck";
 import { usePlayer } from "../../lib/playerContext";
 
@@ -195,6 +196,59 @@ export default function DecksPage() {
     }
   }, []);
 
+  // --- Random Deck (Phase 14) ---
+  // Uses the same constrained generator as the AI, writes through the existing
+  // deck state (which persists to `cr-clone-deck-v1` and the server), and never
+  // regenerates on re-render. A failed generation preserves the current deck.
+  const [randomBusy, setRandomBusy] = useState(false);
+  const [randomError, setRandomError] = useState<string | null>(null);
+
+  const onRandomDeck = useCallback(() => {
+    setRandomError(null);
+    setRandomBusy(true);
+    try {
+      const result = generateRandomDeck(CARD_LIST.map((card) => card.id));
+      if (!result.ok) {
+        setRandomError(
+          `Could not build a valid deck (${result.unsatisfiedRoles.join(", ") || "no roles satisfied"}). Your deck was kept.`,
+        );
+        say("Random deck failed - previous deck kept");
+        return;
+      }
+      // Replace the active deck card by card. `useDeckState` persists the new
+      // deck to `cr-clone-deck-v1` through its existing effect, so battle picks
+      // it up on the next match with no extra plumbing.
+      result.deck.forEach((cardId, index) => placeAt(index, cardId));
+
+      // Mirror into the server-backed deck record so the profile agrees.
+      if (activeDeckId !== null) {
+        const active = decks.find((d) => d.id === activeDeckId);
+        if (active !== undefined) {
+          pushDecks(
+            decks.map((d) => (d.id === activeDeckId ? { ...d, cards: result.deck } : d)),
+            activeDeckId,
+          );
+          void updatePlayerDeck(playerId, activeDeckId, { cards: result.deck }).catch(
+            () => undefined,
+          );
+        }
+      } else {
+        void createPlayerDeck(playerId, `Deck ${decks.length + 1}`, result.deck)
+          .then((created) => {
+            pushDecks([...decks, created], created.id);
+            void refreshProfile();
+          })
+          .catch(() => undefined);
+      }
+      void refreshProfile();
+      say(
+        `Random deck: ${result.deck.length} cards, avg ${result.validation.quality.averageElixir.toFixed(1)} elixir`,
+      );
+    } finally {
+      setRandomBusy(false);
+    }
+  }, [activeDeckId, decks, placeAt, playerId, pushDecks, refreshProfile, say]);
+
   const onCreateDeck = async () => {
     try {
       const created = await createPlayerDeck(playerId, `Deck ${decks.length + 1}`, [...deck], backendUrl());
@@ -315,10 +369,30 @@ export default function DecksPage() {
         >
           <header className="mb-1 flex items-center justify-between text-xs font-extrabold uppercase tracking-wider text-slate-200">
             <span>My Deck</span>
-            <span data-testid="deck-avg-elixir" className="text-fuchsia-300">
-              🟣 {avgElixir} / 10
+            <span className="flex items-center gap-2">
+              <button
+                type="button"
+                data-testid="deck-random"
+                onClick={onRandomDeck}
+                disabled={randomBusy}
+                className="rounded-md border border-fuchsia-400/60 bg-fuchsia-500/20 px-2 py-1 text-[11px] font-extrabold uppercase tracking-wide text-fuchsia-100 transition hover:bg-fuchsia-500/30 active:translate-y-0.5 disabled:opacity-60"
+                title="Generate a balanced random deck"
+              >
+                {randomBusy ? "Rolling…" : "🎲 Random Deck"}
+              </button>
+              <span data-testid="deck-avg-elixir" className="text-fuchsia-300">
+                🟣 {avgElixir} / 10
+              </span>
             </span>
           </header>
+          {randomError !== null && (
+            <p
+              data-testid="deck-random-error"
+              className="mb-1 rounded-md border border-red-500/50 bg-red-900/30 px-2 py-1 text-[11px] font-semibold text-red-200"
+            >
+              {randomError}
+            </p>
+          )}
           <div className="grid grid-cols-4 gap-2">
             {Array.from({ length: DECK_SIZE }).map((_, i) => {
               const name = deck[i];
