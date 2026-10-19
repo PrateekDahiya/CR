@@ -24,6 +24,7 @@ import {
 } from "../../lib/api";
 import { CARDS, CARD_LIST } from "../../lib/cards";
 import { generateRandomDeck } from "../../lib/deckGenerator";
+import { isTowerTroopId } from "../../lib/cardAliases";
 import { useDeckState, DECK_SIZE } from "../../lib/useDeck";
 import { usePlayer } from "../../lib/playerContext";
 
@@ -81,9 +82,12 @@ export default function DecksPage() {
   };
 
   // Collection grid = full catalog (108) when available, else the playable roster.
+  // Phase 15: tower troops (Tower Princess, Cannoneer, Dagger Duchess, Royal Chef)
+  // are crown-tower profiles selected before a match, so they are NOT deck cards
+  // and must not be offered here.
   const collection: CatalogEntry[] = useMemo(
     () =>
-      catalog.length > 0
+      (catalog.length > 0
         ? catalog
         : cards.map((c) => ({
             name: c.name,
@@ -91,7 +95,8 @@ export default function DecksPage() {
             elixir: c.elixir,
             rarity: c.rarity,
             playable: c.playable ?? true,
-          })),
+          }))
+      ).filter((entry) => entry.cardType !== "tower" && !isTowerTroopId(entry.name)),
     [catalog, cards],
   );
 

@@ -34,7 +34,7 @@ import {
 } from '../src/game/engine.js';
 import type { EngineState } from '../src/game/engine.js';
 import { hydrateMechanicsFromMysql } from '../src/mysql.js';
-import { bringToHand } from './deckHelpers.js';
+import { bringToHand, forceInHand } from './deckHelpers.js';
 
 before(async () => {
   await hydrateMechanicsFromMysql();
@@ -279,7 +279,7 @@ describe('engine — towers + king activation (GAME_DESIGN §6)', () => {
     const king = towerOf(s, 'king', 'blue');
     s.elixir.red = 10;
     // Database-defined fireball (spell, cost 4, 276 vs towers).\r
-    const r = playCard(s, 'red', { handIndex: bringToHand(s, 'red', 'fireball'), x: king.x, y: king.y });
+    const r = playCard(s, 'red', { handIndex: forceInHand(s, 'red', 'fireball'), x: king.x, y: king.y });
     assert.equal(r.ok, true);
     assert.equal(king.hp, 2400 - 276);
     assert.equal(king.active, true, 'king must activate after taking damage (§6.2)');
@@ -291,7 +291,7 @@ describe('engine — towers + king activation (GAME_DESIGN §6)', () => {
     const s = newGame();
     const princess = towerOf(s, 'princess', 'red');
     s.elixir.blue = 10;
-    const r = playCard(s, 'blue', { handIndex: bringToHand(s, 'blue', 'fireball'), x: princess.x, y: princess.y });
+    const r = playCard(s, 'blue', { handIndex: forceInHand(s, 'blue', 'fireball'), x: princess.x, y: princess.y });
     assert.equal(r.ok, true);
     assert.equal(princess.hp, 1400 - 276);
     assert.equal(princess.destroyed, false);

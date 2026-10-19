@@ -119,6 +119,11 @@ export function validateDeck(deck: string[]): { code: string; message: string } 
   for (const id of deck) {
     const card = CARDS[id];
     if (!card) return { code: "BAD_DECK", message: `unknown card: ${id}` };
+    // Phase 15: tower troops configure the crown tower and are selected before a
+    // match, so they can never occupy a deck slot.
+    if (card.type === "tower" || card.mechanics?.towerTroop === true) {
+      return { code: "BAD_DECK", message: `${id} is a tower troop and cannot be in a deck` };
+    }
     if (seen.has(id)) return { code: "BAD_DECK", message: `duplicate card: ${id}` };
     seen.add(id);
     if (card.type === "spell") spells += 1;

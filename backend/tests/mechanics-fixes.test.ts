@@ -74,6 +74,10 @@ function pinTarget(
     minRange: 0,
     dashReady: true,
     rampStage: 0,
+    // The template may be a building; a pinned troop must NOT inherit its
+    // lifetime, or HP wear-down would pollute the measurement.
+    expiresAt: undefined,
+    lifetimeSec: undefined,
     mechanics: undefined,
     deathBurst: undefined,
     deathBurstRadius: undefined,
@@ -263,6 +267,10 @@ describe("phase 13 — minimum range", () => {
       minRange: 0,
       dashReady: true,
       rampStage: 0,
+      // Must not inherit the building's lifetime, or HP wear-down would pollute
+      // this measurement.
+      expiresAt: undefined,
+      lifetimeSec: undefined,
       mechanics: undefined,
     };
     state.units.push(intruder);
