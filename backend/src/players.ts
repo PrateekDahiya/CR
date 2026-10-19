@@ -65,6 +65,26 @@ function starterDeck(name = "Battle Deck"): Deck {
   return { id: nextId("deck"), name, cards: [...DECK_FALLBACK] };
 }
 
+/**
+ * Cards a brand-new account starts with.
+ *
+ * Covers every mandatory deck role (building, big spell, small spell, tank,
+ * ranged, splash, win condition) so a random deck can always be generated from
+ * a fresh account, while leaving the rest of the catalog to the shop.
+ */
+const STARTER_COLLECTION: string[] = [
+  "cannon", // building
+  "fireball", // big spell
+  "arrows", // small spell
+  "zap", // small spell
+  "giant", // tank + win condition
+  "musketeer", // ranged
+  "baby-dragon", // ranged splash
+  "knight", // filler
+  "archers", // filler
+  "skeletons", // filler
+];
+
 /** Creates on first sight. O(1). */
 export function ensurePlayer(playerId: string): Player {
   const existing = players.get(playerId);
@@ -79,8 +99,12 @@ export function ensurePlayer(playerId: string): Player {
     wins: 0,
     losses: 0,
     draws: 0,
-    // The database-backed catalog is the complete starter collection.
-    cards: Object.fromEntries(CARD_LIST.map((card) => [card.id, 9])),
+    // Phase 14 fix: a new player owns the STARTER collection, not the whole
+    // 108-card catalog. Granting every catalog card left the shop with nothing
+    // to sell (every deal resolved as "already owned"), which made the economy
+    // dead. The deck builder remains card-agnostic, so all 108 cards stay
+    // usable in battle; the shop simply has inventory again.
+    cards: Object.fromEntries(STARTER_COLLECTION.map((id) => [id, 9])),
     decks: [deck],
     activeDeckId: deck.id,
     createdAtMs: Date.now(),
