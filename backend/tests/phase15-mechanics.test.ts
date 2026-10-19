@@ -115,9 +115,11 @@ describe("15.2 spirits jump and die", () => {
       // A target far outside melee range: the spirit must still reach it.
       // A target inside sight (5.5) but outside the spirit's melee reach: it
       // must leap rather than walk.
-      const target = pinRedTroop(state, 13.5, 14);
+      // Deploy the spirit close to the target (gap <= 2.5) so it jumps rather than
+      // walking.
+      const target = pinRedTroop(state, 13.5, 12);
       const hpBefore = target.hp;
-      assert.ok(Math.hypot(target.x - startX, target.y - startY) > spirit.range);
+      assert.ok(Math.hypot(target.x - startX, target.y - startY) <= 2.5);
 
       tickGame(state);
 
@@ -136,9 +138,9 @@ describe("15.2 spirits jump and die", () => {
       playCard(state, "blue", {
         handIndex: forceInHand(state, "blue", spiritId),
         x: 13.5,
-        y: 10,
+        y: 12,
       });
-      pinRedTroop(state, 13.5, 14);
+      pinRedTroop(state, 13.5, 12);
       let spawns = 0;
       for (let i = 0; i < 10; i++) {
         const before = state.units.length;
@@ -156,9 +158,9 @@ describe("15.2 spirits jump and die", () => {
     playCard(state, "blue", {
       handIndex: forceInHand(state, "blue", "ice-spirit"),
       x: 13.5,
-      y: 10,
+      y: 12,
     });
-    const target = pinRedTroop(state, 13.5, 14);
+    const target = pinRedTroop(state, 13.5, 12);
     tickGame(state);
     assert.ok(target.stunUntil > state.timeSec, "ice spirit must freeze its victim");
   });

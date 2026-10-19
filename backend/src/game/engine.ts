@@ -1560,11 +1560,18 @@ function trySuicide(
   u: SimUnit,
   target: { kind: "tower"; tower: SimTower } | { kind: "unit"; unit: SimUnit },
 ): boolean {
-  if (u.mechanics?.attack !== "suicide") return false;
+if (u.mechanics?.attack !== "suicide") return false;
   if (u.hp <= 0) return false;
 
   const tx = target.kind === "tower" ? target.tower.x : target.unit.x;
   const ty = target.kind === "tower" ? target.tower.y : target.unit.y;
+  const distance = dist(u.x, u.y, tx, ty);
+
+  // Spirits only jump from a short distance; at close range they walk into the
+  // target and detonate on contact (Clash Royale behaviour). A jump from across
+  // the map would be a teleport, not a spirit hop.
+  const jumpRange = Math.max(u.range, 2.5);
+  if (distance > jumpRange) return false;
 
   // Leap onto the target (a short hop, not a map-wide blink).
   u.x = Math.min(Math.max(tx, 0), 18);
