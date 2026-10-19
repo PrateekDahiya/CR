@@ -97,7 +97,7 @@ const UNIT_EMOJI: Record<string, string> = {
   musketeer: "🔫",
   "baby-dragon": "🐲",
   "mini-pekka": "🔪",
-  "rock-golem": "🪨",
+  golem: "🪨",
   cannon: "🏯",
   fireball: "🔥",
   arrows: "➶",

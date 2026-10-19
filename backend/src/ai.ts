@@ -29,7 +29,7 @@ const DEFAULT_AI_URL = process.env.AI_SERVICE_URL ?? "http://127.0.0.1:8000";
 export const BOT_DECKS: string[][] = [
   ["giant", "musketeer", "knight", "archers", "fireball", "arrows", "baby-dragon", "skeletons"],
   ["knight", "archers", "giant", "musketeer", "zap", "arrows", "baby-dragon", "skeletons"],
-  ["giant", "mini-pekka", "musketeer", "archers", "fireball", "arrows", "rock-golem", "skeletons"],
+  ["giant", "mini-pekka", "musketeer", "archers", "fireball", "arrows", "golem", "skeletons"],
 ];
 
 export function pickBotDeck(): string[] {

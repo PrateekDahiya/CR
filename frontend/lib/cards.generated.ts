@@ -4,8 +4,8 @@
  * Regenerate: python scripts/generate_card_table.py
  *
  * Every catalog card has full battle stats, so all of them are playable.
- * The 12 tournament-baseline cards keep their hand-tuned values; the rest are
- * derived deterministically from type + elixir cost + rarity + archetype.
+ * Numeric values are generated from catalog facts and tuning profiles. Runtime
+ * mechanics are loaded from MySQL card_mechanics.
  */
 
 import type { CardInfo } from "./cards";
@@ -28,9 +28,9 @@ export const GENERATED_CARD_LIST: CardInfo[] = [
   { id: "boss-bandit", name: "boss-bandit", type: "troop", cost: 6, rarity: "champion", hp: 8657, damage: 1672, dps: 1393.33, hitSpeed: 1.2, speed: 1.0, range: 3.0, targets: "ground", count: 1, radius: 0.0 },
   { id: "bowler", name: "bowler", type: "troop", cost: 5, rarity: "epic", hp: 6064, damage: 1165, dps: 970.83, hitSpeed: 1.2, speed: 1.0, range: 3.0, targets: "ground", count: 1, radius: 0.0 },
   { id: "cannon", name: "cannon", type: "building", cost: 3, rarity: "common", hp: 900, damage: 240, dps: 266.67, hitSpeed: 0.9, speed: 0, range: 5.5, targets: "buildings", count: 1, radius: 0 },
-  { id: "cannoneer", name: "cannoneer", type: "troop", cost: 4, rarity: "epic", hp: 4847, damage: 1501, dps: 1072.14, hitSpeed: 1.4, speed: 1.0, range: 3.5, targets: "ground", count: 1, radius: 0.0 },
+  { id: "cannoneer", name: "cannoneer", type: "tower", cost: 0, rarity: "epic", hp: 4847, damage: 1501, dps: 1072.14, hitSpeed: 1.4, speed: 1.0, range: 3.5, targets: "air+ground", count: 1, radius: 0.0 },
   { id: "clone", name: "clone", type: "spell", cost: 3, rarity: "epic", hp: 0, damage: 694, dps: 0.0, hitSpeed: 0.0, speed: 0.0, range: 0.0, targets: "all", count: 0, radius: 0.0, towerDamage: 277.6 },
-  { id: "dagger-duchess", name: "dagger-duchess", type: "troop", cost: 4, rarity: "legendary", hp: 3547, damage: 1037, dps: 864.17, hitSpeed: 1.2, speed: 1.0, range: 5.5, targets: "ground", count: 1, radius: 0.0 },
+  { id: "dagger-duchess", name: "dagger-duchess", type: "tower", cost: 0, rarity: "legendary", hp: 3547, damage: 1037, dps: 864.17, hitSpeed: 1.2, speed: 1.0, range: 5.5, targets: "air+ground", count: 1, radius: 0.0 },
   { id: "dark-prince", name: "dark-prince", type: "troop", cost: 4, rarity: "epic", hp: 3310, damage: 967, dps: 805.83, hitSpeed: 1.2, speed: 1.0, range: 5.5, targets: "ground", count: 1, radius: 0.0 },
   { id: "dart-goblin", name: "dart-goblin", type: "troop", cost: 3, rarity: "rare", hp: 852, damage: 353, dps: 353.0, hitSpeed: 1.0, speed: 1.45, range: 0.8, targets: "ground", count: 3, radius: 0.0 },
   { id: "earthquake", name: "earthquake", type: "spell", cost: 3, rarity: "rare", hp: 0, damage: 663, dps: 0.0, hitSpeed: 0.0, speed: 0.0, range: 0.0, targets: "all", count: 0, radius: 3.0, towerDamage: 265.2 },
@@ -96,7 +96,7 @@ export const GENERATED_CARD_LIST: CardInfo[] = [
   { id: "ram-rider", name: "ram-rider", type: "troop", cost: 5, rarity: "legendary", hp: 11457, damage: 976, dps: 650.67, hitSpeed: 1.5, speed: 0.75, range: 1.2, targets: "ground", count: 1, radius: 0.0 },
   { id: "rascals", name: "rascals", type: "troop", cost: 5, rarity: "common", hp: 5414, damage: 1059, dps: 882.5, hitSpeed: 1.2, speed: 1.0, range: 3.0, targets: "ground", count: 1, radius: 0.0 },
   { id: "rocket", name: "rocket", type: "spell", cost: 6, rarity: "rare", hp: 0, damage: 1941, dps: 0.0, hitSpeed: 0.0, speed: 0.0, range: 0.0, targets: "all", count: 0, radius: 3.5, towerDamage: 776.4 },
-  { id: "royal-chef", name: "royal-chef", type: "troop", cost: 4, rarity: "legendary", hp: 3547, damage: 1037, dps: 864.17, hitSpeed: 1.2, speed: 1.0, range: 5.5, targets: "ground", count: 1, radius: 0.0 },
+  { id: "royal-chef", name: "royal-chef", type: "tower", cost: 0, rarity: "legendary", hp: 3547, damage: 1037, dps: 864.17, hitSpeed: 1.2, speed: 1.0, range: 5.5, targets: "air+ground", count: 1, radius: 0.0 },
   { id: "royal-delivery", name: "royal-delivery", type: "spell", cost: 3, rarity: "common", hp: 0, damage: 631, dps: 0.0, hitSpeed: 0.0, speed: 0.0, range: 0.0, targets: "all", count: 0, radius: 2.0, towerDamage: 252.4 },
   { id: "royal-ghost", name: "royal-ghost", type: "troop", cost: 3, rarity: "legendary", hp: 3484, damage: 650, dps: 541.67, hitSpeed: 1.2, speed: 1.0, range: 3.0, targets: "ground", count: 1, radius: 0.0 },
   { id: "royal-giant", name: "royal-giant", type: "troop", cost: 6, rarity: "common", hp: 11775, damage: 1021, dps: 680.67, hitSpeed: 1.5, speed: 0.75, range: 1.2, targets: "ground", count: 1, radius: 0.0 },
@@ -112,7 +112,7 @@ export const GENERATED_CARD_LIST: CardInfo[] = [
   { id: "the-log", name: "the-log", type: "spell", cost: 2, rarity: "legendary", hp: 0, damage: 397, dps: 0.0, hitSpeed: 0.0, speed: 0.0, range: 0.0, targets: "all", count: 0, radius: 2.5, towerDamage: 158.8 },
   { id: "tombstone", name: "tombstone", type: "building", cost: 3, rarity: "rare", hp: 2595, damage: 526, dps: 438.33, hitSpeed: 1.2, speed: 0.0, range: 5.5, targets: "buildings", count: 1, radius: 0.0 },
   { id: "tornado", name: "tornado", type: "spell", cost: 3, rarity: "epic", hp: 0, damage: 694, dps: 0.0, hitSpeed: 0.0, speed: 0.0, range: 0.0, targets: "all", count: 0, radius: 3.0, towerDamage: 277.6 },
-  { id: "tower-princess", name: "tower-princess", type: "troop", cost: 4, rarity: "common", hp: 3507, damage: 728, dps: 606.67, hitSpeed: 1.2, speed: 0.0, range: 5.5, targets: "buildings", count: 1, radius: 0.0 },
+  { id: "tower-princess", name: "tower-princess", type: "tower", cost: 0, rarity: "common", hp: 3507, damage: 728, dps: 606.67, hitSpeed: 1.2, speed: 0.0, range: 5.5, targets: "air+ground", count: 1, radius: 0.0 },
   { id: "valkyrie", name: "valkyrie", type: "troop", cost: 5, rarity: "rare", hp: 5739, damage: 1112, dps: 926.67, hitSpeed: 1.2, speed: 1.0, range: 3.0, targets: "ground", count: 1, radius: 0.0 },
   { id: "void", name: "void", type: "spell", cost: 3, rarity: "epic", hp: 0, damage: 694, dps: 0.0, hitSpeed: 0.0, speed: 0.0, range: 0.0, targets: "all", count: 0, radius: 2.5, towerDamage: 277.6 },
   { id: "witch", name: "witch", type: "troop", cost: 5, rarity: "epic", hp: 4327, damage: 1292, dps: 1076.67, hitSpeed: 1.2, speed: 1.0, range: 5.5, targets: "ground", count: 1, radius: 0.0 },

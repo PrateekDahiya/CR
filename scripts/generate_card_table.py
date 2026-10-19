@@ -3,15 +3,14 @@
 
 Why
 ---
-The engine shipped with a hand-tuned 12-card tournament baseline. The catalog
-lists 108 cards. To make *every* card playable we need a CardDef (hp, damage,
-hitSpeed, range, targets, ...) for all 108 — from one generator, so the backend
-engine and the frontend client can never drift.
+The catalog lists 108 cards. Every catalog row gets a CardDef (hp, damage,
+hitSpeed, range, targets, ...) from one generator, so the backend and frontend
+can never drift. Mechanics are loaded separately from MySQL; this file owns
+numeric catalog facts only.
 
-The 12 hand-tuned cards keep their exact stats (they are the tournament
-baseline). Every other card gets deterministic stats derived from its catalog
-facts (type, elixir cost, rarity) plus a small archetype table keyed off the
-card name. Same input -> same output, so re-running is idempotent.
+The numeric values are deterministic tuning values derived from catalog facts
+(type, elixir cost, rarity) plus an archetype table. Same input produces the
+same output; runtime behavior is stored in MySQL card_mechanics.
 
 Usage
 -----
@@ -33,22 +32,6 @@ import sys
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-# --- hand-tuned tournament baseline: never overwritten -------------------------
-BASELINE = {
-    "knight": dict(hp=1450, damage=165, hitSpeed=1.1, speed=0.9, range=0.8, count=1, radius=0),
-    "archers": dict(hp=340, damage=120, hitSpeed=1.2, speed=1.0, range=5.5, count=2, radius=0),
-    "giant": dict(hp=3400, damage=180, hitSpeed=1.5, speed=0.75, range=1.2, count=1, radius=0),
-    "skeletons": dict(hp=80, damage=90, hitSpeed=1.0, speed=1.5, range=0.8, count=3, radius=0),
-    "musketeer": dict(hp=720, damage=180, hitSpeed=1.1, speed=1.0, range=6.0, count=1, radius=0),
-    "baby-dragon": dict(hp=1150, damage=160, hitSpeed=1.6, speed=1.0, range=3.5, count=1, radius=1.2),
-    "mini-pekka": dict(hp=1300, damage=600, hitSpeed=1.8, speed=1.5, range=0.8, count=1, radius=0),
-    "rock-golem": dict(hp=2600, damage=220, hitSpeed=2.0, speed=0.6, range=1.2, count=1, radius=0),
-    "fireball": dict(hp=0, damage=690, hitSpeed=0, speed=0, range=0, count=0, radius=3.0),
-    "arrows": dict(hp=0, damage=290, hitSpeed=0, speed=0, range=0, count=0, radius=4.0),
-    "zap": dict(hp=0, damage=160, hitSpeed=0, speed=0, range=0, count=0, radius=2.5),
-    "cannon": dict(hp=900, damage=240, hitSpeed=0.9, speed=0, range=5.5, count=1, radius=0),
-}
 
 # --- archetypes (name keyword -> combat profile) -------------------------------
 ARCHETYPES = [
@@ -99,9 +82,6 @@ def role_for(name: str, card_type: str) -> str:
 
 
 def stats_for(name: str, card_type: str, cost: int, rarity: str) -> dict:
-    if name in BASELINE:
-        return dict(BASELINE[name])
-
     c = max(1, min(8, cost))
     hp_m = RARITY_HP.get(rarity, 1.0)
     dmg_m = RARITY_DMG.get(rarity, 1.0)
@@ -157,16 +137,13 @@ def build(catalog: list[dict]) -> list[dict]:
     rows = []
     for entry in sorted(catalog, key=lambda e: e["name"]):
         name = entry["name"]
-        card_type = entry["cardType"] if entry["cardType"] in ("troop", "spell", "building") else "troop"
+        card_type = entry["cardType"] if entry["cardType"] in ("troop", "spell", "building", "tower") else "troop"
         rarity = entry.get("rarity") or "common"
-        cost = int(entry.get("elixir") or 0)
-        if cost <= 0:
-            # Tower troops are listed with 0 elixir in the catalog (they are not
-            # normal deck cards). In battle they cost 4.
-            cost = 4
-            card_type = "troop"
-        st = stats_for(name, card_type, cost, rarity)
-        targets = "all" if card_type == "spell" else ("buildings" if role_for(name, card_type) == "building" else "ground")
+        catalog_cost = int(entry.get("elixir") or 0)
+        stat_cost = 4 if card_type == "tower" and catalog_cost <= 0 else max(catalog_cost, 1)
+        st = stats_for(name, "troop" if card_type == "tower" else card_type, stat_cost, rarity)
+        cost = catalog_cost if card_type == "tower" else stat_cost
+        targets = "all" if card_type == "spell" else ("air+ground" if card_type == "tower" else ("buildings" if role_for(name, card_type) == "building" else "ground"))
         if name in FLYING:
             targets = "air+ground"
         rows.append({
@@ -199,8 +176,8 @@ HEADER = """/**
  * Regenerate: python scripts/generate_card_table.py
  *
  * Every catalog card has full battle stats, so all of them are playable.
- * The 12 tournament-baseline cards keep their hand-tuned values; the rest are
- * derived deterministically from type + elixir cost + rarity + archetype.
+ * Numeric values are derived deterministically from catalog facts and an
+ * archetype tuning profile. Runtime mechanics are loaded from MySQL.
  */
 """
 
@@ -279,7 +256,7 @@ def main() -> int:
     )
     frontend = (
         HEADER.format(source=source)
-        + "\nimport type { CardInfo } from \"./cards\";\n\n"
+            + "\nimport type { CardInfo } from \"./cards\";\n\n"
         + "/** Full catalog as client-side CardInfo records (same source as the server). */\n"
         + "export const GENERATED_CARD_LIST: CardInfo[] = [\n"
         + "\n".join(

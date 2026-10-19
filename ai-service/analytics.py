@@ -42,7 +42,7 @@ CARD_POOL: tuple[str, ...] = (
     "musketeer",
     "baby-dragon",
     "mini-pekka",
-    "rock-golem",
+    "golem",
     "fireball",
     "arrows",
     "zap",

@@ -8,22 +8,16 @@
  * (O(n log n) sort on read, n = players).
  */
 
-import { CARDS } from "./game/cards.js";
+import { CARDS, CARD_LIST } from "./game/cards.js";
 
 export const DECK_SIZE = 8;
 const isBattleCard = (id: string): boolean => CARDS[id] !== undefined;
 
 /** Starter deck (same list as the frontend fallback). */
-const DECK_FALLBACK: string[] = [
-  "knight",
-  "archers",
-  "giant",
-  "skeletons",
-  "musketeer",
-  "baby-dragon",
-  "fireball",
-  "arrows",
-];
+const DECK_FALLBACK: string[] = CARD_LIST
+  .filter((card) => card.type !== "tower")
+  .slice(0, DECK_SIZE)
+  .map((card) => card.id);
 
 export interface Player {
   playerId: string;
@@ -85,12 +79,8 @@ export function ensurePlayer(playerId: string): Player {
     wins: 0,
     losses: 0,
     draws: 0,
-    // Starter collection: the 12 baseline cards at a mid level.
-    cards: Object.fromEntries(
-      ["knight", "archers", "giant", "skeletons", "musketeer", "baby-dragon", "mini-pekka", "rock-golem", "fireball", "arrows", "zap", "cannon"].map(
-        (id) => [id, 9],
-      ),
-    ),
+    // The database-backed catalog is the complete starter collection.
+    cards: Object.fromEntries(CARD_LIST.map((card) => [card.id, 9])),
     decks: [deck],
     activeDeckId: deck.id,
     createdAtMs: Date.now(),

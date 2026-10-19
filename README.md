@@ -41,6 +41,11 @@ docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -
 # Set-Location ai-service; pip install -r requirements.txt; uvicorn main:app --port 8000
 ```
 
+When `DB_HOST` is set in `infra/.env`, backend startup automatically creates or
+upgrades every MySQL table and seeds the complete game dataset: 108 cards and
+stats, mechanics, child-unit templates, menus, and sprite metadata. See
+`docs/DATABASE_BOOTSTRAP.md`.
+
 Ports (planned): frontend 3000, backend 4000 (socket same), ai-service 8000, postgres 5432, redis 6379.
 
 ## 4. Building
@@ -58,7 +63,7 @@ Ports (planned): frontend 3000, backend 4000 (socket same), ai-service 8000, pos
 - Live previews: :3000/:4000/:8000 (MEMORY#19, detached, restarted per phase).
 
 ## 6. Deployment
-- Dev: `docker compose -f infra/docker-compose.yml up --build` (restart unless-stopped, memory fallback DB).
+- Dev: `docker compose -f infra/docker-compose.yml up --build` (restart unless-stopped; configured MySQL is automatically migrated and seeded).
 - Prod: `docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d --build` (restart always, healthchecks postgres/redis/backend/ai, DATABASE_URL + SEASON wired, CORS_ORIGIN documented - backend still CORS * until explicit-origin patch).
 - Frontend alt: Vercel (set NEXT_PUBLIC_BACKEND_URL + NEXT_PUBLIC_AI_URL to container host). Backend/AI: any container host (Render/Fly/VM) with postgres:16 + redis:7.
 - Env: copy `infra/.env.example` -> `infra/.env` (gitignored), set POSTGRES_PASSWORD, DATABASE_URL, CORS_ORIGIN, SEASON. Never commit `.env`.

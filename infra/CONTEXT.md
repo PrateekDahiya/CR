@@ -67,7 +67,7 @@ via `NEXT_PUBLIC_BACKEND_URL`. See `infra/.env.example`.
 ## Key files
 - `infra/docker-compose.yml:1` — dev stack (source of truth, 5 services + `cr-net`).
 - `infra/docker-compose.prod.yml:1` — prod overlay stub.
-- `infra/.env.example:1` — 7 vars: POSTGRES_USER/PASSWORD/DB, REDIS_URL, BACKEND_URL, AI_URL, NEXT_PUBLIC_BACKEND_URL.
+- `infra/.env.example:1` — service variables plus MySQL `DB_HOST/DB_USER/DB_PASS/DB_NAME/DB_PORT/DB_SSL`; configured backend startup migrates and seeds the complete game database.
 
 ## Conventions
 - Compose file lives in `infra/`; build contexts MUST be `../<service>` (not `./<service>`).

@@ -30,7 +30,7 @@ export interface ValidationResult {
 
 export type PlayerSide = "blue" | "red";
 
-import { CARDS } from "../game/cards.js";
+import { CARDS, isPlayableCard } from "../game/cards.js";
 
 /**
  * Elixir cost per card id. Derived from the canonical engine table (108 cards)
@@ -45,7 +45,7 @@ export const CARD_COSTS: Record<string, number> = Object.fromEntries(
 const SPELL_IDS = new Set(Object.values(CARDS).filter((c) => c.type === "spell").map((c) => c.id));
 
 /** All playable card ids — O(1) membership test used by deck validation. */
-const KNOWN_IDS = new Set(Object.keys(CARD_COSTS));
+const KNOWN_IDS = new Set(Object.keys(CARD_COSTS).filter(isPlayableCard));
 
 export function isKnownCard(cardId: string): boolean {
   return KNOWN_IDS.has(cardId);
@@ -69,7 +69,7 @@ export function validateDeck(deck: unknown): ValidationResult {
   if (!deck.every((c): c is string => typeof c === "string")) {
     return { ok: false, code: "BAD_DECK", message: "deck entries must be card id strings" };
   }
-  const unknown = deck.find((c) => !(c in CARD_COSTS));
+  const unknown = deck.find((c) => !KNOWN_IDS.has(c));
   if (unknown !== undefined) {
     return { ok: false, code: "BAD_DECK", message: `unknown card id: ${unknown}` };
   }

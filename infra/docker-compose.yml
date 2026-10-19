@@ -42,6 +42,14 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-cr}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-crpass}
       - POSTGRES_DB=${POSTGRES_DB:-crdb}
+      - DB_HOST=${DB_HOST:-}
+      - DB_USER=${DB_USER:-}
+      - DB_PASS=${DB_PASS:-}
+      - DB_NAME=${DB_NAME:-cr}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_SSL=${DB_SSL:-true}
+    volumes:
+      - ./mysql:/app/infra/mysql:ro
     networks:
       - cr-net
     restart: unless-stopped

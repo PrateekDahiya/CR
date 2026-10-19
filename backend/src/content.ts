@@ -2,7 +2,15 @@
 // All handlers O(c)/O(m) reads + O(1) fallback. Never serves binary rips.
 
 import type { Express, Request, Response } from "express";
-import { getCatalog, getContentCards, getContentMenus, getContentSprites, isMysqlConfigured, pingMysql } from "./mysql.js";
+import {
+  getCatalog,
+  getCardMechanicsContent,
+  getContentCards,
+  getContentMenus,
+  getContentSprites,
+  isMysqlConfigured,
+  pingMysql,
+} from "./mysql.js";
 
 export function mountContent(app: Express): void {
   // O(c) c=12 cards.
@@ -28,6 +36,12 @@ export function mountContent(app: Express): void {
     const data = await getCatalog();
     const playable = data.catalog.filter((c) => c.playable).length;
     res.json({ ...data, count: data.catalog.length, playable });
+  });
+
+  // O(n) n=108 behavior rows. Mechanics are data, not executable code.
+  app.get("/content/mechanics", async (_req: Request, res: Response) => {
+    const data = await getCardMechanicsContent();
+    res.json({ ...data, count: data.mechanics.length });
   });
 
   // O(1) store status (env presence + live ping).

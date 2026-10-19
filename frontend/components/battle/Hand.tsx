@@ -31,7 +31,7 @@ export const CARD_EMOJI: Record<string, string> = {
   musketeer: "🔫",
   "baby-dragon": "🐲",
   "mini-pekka": "🔪",
-  "rock-golem": "🪨",
+  golem: "🪨",
   fireball: "🔥",
   arrows: "➶",
   zap: "⚡",

@@ -21,7 +21,7 @@
  *
  * Run: `npm test` from `backend/` (see `backend/tests/README.md`).
  */
-import { describe, it } from 'node:test';
+import { before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createGame,
@@ -33,6 +33,11 @@ import {
   ELIXIR_DOUBLE_SEC,
 } from '../src/game/engine.js';
 import type { EngineState } from '../src/game/engine.js';
+import { hydrateMechanicsFromMysql } from '../src/mysql.js';
+
+before(async () => {
+  await hydrateMechanicsFromMysql();
+});
 
 // ---------------------------------------------------------------------------
 // Fixtures (GAME_DESIGN §4: 8 distinct cards, max 2 spells)
@@ -255,10 +260,10 @@ describe('engine — towers + king activation (GAME_DESIGN §6)', () => {
     const s = newGame();
     const king = towerOf(s, 'king', 'blue');
     s.elixir.red = 10;
-    // Red hand slot 2 = fireball (spell, cost 4, 280 vs towers).
+    // Red hand slot 2 = database-defined fireball (spell, cost 4, 276 vs towers).
     const r = playCard(s, 'red', { handIndex: 2, x: king.x, y: king.y });
     assert.equal(r.ok, true);
-    assert.equal(king.hp, 2400 - 280);
+    assert.equal(king.hp, 2400 - 276);
     assert.equal(king.active, true, 'king must activate after taking damage (§6.2)');
     const redKing = towerOf(s, 'king', 'red');
     assert.equal(redKing.active, false, 'undamaged red king stays inactive');
@@ -270,7 +275,7 @@ describe('engine — towers + king activation (GAME_DESIGN §6)', () => {
     s.elixir.blue = 10;
     const r = playCard(s, 'blue', { handIndex: 2, x: princess.x, y: princess.y });
     assert.equal(r.ok, true);
-    assert.equal(princess.hp, 1400 - 280);
+    assert.equal(princess.hp, 1400 - 276);
     assert.equal(princess.destroyed, false);
     assert.equal(s.crowns.blue, 0);
     assert.equal(s.crowns.red, 0);
