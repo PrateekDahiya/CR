@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import {
   backendUrl,
   getPlayerProfile,
@@ -28,25 +29,28 @@ export interface PlayerContextValue {
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
 
+/**
+ * The signed-in player id. No auto-generated guest names any more: an account
+ * (register/login) is required, so this returns "" until then and AuthGuard
+ * sends the visitor to /login.
+ */
 function readPlayerId(): string {
-  if (typeof window === "undefined") return "guest";
-  const existing = window.localStorage.getItem("cr-player-id");
-  if (existing && existing.length > 0) return existing;
-  const id = `guest-${Math.random().toString(36).slice(2, 8)}`;
+  if (typeof window === "undefined") return "";
   try {
-    window.localStorage.setItem("cr-player-id", id);
+    return window.localStorage.getItem("cr-player-id") ?? "";
   } catch {
-    // private mode
+    return "";
   }
-  return id;
 }
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [playerId, setPlayerId] = useState("guest");
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<{ trophies: number; coins: number } | null>(null);
+  const [authed, setAuthed] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -65,8 +69,20 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setPlayerId(id);
   }, []);
 
+  // Re-read on navigation: logging in/out (or switching account) changes the
+  // stored id while this provider stays mounted, so pick it up here.
   useEffect(() => {
-    if (playerId === "guest" && typeof window !== "undefined" && !window.localStorage.getItem("cr-player-id")) {
+    const id = readPlayerId();
+    setPlayerId((prev) => (prev === id ? prev : id));
+  }, [pathname]);
+
+  useEffect(() => {
+    // Real accounts only: a playerId exists once the user registered/logged in.
+    const id = typeof window !== "undefined" ? window.localStorage.getItem("cr-player-id") : null;
+    const hasAccount = id !== null && id.length > 0 && !id.startsWith("guest");
+    setAuthed(hasAccount);
+    if (!hasAccount) {
+      setLoading(false);
       return;
     }
     void refresh();

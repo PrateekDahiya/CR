@@ -172,6 +172,58 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
 }
 
+/**
+ * Rounded rectangle path helper (tower plates). O(1).
+ */
+function roundedRect(
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
+  const rr = Math.min(r, w / 2, h / 2);
+  c.beginPath();
+  c.moveTo(x + rr, y);
+  c.lineTo(x + w - rr, y);
+  c.quadraticCurveTo(x + w, y, x + w, y + rr);
+  c.lineTo(x + w, y + h - rr);
+  c.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+  c.lineTo(x + rr, y + h);
+  c.quadraticCurveTo(x, y + h, x, y + h - rr);
+  c.lineTo(x, y + rr);
+  c.quadraticCurveTo(x, y, x + rr, y);
+  c.closePath();
+}
+
+/**
+ * Level badge next to a tower's HP bar (reference: blue "15" / red "14" square).
+ * Drawn in the same local space as the HP bar (already upright). O(1).
+ */
+function drawLevelBadge(
+  c: CanvasRenderingContext2D,
+  level: number,
+  left: number,
+  top: number,
+): void {
+  const size = 15;
+  c.save();
+  c.fillStyle = "#1e40af";
+  c.strokeStyle = "#dbeafe";
+  c.lineWidth = 1.5;
+  c.beginPath();
+  c.rect(left, top, size, size);
+  c.fill();
+  c.stroke();
+  c.fillStyle = "#ffffff";
+  c.font = "bold 10px sans-serif";
+  c.textAlign = "center";
+  c.textBaseline = "middle";
+  c.fillText(String(level), left + size / 2, top + size / 2 + 0.5);
+  c.restore();
+}
+
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
@@ -566,49 +618,77 @@ export default function ArenaCanvas({
         const t = tw[ti];
         const cx = (t.position.x + 0.5) * TW;
         const cy = (t.position.y + 0.5) * TH;
-        const baseR = t.kind === "king" ? TW * 0.95 : TW * 0.8;
+        // Real CR footprints: princess 3x3 tiles, king 4x4 tiles, SQUARE.
+        const tiles = t.kind === "king" ? 4 : 3;
+        const size = tiles * TW;
+        const half = size / 2;
+        const barW = size * 0.95;
         // shadow
-        c.fillStyle = "rgba(0,0,0,0.25)";
+        c.fillStyle = "rgba(0,0,0,0.28)";
         c.beginPath();
-        c.ellipse(cx, cy + baseR * 0.75, baseR * 0.9, baseR * 0.32, 0, 0, Math.PI * 2);
+        c.ellipse(cx, cy + half * 0.85, half * 0.85, half * 0.26, 0, 0, Math.PI * 2);
         c.fill();
         if (!t.destroyed) {
-          // base disc + team ring
-          c.fillStyle = t.owner === "blue" ? "#dbeafe" : "#fee2e2";
-          c.beginPath();
-          c.arc(cx, cy, baseR, 0, Math.PI * 2);
-          c.fill();
+          // Square stone base: strong team plate + inset lighter face.
+          const plate = t.owner === "blue" ? "#1d4ed8" : "#b91c1c";
+          const face = t.owner === "blue" ? "#93c5fd" : "#fca5a5";
+          const ring = t.owner === "blue" ? "#bfdbfe" : "#fecaca";
+          c.save();
           c.lineWidth = 3;
-          c.strokeStyle = t.owner === "blue" ? "#2563eb" : "#dc2626";
+          c.strokeStyle = "#3f2a14";
+          roundedRect(c, cx - half, cy - half, size, size, 6);
+          c.fillStyle = plate;
+          c.fill();
           c.stroke();
-          // emoji (👑 king 2400 / 🏰 princess 1400) + HP bar, both upright and always
-          // ABOVE the tower regardless of whose view this is.
+          c.lineWidth = 3;
+          c.strokeStyle = ring;
+          roundedRect(c, cx - half + 5, cy - half + 5, size - 10, size - 10, 4);
+          c.fillStyle = face;
+          c.fill();
+          c.stroke();
+          // inner shadow line for depth
+          c.strokeStyle = "rgba(0,0,0,0.18)";
+          c.lineWidth = 1;
+          roundedRect(c, cx - half + 2, cy - half + 2, size - 4, size - 4, 5);
+          c.stroke();
+          c.restore();
+          // Roof / emblem, upright in both views.
           upright(cx, cy, () => {
-            c.font = `${t.kind === "king" ? 20 : 17}px serif`;
+            c.font = `${t.kind === "king" ? 34 : 26}px serif`;
             c.textAlign = "center";
             c.textBaseline = "middle";
             c.fillText(t.kind === "king" ? "👑" : "🏰", 0, 1);
           });
-          upright(cx, cy - baseR - 4, () => {
-            drawTowerHpBar(c, t, 0, 0, TW * 2.4);
+          // HP bar + level badge, always visually ABOVE the tower. The blue view
+          // is mirrored, so "up on screen" is +y in board space there.
+          const barOffset = sideRef.current === "blue" ? half + 8 : -(half + 8);
+          upright(cx, cy + barOffset, () => {
+            drawTowerHpBar(c, t, 0, 0, barW);
+            drawLevelBadge(c, t.owner === "blue" ? 15 : 14, -barW / 2 - 17, -2);
           });
         } else {
-          // rubble
+          // Rubble: collapsed square.
+          c.save();
           c.fillStyle = "#57534e";
-          c.beginPath();
-          c.arc(cx, cy, baseR * 0.7, 0, Math.PI * 2);
+          c.lineWidth = 3;
+          c.strokeStyle = "#292524";
+          roundedRect(c, cx - half * 0.7, cy - half * 0.55, size * 0.7, size * 0.55, 4);
           c.fill();
+          c.stroke();
           c.fillStyle = "#a8a29e";
           c.beginPath();
-          c.arc(cx - 4, cy - 3, 3, 0, Math.PI * 2);
-          c.arc(cx + 5, cy + 2, 2.5, 0, Math.PI * 2);
+          c.arc(cx - 5, cy - 3, 3.5, 0, Math.PI * 2);
+          c.arc(cx + 6, cy + 3, 3, 0, Math.PI * 2);
           c.fill();
+          c.restore();
           // crown popup (pulse via time)
           const pulse = 1 + Math.sin(timeS * 5) * 0.12;
-          c.font = `${Math.round(18 * pulse)}px serif`;
-          c.textAlign = "center";
-          c.textBaseline = "middle";
-          upright(cx, cy - baseR - 12, () => c.fillText("👑", 0, 0));
+          upright(cx, cy - half - 10, () => {
+            c.font = `${Math.round(20 * pulse)}px serif`;
+            c.textAlign = "center";
+            c.textBaseline = "middle";
+            c.fillText("👑", 0, 0);
+          });
         }
       }
 

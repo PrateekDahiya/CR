@@ -19,7 +19,8 @@
  *  card-hand x4 OR card-hand-0..3, next-card OR card-next,
  *  elixir-pip-filled/empty OR elixir-pip-0..9 (total 10 via ^elixir-pip).
  */
-import { test, expect, type Page, type Locator } from "@playwright/test";
+import { expect, type Page, type Locator } from "@playwright/test";
+import { test } from "./fixtures";
 
 const BASE =
   process.env.PLAYWRIGHT_BASE_URL ??

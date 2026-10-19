@@ -54,7 +54,7 @@ import {
   playWin,
   toggleMute,
 } from "../../lib/battle/sfx";
-import { requestSync, sendEmote } from "../../lib/socket";
+import { getSocket, requestSync, sendEmote } from "../../lib/socket";
 import { reportMatch, getPlayerProfile, getMatchRoster } from "../../lib/api";
 import { usePlayer } from "../../lib/playerContext";
 import { crBgStyle } from "../../lib/crTheme";
@@ -151,19 +151,32 @@ export default function BattlePage() {
   const [trophyDelta, setTrophyDelta] = useState<number | null>(null);
   const [coinDelta, setCoinDelta] = useState<number | null>(null);
   const [foe, setFoe] = useState<{ name: string; club: string; trophies: number } | null>(null);
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const arenaRef = useRef<HTMLDivElement | null>(null);
+  /** Horizontal inset of the arena inside its container (arena is centred). */
+  const [hudInset, setHudInset] = useState(0);
 
   useEffect(() => {
     setDeck(loadDeck());
     setPlayerId(loadPlayerId());
     setMutedState(isMuted());
     setReady(true);
-    // Arriving from the matchmaking loader (or reloading mid-match): ask the
-    // server for that match's snapshot so the hook adopts it and deploys work.
+    // Arriving from the matchmaking loader, the resume guard, or a mid-match
+    // reload: ask the server for that match's snapshot so the hook adopts it,
+    // rebinds this socket, and the battle continues where it was left.
     try {
       const params = new URLSearchParams(window.location.search);
       const mid = params.get("matchId");
-      if (mid) {
-        requestSync(mid);
+      const socket = getSocket();
+      if (mid && socket !== null && socket.connected) {
+        requestSync(mid, loadPlayerId());
+      } else if (mid) {
+        // Socket still connecting: sync as soon as it is up.
+        const onConnect = () => {
+          requestSync(mid, loadPlayerId());
+          socket?.off("connect", onConnect);
+        };
+        socket?.on("connect", onConnect);
       }
     } catch {
       // ignore
@@ -403,6 +416,30 @@ export default function BattlePage() {
     await battle.joinSearch("medium");
   }
 
+  // The arena is centred and narrower than the column, so the HUD must inset to
+  // the ARENA edges (top-right of the battle screen), not the viewport's.
+  useEffect(() => {
+    const el = arenaRef.current;
+    if (el === null) return;
+    const measure = () => {
+      const canvas = el.querySelector('[data-testid="arena-canvas"]');
+      if (canvas === null) return;
+      const box = el.getBoundingClientRect();
+      const art = canvas.getBoundingClientRect();
+      setHudInset(Math.max(0, Math.round(art.left - box.left)));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    const canvas = el.querySelector('[data-testid="arena-canvas"]');
+    if (canvas !== null) ro.observe(canvas);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+
   return (
     <main className="relative h-[100dvh] w-full overflow-hidden text-white" style={crBgStyle()}>
       <style>{`
@@ -419,11 +456,12 @@ export default function BattlePage() {
         data-phase={phase}
         data-match={matchId ?? ""}
         data-pid={playerId}
-        className="flex h-[100dvh] w-full max-w-[440px] flex-col overflow-hidden"
+        className="relative mx-auto flex h-[100dvh] w-full max-w-[440px] flex-col overflow-hidden"
       >
         {/* Arena takes all free space; the HUD is a sibling below it, so no part
             of the playable board is ever covered and the page never scrolls. */}
         <div
+          ref={arenaRef}
           className={`relative flex min-h-0 flex-1 items-center justify-center overflow-hidden ${
             invalidFlash ? "battle-shake" : ""
           }`}
@@ -467,15 +505,18 @@ export default function BattlePage() {
           {showBanner && phase === "in-match" && (
             <div
               data-testid="battle-banner"
-              className="absolute inset-x-0 top-24 mx-auto w-fit rounded-xl border-b-4 border-amber-700 bg-gradient-to-b from-amber-300 to-amber-500 px-5 py-1.5 text-2xl font-extrabold uppercase text-red-900 [text-shadow:1px_1px_0_rgba(255,255,255,0.5)]"
+              className="absolute inset-x-0 top-1/2 mx-auto w-fit -translate-y-1/2 rounded-xl border-b-4 border-amber-700 bg-gradient-to-b from-amber-300 to-amber-500 px-6 py-1.5 text-2xl font-extrabold uppercase text-red-900 shadow-lg [text-shadow:1px_1px_0_rgba(255,255,255,0.5)]"
             >
               Battle! ⚔️
             </div>
           )}
         </div>
 
-        {/* Top HUD — translucent strip over the arena. */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
+        {/* Top HUD — sits at the top of the ARENA (battle screen), not the viewport. */}
+        <div
+          className="pointer-events-none absolute top-0 z-10"
+          style={{ left: hudInset, right: hudInset }}
+        >
           <BattleTopBar
             enemyName={foe?.name ?? opponentId ?? "Opponent"}
             enemyClub={foe?.club ?? "Guest"}
@@ -483,12 +524,15 @@ export default function BattlePage() {
             timeLeftSec={battle.timeLeftSec}
             isOvertime={battle.isOvertime}
           />
-          {battle.isDoubleElixir && !battle.isOvertime && phase === "in-match" && (
-            <div
-              data-testid="double-elixir-badge"
-              className="mx-auto mt-0.5 w-fit rounded-full bg-fuchsia-950/85 px-3 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-fuchsia-200"
-            >
-              ⚡ 2x Elixir
+          {/* Elixir speed hint, right under the timer. */}
+          {battle.elixirMultiplier > 1 && phase === "in-match" && (
+            <div className="mt-0.5 flex justify-end pr-2">
+              <div
+                data-testid="double-elixir-badge"
+                className="rounded-full bg-fuchsia-950/85 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-fuchsia-200"
+              >
+                ⚡ {battle.elixirMultiplier}x Elixir
+              </div>
             </div>
           )}
           {battle.reconnecting && (
@@ -540,6 +584,22 @@ export default function BattlePage() {
                   {muted ? "🔇" : "🔊"}
                 </button>
               </div>
+              {/* End Battle: ends the match for BOTH players; the player who
+                  ends it loses. Lives in the bottom panel so it is always
+                  reachable and never overlaps the board. */}
+              {phase === "in-match" && (
+                <button
+                  type="button"
+                  data-testid="battle-forfeit"
+                  onClick={() => setConfirmEnd(true)}
+                  title="End the battle (you lose)"
+                  className="w-full rounded-md border-b-2 border-red-900 bg-gradient-to-b from-red-500 to-red-700 px-1 py-0.5 text-[8px] font-extrabold uppercase leading-tight tracking-wide text-white shadow active:translate-y-0.5"
+                >
+                  End
+                  <br />
+                  Battle
+                </button>
+              )}
               <NextCardPanel card={nextCardInfo} />
             </div>
             <Hand
@@ -582,7 +642,45 @@ export default function BattlePage() {
           </p>
         )}
 
-        {battle.result && (
+        {/* Surrender confirmation: ending the battle counts as a loss. */}
+      {confirmEnd && (
+        <div
+          data-testid="forfeit-confirm"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#050b1c]/90 p-4"
+        >
+          <div className="w-full max-w-[300px] rounded-2xl border-4 border-red-700 bg-gradient-to-b from-[#3a1414] to-[#1a0a0a] p-4 text-center shadow-2xl">
+            <h3 className="text-lg font-extrabold uppercase tracking-wide text-red-300">
+              End this battle?
+            </h3>
+            <p className="mt-1 text-xs font-bold text-slate-200">
+              The battle ends for both players and <span className="text-red-300">you lose</span>.
+            </p>
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                type="button"
+                data-testid="forfeit-confirm-yes"
+                onClick={() => {
+                  setConfirmEnd(false);
+                  void battle.surrender();
+                }}
+                className="rounded-xl border-b-4 border-red-900 bg-gradient-to-b from-red-500 to-red-700 px-4 py-2 text-sm font-extrabold uppercase text-white active:translate-y-0.5"
+              >
+                End &amp; Lose
+              </button>
+              <button
+                type="button"
+                data-testid="forfeit-cancel"
+                onClick={() => setConfirmEnd(false)}
+                className="rounded-xl border-b-4 border-sky-900 bg-gradient-to-b from-sky-400 to-sky-600 px-4 py-2 text-sm font-extrabold uppercase text-white active:translate-y-0.5"
+              >
+                Keep Playing
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {battle.result && (
           <div
             data-testid="battle-result"
             className="fixed inset-0 z-50 flex items-center justify-center bg-[#050b1c]/90 p-4 backdrop-blur-[2px]"

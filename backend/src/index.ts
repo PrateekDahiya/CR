@@ -15,11 +15,15 @@ import {
   getRoom,
   getSide,
   getSideForClient,
+  rebindPlayerSocket,
+  getActiveMatchForPlayer,
   getHand,
   getPocketFor,
   applyEnginePlay,
   broadcastState,
   startTickLoop,
+  stopTickLoop,
+  forfeit,
   createRoom,
   setRoomEndedHandler,
   type PlayerSide,
@@ -308,6 +312,41 @@ function handleCardPlay(socket: Socket, payload: CardPlayPayload, ack?: AckFn): 
   ack?.({ ok: true });
 }
 
+function handleForfeit(socket: Socket, payload: { matchId?: string; playerId?: string }, ack?: AckFn): void {
+  const matchId = payload?.matchId;
+  const playerId = payload?.playerId;
+  if (typeof matchId !== "string" || typeof playerId !== "string") {
+    fail(socket, ack, "CARD_REJECTED", "matchId and playerId are required", matchId);
+    return;
+  }
+  const room = getRoom(matchId);
+  if (room === undefined) {
+    fail(socket, ack, "CARD_REJECTED", "unknown match", matchId);
+    return;
+  }
+  const side = getSideForClient(room, socket.id, playerId);
+  if (side === null) {
+    fail(socket, ack, "CARD_REJECTED", "not a participant of this match", matchId);
+    return;
+  }
+  const ok = forfeit(room, side);
+  if (!ok) {
+    fail(socket, ack, "CARD_REJECTED", "match already finished", matchId);
+    return;
+  }
+  ack?.({ ok: true });
+  stopBotLoop(matchId);
+  // Emit immediately so the forfeiter sees the defeat without waiting a tick.
+  io.to(matchId).emit("match:end", {
+    matchId,
+    winner: side === "blue" ? "red" : "blue",
+    crowns: room.state.crowns,
+    forfeit: true,
+  });
+  broadcastState(io, room);
+  stopTickLoop(matchId);
+}
+
 function handleEmote(socket: Socket, payload: EmotePayload, ack?: AckFn): void {
   const matchId = payload?.matchId;
   const playerId = payload?.playerId;
@@ -395,12 +434,31 @@ io.on("connection", (socket) => {
     handleEmote(socket, payload, ack);
   });
 
-  // Reconnect helper (§10): client re-requests the latest snapshot.
-  socket.on("match:sync", (payload: { matchId?: string }) => {
-    const room = typeof payload?.matchId === "string" ? getRoom(payload.matchId) : undefined;
-    if (room !== undefined) {
-      socket.emit("state:update", room.state);
+  // Surrender: this player loses, the opponent wins, both receive match:end.
+  socket.on("match:forfeit", (payload: { matchId?: string; playerId?: string }, ack?: AckFn) => {
+    handleForfeit(socket, payload, ack);
+  });
+
+  // Reconnect / resume helper (§10): re-request the latest snapshot. Also binds
+// this socket to the room again so a player who left and came back resumes the
+// SAME running match (deploys keep working after a reload).
+  socket.on("match:sync", (payload: { matchId?: string; playerId?: string }) => {
+    const matchId = typeof payload?.matchId === "string" ? payload.matchId : "";
+    const playerId = typeof payload?.playerId === "string" ? payload.playerId : "";
+    const room = getRoom(matchId);
+    if (room === undefined) {
+      return;
     }
+    if (playerId.length > 0) {
+      const side = rebindPlayerSocket(room, playerId, socket.id);
+      if (side === null) {
+        return; // not a participant of this match
+      }
+      socketPlayer.set(socket.id, playerId);
+      playerSocket.set(playerId, socket.id);
+    }
+    void socket.join(matchId);
+    socket.emit("state:update", room.state);
   });
 
   socket.on("disconnect", (reason) => {
