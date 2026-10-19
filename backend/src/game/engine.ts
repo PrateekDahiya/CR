@@ -19,6 +19,7 @@
 
 import { getCard, getSpawnTemplate } from "./cards";
 import type { EffectSpec } from "./cardMechanics";
+import { getLevelStats, type LevelStats } from "./levelStats";
 import {
   CENTER_X,
   Pocket,
@@ -155,6 +156,7 @@ export interface EngineState {
   cardLevels: Record<PlayerSide, Record<string, number>>;
   towerTroopId: Record<PlayerSide, string | undefined>;
   statVersion: number;
+  cardStats: Record<PlayerSide, Record<string, LevelStats>>;
 }
 
 /* ---------------- locked constants (§0) ---------------- */
@@ -359,6 +361,16 @@ export function createGame(
   }
   const blueOrder = matchDeckOrder(blueDeck, matchId, "blue");
   const redOrder = matchDeckOrder(redDeck, matchId, "red");
+  const statVersion = opts?.statVersion ?? 1;
+  const cardLevels = { blue: { ...(opts?.blueCardLevels ?? {}) }, red: { ...(opts?.redCardLevels ?? {}) } };
+  const cardStats: Record<PlayerSide, Record<string, LevelStats>> = { blue: {}, red: {} };
+  for (const side of ["blue", "red"] as const) {
+    const deck = side === "blue" ? blueDeck : redDeck;
+    for (const id of deck) {
+      const card = getCard(id);
+      if (card !== undefined) cardStats[side][id] = getLevelStats(card, cardLevels[side][id] ?? 1, "ladder", statVersion);
+    }
+  }
   return {
     matchId,
     tick: 0,
@@ -382,9 +394,10 @@ export function createGame(
     nextFieldId: 1,
     bluePlayerId: opts?.bluePlayerId,
     redPlayerId: opts?.redPlayerId,
-    cardLevels: { blue: { ...(opts?.blueCardLevels ?? {}) }, red: { ...(opts?.redCardLevels ?? {}) } },
+    cardLevels,
     towerTroopId: { blue: opts?.blueTowerTroopId, red: opts?.redTowerTroopId },
-    statVersion: opts?.statVersion ?? 1,
+    statVersion,
+    cardStats,
   };
 }
 
@@ -988,6 +1001,7 @@ export function playCard(
   if (card.type === "tower" || card.mechanics?.towerTroop === true) {
     return fail("CARD_REJECTED", "tower troops are selected before a match, not played from the hand");
   }
+  const stats = state.cardStats[side][card.id] ?? getLevelStats(card, state.cardLevels[side][card.id] ?? 1, "ladder", state.statVersion);
 
   // 4. elixir (§11.1) — server table only, client cost ignored
   if (state.elixir[side] + 1e-9 < card.cost) {
@@ -1044,8 +1058,8 @@ export function playCard(
       side,
       x,
       y,
-      card.damage,
-      card.towerDamage,
+      stats.damage,
+      stats.towerDamage,
       withTerminalRelease(card.mechanics?.onDeploy, card.mechanics?.onDeath),
       card.mechanics?.onAttack,
     );
@@ -1056,7 +1070,7 @@ export function playCard(
   const replaceSelf = card.mechanics?.onDeploy?.some(
     (effect) => effect.kind === "spawn" && effect.replaceSelf === true,
   ) === true;
-  const positions = replaceSelf ? [] : spawnPositions(card.count, x, y);
+  const positions = replaceSelf ? [] : spawnPositions(stats.count, x, y);
   const unitIds: string[] = [];
   for (let i = 0; i < positions.length; i++) {
     const p = positions[i];
@@ -1066,11 +1080,11 @@ export function playCard(
       id,
       cardId: card.id,
       owner: side,
-      hp: card.hp,
-      maxHp: card.hp,
+      hp: stats.hitPoints,
+      maxHp: stats.hitPoints,
       x: Math.min(Math.max(p.x, 0), 18),
       y: Math.min(Math.max(p.y, 0), 32),
-      flying: card.flying === true,
+       flying: stats.flying,
       isBuilding,
       cooldown: 0,
       stunUntil: -1,
@@ -1079,21 +1093,23 @@ export function playCard(
       slowMultiplier: 1,
       rageUntil: -1,
       rageMultiplier: 1,
-      readyAt: state.timeSec + (card.deployDelaySec ?? 0),
-      expiresAt:
-        card.durationMs !== undefined
-          ? state.timeSec + card.durationMs / 1000
-          : undefined,
-      lifetimeSec: card.durationMs !== undefined ? card.durationMs / 1000 : undefined,
-      damage: card.damage,
-      hitSpeed: card.hitSpeed,
-      range: card.range,
-      sightRange: card.sightRange,
-      speed: card.speed,
-      targets: runtimeTargetMask(card),
-      splash: runtimeSplashRadius(card),
-      deathBurst: card.deathBurst,
-      deathBurstRadius: card.deathBurstRadius,
+       readyAt: state.timeSec + stats.deployDelayMs / 1000,
+       expiresAt:
+         stats.durationMs > 0
+           ? state.timeSec + stats.durationMs / 1000
+           : undefined,
+       lifetimeSec: stats.durationMs > 0 ? stats.durationMs / 1000 : undefined,
+       damage: stats.damage,
+       hitSpeed: stats.hitSpeedMs / 1000,
+       range: stats.range,
+       sightRange: stats.sightRange,
+       speed: stats.moveSpeed,
+       // Phase 3 retains mechanic-defined target semantics; level rows own the
+       // numeric block while the mechanics table remains the behavior source.
+       targets: runtimeTargetMask(card),
+       splash: card.mechanics?.attack === "splash" ? stats.radius : 0,
+       deathBurst: stats.deathBurst,
+       deathBurstRadius: stats.deathBurstRadius,
       mechanics: card.mechanics,
       shieldHp: initialShield(card),
       minRange: Number(
@@ -1116,8 +1132,8 @@ export function playCard(
       side,
       x,
       y,
-      card.damage,
-      card.towerDamage,
+       stats.damage,
+       stats.towerDamage,
       card.mechanics.onDeploy,
     );
   }

@@ -60,6 +60,12 @@ describe('level selection validation', () => {
     assert.equal(state.cardLevels.red.giant, 11);
     assert.equal(state.towerTroopId.blue, 'tower-princess');
     assert.equal(state.statVersion, 1);
+
+    state.elixir.blue = 10;
+    state.hands.blue[0] = 'knight';
+    const placed = playCard(state, 'blue', { handIndex: 0, x: 9, y: 5 });
+    assert.equal(placed.ok, true);
+    assert.ok((state.units[0]?.maxHp ?? 0) > 1450, 'combat spawn must use the resolved level row');
   });
 });
 

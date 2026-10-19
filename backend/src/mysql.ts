@@ -6,6 +6,7 @@
 
 import { CARDS, hydrateCardMechanics, hydrateSpawnTemplates, type CardDef } from "./game/cards.js";
 import { parseCardMechanicSpec, type CardMechanicSpec } from "./game/cardMechanics.js";
+import { fallbackLevelStats, hydrateLevelStats, type LevelStats } from "./game/levelStats.js";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -59,31 +60,7 @@ export interface CardMechanicsContent {
   mechanics: CardMechanicSpec;
 }
 
-export interface CardLevelStats {
-  cardId: string;
-  level: number;
-  mode: string;
-  statVersion: number;
-  hitPoints: number;
-  damage: number;
-  hitSpeedMs: number;
-  dps: number;
-  moveSpeed: number;
-  range: number;
-  sightRange: number;
-  radius: number;
-  count: number;
-  durationMs: number;
-  deployDelayMs: number;
-  towerDamage?: number;
-  deathBurst: number;
-  deathBurstRadius: number;
-  flying: boolean;
-  targets: string;
-  attackPattern: string;
-  source: string;
-  approximation: boolean;
-}
+export type CardLevelStats = LevelStats;
 
 function spawnTemplateFromRow(row: Record<string, unknown>): CardDef {
   return {
@@ -329,39 +306,6 @@ export async function ensureMysqlDatabase(): Promise<{ tables: boolean; cards: n
   return { tables: true, cards: cardRows.length, mechanics: Object.keys(mechanics).length, spawns: Object.keys(spawns).length, cardStats: cardRows.length * 16, spawnStats: Object.keys(spawns).length * 16 };
 }
 
-function fallbackLevelStats(card: CardDef, level: number, mode: string, statVersion: number): CardLevelStats {
-  const boundedLevel = Math.max(1, Math.min(16, Math.trunc(level)));
-  const multiplier = Math.pow(1.1, boundedLevel - 1);
-  const hitPoints = Math.round(card.hp * multiplier);
-  const damage = Math.round(card.damage * multiplier);
-  const hitSpeedMs = Math.round(card.hitSpeed * 1000);
-  return {
-    cardId: card.id,
-    level: boundedLevel,
-    mode,
-    statVersion,
-    hitPoints,
-    damage,
-    hitSpeedMs,
-    dps: hitSpeedMs > 0 ? damage / (hitSpeedMs / 1000) : 0,
-    moveSpeed: card.speed,
-    range: card.range,
-    sightRange: card.sightRange,
-    radius: card.radius,
-    count: card.count,
-    durationMs: card.durationMs ?? 0,
-    deployDelayMs: Math.round((card.deployDelaySec ?? 0) * 1000),
-    ...(card.towerDamage !== undefined ? { towerDamage: card.towerDamage * multiplier } : {}),
-    deathBurst: Math.round((card.deathBurst ?? 0) * multiplier),
-    deathBurstRadius: card.deathBurstRadius ?? 0,
-    flying: card.flying === true,
-    targets: card.targets,
-    attackPattern: card.mechanics?.attack ?? "single",
-    source: "local level-normalization fallback",
-    approximation: true,
-  };
-}
-
 function levelStatsFromRow(row: Record<string, unknown>): CardLevelStats {
   return {
     cardId: String(row.card_id),
@@ -388,6 +332,25 @@ function levelStatsFromRow(row: Record<string, unknown>): CardLevelStats {
     source: String(row.source),
     approximation: Number(row.is_approximation) === 1,
   };
+}
+
+/** Load all level rows once before rooms are allowed to create matches. */
+export async function hydrateLevelStatsFromMysql(): Promise<{ loaded: number; source: string }> {
+  const p = getPool();
+  if (p) {
+    const [rows] = await p.query(
+      "SELECT card_id,level,mode,stat_version,hit_points,damage,hit_speed_ms,dps,move_speed,range_tiles,sight_range,radius_tiles,unit_count,duration_ms,deploy_delay_ms,tower_damage,death_burst,death_burst_radius,flying,targets,attack_pattern,source,is_approximation FROM card_level_stats",
+    );
+    const list = (rows as Record<string, unknown>[]).map(levelStatsFromRow);
+    hydrateLevelStats(list);
+    return { loaded: list.length, source: "mysql" };
+  }
+  const rows: LevelStats[] = [];
+  for (const card of Object.values(CARDS)) {
+    for (let level = 1; level <= 16; level += 1) rows.push(fallbackLevelStats(card, level));
+  }
+  hydrateLevelStats(rows);
+  return { loaded: rows.length, source: "fallback" };
 }
 
 /** Resolve one complete level row; the result is safe to snapshot into a match. */

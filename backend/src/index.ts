@@ -45,7 +45,7 @@ import { initRedis } from "./net/redis.js";
 import { mountMeta } from "./meta.js";
 import { mountContent } from "./content.js";
 import { mountShop } from "./shop.js";
-import { ensureMysqlDatabase, hydrateMechanicsFromMysql, hydrateSpawnTemplatesFromMysql, isMysqlConfigured } from "./mysql.js";
+import { ensureMysqlDatabase, hydrateLevelStatsFromMysql, hydrateMechanicsFromMysql, hydrateSpawnTemplatesFromMysql, isMysqlConfigured } from "./mysql.js";
 import { CARD_LIST } from "./game/cards.js";
 
 dotenv.config();
@@ -508,10 +508,10 @@ void ensureMysqlDatabase().then((bootstrap) => {
     console.error("[backend] database configured but full schema bootstrap failed; refusing to start");
     return null;
   }
-  return Promise.all([hydrateMechanicsFromMysql(), hydrateSpawnTemplatesFromMysql()]);
+  return Promise.all([hydrateMechanicsFromMysql(), hydrateSpawnTemplatesFromMysql(), hydrateLevelStatsFromMysql()]);
 }).then((result) => {
   if (result === null) return;
-  const [mechanics, spawns] = result;
+  const [mechanics, spawns, levels] = result;
   const { loaded, source } = mechanics;
   if (source === "unavailable" && isMysqlConfigured()) {
     console.error("[backend] mechanics database configured but unavailable; refusing to start matchmaking");
@@ -525,6 +525,7 @@ void ensureMysqlDatabase().then((bootstrap) => {
     console.warn("[backend] mechanics database unavailable; mechanic-dependent matches are not ready");
   }
   if (spawns.loaded === 0) console.warn("[backend] spawn template data unavailable; spawner cards are not ready");
+  if (levels.loaded === 0) console.warn("[backend] level stat data unavailable; fallback stats are active");
   httpServer.listen(PORT, () => {
     console.log(`[backend] listening on :${PORT}`);
   });
