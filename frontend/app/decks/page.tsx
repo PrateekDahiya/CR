@@ -23,7 +23,7 @@ import {
   type DeckRecord,
 } from "../../lib/api";
 import { CARDS } from "../../lib/cards";
-import { useDeckState, DECK_KEY, DECK_SIZE } from "../../lib/useDeck";
+import { useDeckState, DECK_SIZE } from "../../lib/useDeck";
 import { usePlayer } from "../../lib/playerContext";
 
 // /decks — My Deck strip on top, full collection grid underneath, two tabs.
@@ -188,10 +188,9 @@ export default function DecksPage() {
     if (activeId !== null) {
       const active = next.find((d) => d.id === activeId);
       if (active) {
+        // `cr-clone-deck-v1` is the ONE client-side source for the deck used in
+        // battle (loadDeckInto -> saveDeck writes it). No second key to drift.
         loadDeckInto(active.cards);
-        localStorage.setItem(DECK_KEY, JSON.stringify(active.cards));
-        // The battle screen reads the selected deck from here.
-        localStorage.setItem("cr-clone-active-deck", JSON.stringify(active.cards));
       }
     }
   }, []);

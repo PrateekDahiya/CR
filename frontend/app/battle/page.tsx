@@ -90,24 +90,9 @@ function cardCost(id: string): number {
 }
 
 function loadDeck(): string[] {
-  // Prefer the deck selected in the Deck tab (server-backed multi-deck).
-  const active = (() => {
-    try {
-      return window.localStorage.getItem("cr-clone-active-deck");
-    } catch {
-      return null;
-    }
-  })();
-  if (active !== null) {
-    try {
-      const parsed = JSON.parse(active);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed as string[];
-      }
-    } catch {
-      // fall through
-    }
-  }
+  // Single source of truth: `cr-clone-deck-v1` always holds the deck currently
+  // selected in the Deck tab (edits included). The old `cr-clone-active-deck`
+  // copy was only written on deck *selection*, so edits were lost here.
   try {
     const raw = window.localStorage.getItem(DECK_STORAGE_KEY);
     if (!raw) return FALLBACK_DECK;
