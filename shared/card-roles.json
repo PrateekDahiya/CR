@@ -1,0 +1,669 @@
+{
+  "roles": [
+    "building",
+    "big_spell",
+    "small_spell",
+    "tank",
+    "ranged",
+    "splash",
+    "win_condition",
+    "mini_tank",
+    "anti_air",
+    "tank_killer",
+    "high_single_target_dps",
+    "swarm",
+    "swarm_counter",
+    "defensive",
+    "offensive_support",
+    "defensive_support",
+    "counter_push",
+    "splash_spell",
+    "cycle",
+    "support",
+    "bait",
+    "control",
+    "reset",
+    "siege",
+    "bridge_spam",
+    "utility",
+    "pressure",
+    "air_unit",
+    "ground_unit",
+    "spell"
+  ],
+  "cardRoles": {
+    "archer-queen": [
+      "ranged",
+      "anti_air",
+      "air_unit"
+    ],
+    "archers": [
+      "ranged",
+      "anti_air",
+      "swarm",
+      "cycle",
+      "support",
+      "ground_unit"
+    ],
+    "arrows": [
+      "small_spell",
+      "spell",
+      "swarm_counter",
+      "air_unit",
+      "utility"
+    ],
+    "baby-dragon": [
+      "ranged",
+      "splash",
+      "anti_air",
+      "air_unit",
+      "support"
+    ],
+    "balloon": [
+      "win_condition",
+      "air_unit",
+      "siege",
+      "pressure"
+    ],
+    "bandit": [
+      "high_single_target_dps",
+      "tank_killer",
+      "mini_tank",
+      "ground_unit"
+    ],
+    "barbarian-barrel": [
+      "small_spell",
+      "spell",
+      "bait",
+      "ground_unit"
+    ],
+    "barbarian-hut": [
+      "building",
+      "defensive_support",
+      "swarm",
+      "ground_unit"
+    ],
+    "barbarians": [
+      "mini_tank",
+      "swarm",
+      "swarm_counter",
+      "cycle",
+      "ground_unit"
+    ],
+    "bats": [
+      "mini_tank",
+      "swarm",
+      "anti_air",
+      "air_unit",
+      "cycle"
+    ],
+    "battle-ram": [
+      "win_condition",
+      "siege",
+      "bait",
+      "ground_unit"
+    ],
+    "bomb-tower": [
+      "building",
+      "defensive",
+      "splash",
+      "ground_unit"
+    ],
+    "bomber": [
+      "ranged",
+      "splash",
+      "swarm_counter",
+      "ground_unit"
+    ],
+    "boss-bandit": [
+      "tank_killer",
+      "high_single_target_dps",
+      "mini_tank",
+      "ground_unit"
+    ],
+    "bowler": [
+      "ranged",
+      "splash",
+      "anti_air",
+      "counter_push",
+      "ground_unit"
+    ],
+    "cannon": [
+      "building",
+      "defensive",
+      "ground_unit"
+    ],
+    "clone": [
+      "spell",
+      "utility",
+      "counter_push",
+      "support"
+    ],
+    "dark-prince": [
+      "tank",
+      "splash",
+      "mini_tank",
+      "defensive",
+      "ground_unit"
+    ],
+    "dart-goblin": [
+      "ranged",
+      "anti_air",
+      "ground_unit",
+      "high_single_target_dps"
+    ],
+    "earthquake": [
+      "spell",
+      "splash_spell",
+      "control"
+    ],
+    "electro-dragon": [
+      "ranged",
+      "splash",
+      "anti_air",
+      "air_unit",
+      "swarm_counter"
+    ],
+    "electro-wizard": [
+      "ranged",
+      "anti_air",
+      "reset",
+      "splash",
+      "ground_unit"
+    ],
+    "elite-barbarians": [
+      "mini_tank",
+      "swarm_counter",
+      "high_single_target_dps",
+      "ground_unit"
+    ],
+    "elixir-collector": [
+      "building",
+      "defensive_support",
+      "utility",
+      "ground_unit"
+    ],
+    "elixir-golem": [
+      "tank",
+      "defensive",
+      "ground_unit"
+    ],
+    "executioner": [
+      "ranged",
+      "high_single_target_dps",
+      "anti_air",
+      "ground_unit"
+    ],
+    "fire-spirit": [
+      "cycle",
+      "splash",
+      "swarm_counter",
+      "ground_unit"
+    ],
+    "fireball": [
+      "big_spell",
+      "spell",
+      "splash_spell",
+      "utility"
+    ],
+    "firecracker": [
+      "swarm",
+      "splash",
+      "anti_air",
+      "air_unit"
+    ],
+    "fisherman": [
+      "ranged",
+      "control",
+      "ground_unit",
+      "utility"
+    ],
+    "flying-machine": [
+      "ranged",
+      "anti_air",
+      "air_unit"
+    ],
+    "freeze": [
+      "spell",
+      "control",
+      "reset",
+      "utility"
+    ],
+    "furnace": [
+      "building",
+      "defensive_support",
+      "splash",
+      "ground_unit"
+    ],
+    "giant": [
+      "tank",
+      "win_condition",
+      "defensive",
+      "pressure",
+      "ground_unit"
+    ],
+    "giant-skeleton": [
+      "tank",
+      "defensive",
+      "ground_unit"
+    ],
+    "giant-snowball": [
+      "small_spell",
+      "spell",
+      "splash_spell",
+      "control",
+      "air_unit"
+    ],
+    "goblin-barrel": [
+      "spell",
+      "bait",
+      "utility"
+    ],
+    "goblin-cage": [
+      "building",
+      "defensive_support",
+      "ground_unit"
+    ],
+    "goblin-curse": [
+      "small_spell",
+      "spell",
+      "splash_spell",
+      "control"
+    ],
+    "goblin-demolisher": [
+      "ranged",
+      "splash",
+      "anti_air",
+      "swarm_counter",
+      "ground_unit"
+    ],
+    "goblin-drill": [
+      "building",
+      "win_condition",
+      "siege",
+      "pressure",
+      "ground_unit"
+    ],
+    "goblin-gang": [
+      "swarm",
+      "cycle",
+      "ground_unit"
+    ],
+    "goblin-giant": [
+      "tank",
+      "win_condition",
+      "support",
+      "ground_unit"
+    ],
+    "goblin-hut": [
+      "building",
+      "defensive_support",
+      "swarm",
+      "ground_unit"
+    ],
+    "goblins": [
+      "mini_tank",
+      "swarm",
+      "cycle",
+      "ground_unit"
+    ],
+    "goblinstein": [
+      "ranged",
+      "splash",
+      "anti_air"
+    ],
+    "golden-knight": [
+      "tank_killer",
+      "high_single_target_dps",
+      "mini_tank",
+      "ground_unit"
+    ],
+    "golem": [
+      "tank",
+      "win_condition",
+      "defensive",
+      "ground_unit"
+    ],
+    "graveyard": [
+      "big_spell",
+      "spell",
+      "splash_spell",
+      "win_condition"
+    ],
+    "guards": [
+      "mini_tank",
+      "defensive",
+      "swarm",
+      "ground_unit"
+    ],
+    "hog-rider": [
+      "win_condition",
+      "pressure",
+      "ground_unit",
+      "bait"
+    ],
+    "ice-golem": [
+      "tank",
+      "defensive",
+      "control",
+      "ground_unit"
+    ],
+    "ice-spirit": [
+      "cycle",
+      "support",
+      "ground_unit",
+      "utility",
+      "reset"
+    ],
+    "ice-wizard": [
+      "ranged",
+      "splash",
+      "anti_air",
+      "control",
+      "air_unit"
+    ],
+    "inferno-dragon": [
+      "ranged",
+      "high_single_target_dps",
+      "anti_air",
+      "air_unit"
+    ],
+    "inferno-tower": [
+      "building",
+      "defensive",
+      "anti_air",
+      "high_single_target_dps"
+    ],
+    "knight": [
+      "mini_tank",
+      "defensive",
+      "ground_unit",
+      "cycle"
+    ],
+    "lava-hound": [
+      "tank",
+      "win_condition",
+      "air_unit",
+      "defensive"
+    ],
+    "lightning": [
+      "big_spell",
+      "spell",
+      "utility"
+    ],
+    "little-prince": [
+      "ranged",
+      "anti_air",
+      "ground_unit"
+    ],
+    "lumberjack": [
+      "mini_tank",
+      "swarm_counter",
+      "ground_unit"
+    ],
+    "magic-archer": [
+      "ranged",
+      "high_single_target_dps",
+      "anti_air",
+      "ground_unit"
+    ],
+    "mega-knight": [
+      "tank",
+      "splash",
+      "tank_killer",
+      "defensive",
+      "ground_unit"
+    ],
+    "mighty-miner": [
+      "high_single_target_dps",
+      "tank_killer",
+      "ground_unit"
+    ],
+    "miner": [
+      "win_condition",
+      "high_single_target_dps",
+      "siege",
+      "ground_unit"
+    ],
+    "mini-pekka": [
+      "tank_killer",
+      "high_single_target_dps",
+      "defensive",
+      "ground_unit"
+    ],
+    "minion-horde": [
+      "swarm",
+      "air_unit",
+      "anti_air"
+    ],
+    "minions": [
+      "swarm",
+      "air_unit",
+      "anti_air"
+    ],
+    "monk": [
+      "splash",
+      "tank_killer",
+      "anti_air",
+      "ground_unit"
+    ],
+    "mortar": [
+      "building",
+      "siege",
+      "splash",
+      "win_condition",
+      "pressure",
+      "ground_unit"
+    ],
+    "mother-witch": [
+      "ranged",
+      "splash",
+      "support",
+      "air_unit"
+    ],
+    "musketeer": [
+      "ranged",
+      "anti_air",
+      "high_single_target_dps",
+      "defensive",
+      "ground_unit"
+    ],
+    "night-witch": [
+      "swarm_counter",
+      "support",
+      "anti_air",
+      "ground_unit"
+    ],
+    "pekka": [
+      "tank_killer",
+      "high_single_target_dps",
+      "ground_unit"
+    ],
+    "phoenix": [
+      "mini_tank",
+      "anti_air",
+      "air_unit"
+    ],
+    "poison": [
+      "big_spell",
+      "spell",
+      "splash_spell",
+      "control"
+    ],
+    "prince": [
+      "mini_tank",
+      "defensive",
+      "counter_push",
+      "ground_unit"
+    ],
+    "princess": [
+      "ranged",
+      "splash",
+      "anti_air",
+      "high_single_target_dps",
+      "air_unit"
+    ],
+    "rage": [
+      "small_spell",
+      "spell",
+      "support",
+      "control"
+    ],
+    "ram-rider": [
+      "tank",
+      "win_condition",
+      "defensive",
+      "ground_unit"
+    ],
+    "rascals": [
+      "mini_tank",
+      "ranged",
+      "swarm",
+      "splash",
+      "ground_unit"
+    ],
+    "rocket": [
+      "big_spell",
+      "spell",
+      "splash_spell",
+      "utility"
+    ],
+    "royal-delivery": [
+      "spell",
+      "utility",
+      "pressure"
+    ],
+    "royal-ghost": [
+      "splash",
+      "anti_air",
+      "mini_tank",
+      "ground_unit"
+    ],
+    "royal-giant": [
+      "tank",
+      "win_condition",
+      "ranged",
+      "pressure",
+      "ground_unit"
+    ],
+    "royal-hogs": [
+      "win_condition",
+      "swarm",
+      "pressure",
+      "ground_unit"
+    ],
+    "royal-recruits": [
+      "swarm",
+      "defensive_support",
+      "ground_unit"
+    ],
+    "skeleton-army": [
+      "swarm",
+      "cycle",
+      "ground_unit"
+    ],
+    "skeleton-barrel": [
+      "win_condition",
+      "siege",
+      "bait",
+      "ground_unit",
+      "utility"
+    ],
+    "skeleton-king": [
+      "tank",
+      "win_condition",
+      "ground_unit"
+    ],
+    "skeletons": [
+      "swarm",
+      "cycle",
+      "ground_unit"
+    ],
+    "sparky": [
+      "ranged",
+      "splash",
+      "high_single_target_dps",
+      "anti_air",
+      "ground_unit"
+    ],
+    "spear-goblins": [
+      "ranged",
+      "anti_air",
+      "swarm",
+      "ground_unit"
+    ],
+    "tesla": [
+      "building",
+      "defensive",
+      "anti_air",
+      "ground_unit"
+    ],
+    "the-log": [
+      "small_spell",
+      "spell",
+      "control",
+      "ground_unit",
+      "utility"
+    ],
+    "tombstone": [
+      "building",
+      "defensive_support",
+      "swarm",
+      "ground_unit"
+    ],
+    "tornado": [
+      "big_spell",
+      "spell",
+      "splash_spell",
+      "control",
+      "air_unit"
+    ],
+    "valkyrie": [
+      "splash",
+      "anti_air",
+      "swarm_counter",
+      "mini_tank",
+      "ground_unit"
+    ],
+    "void": [
+      "big_spell",
+      "spell",
+      "splash_spell",
+      "utility"
+    ],
+    "witch": [
+      "ranged",
+      "splash",
+      "swarm_counter",
+      "support",
+      "ground_unit"
+    ],
+    "wizard": [
+      "ranged",
+      "splash",
+      "anti_air",
+      "swarm_counter",
+      "ground_unit"
+    ],
+    "x-bow": [
+      "building",
+      "siege",
+      "win_condition",
+      "pressure",
+      "splash"
+    ],
+    "zap": [
+      "small_spell",
+      "spell",
+      "reset",
+      "utility"
+    ],
+    "zappies": [
+      "ranged",
+      "anti_air",
+      "reset",
+      "ground_unit",
+      "support"
+    ]
+  }
+}
