@@ -31,7 +31,7 @@ CARD_COSTS: Dict[str, float] = {
     "musketeer": 4,
     "baby-dragon": 4,
     "mini-pekka": 4,
-    "rock-golem": 6,
+    "golem": 8,
     "fireball": 4,
     "arrows": 3,
     "zap": 2,
@@ -63,9 +63,8 @@ def _card_cost(name: Any, fallback: float = 3.0) -> float:
         "minipekka": "mini-pekka",
         "mini-pekka".replace("-", ""): "mini-pekka",
         "minipekka2": "mini-pekka",  # defensive, never matches realistically
-        "rock-golem": "rock-golem",
-        "rockgolem": "rock-golem",
-        "golem": "rock-golem",
+        "rockgolem": "golem",
+        "golem": "golem",
     }
     # Normalize alias keys once per call (tiny dict, O(1)).
     flat = {
@@ -73,8 +72,8 @@ def _card_cost(name: Any, fallback: float = 3.0) -> float:
         "babydragon-": "baby-dragon",
         "minipekka": "mini-pekka",
         "mini Pekka".strip().lower().replace(" ", "-").replace("_", "-"): "mini-pekka",
-        "rockgolem": "rock-golem",
-        "golem": "rock-golem",
+        "rockgolem": "golem",
+        "golem": "golem",
     }
     if key in flat:
         return float(CARD_COSTS[flat[key]])

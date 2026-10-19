@@ -1,20 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { STARTER_DECK_BALANCED } from "./cards";
 
 export const DECK_KEY = "cr-clone-deck-v1";
 export const DECK_SIZE = 8;
 
-export const STARTER_DECK: string[] = [
-  "knight",
-  "archers",
-  "giant",
-  "skeletons",
-  "musketeer",
-  "baby-dragon",
-  "fireball",
-  "arrows",
-];
+export const STARTER_DECK: string[] = [...STARTER_DECK_BALANCED];
 
 /** Reads the saved deck, padding/repairing it to DECK_SIZE slots. O(DECK_SIZE). */
 export function loadDeck(): string[] {

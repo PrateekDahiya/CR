@@ -2,11 +2,11 @@
 -- Educational clone: SAME card roster/naming/stats/menus as Clash Royale structure,
 -- ORIGINAL art only (emoji/CSS placeholders, no ripped Supercell binaries).
 -- Apply: mysql -h $DB_HOST -P $DB_PORT -u $DB_USER -p $DB_NAME < infra/mysql/schema.sql
--- Engine: MySQL 8.4 (Aiven). All reads O(1) by PK / O(c) full roster (c=12).
+-- Engine: MySQL 8.4 (Aiven). All reads O(1) by PK / O(c) full roster (c=108).
 
 CREATE TABLE IF NOT EXISTS cards (
   name VARCHAR(32) PRIMARY KEY,
-  card_type ENUM('troop','spell','building') NOT NULL,
+  card_type ENUM('troop','spell','building','tower') NOT NULL,
   elixir TINYINT NOT NULL,
   hp INT NOT NULL DEFAULT 0,
   dmg_per_hit INT NOT NULL DEFAULT 0,
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS cards (
   range_kind VARCHAR(16) NOT NULL DEFAULT '',
   targets VARCHAR(16) NOT NULL DEFAULT '',
   unit_count TINYINT NOT NULL DEFAULT 1,
-  rarity ENUM('common','rare','epic','legendary') NOT NULL,
+  rarity ENUM('common','rare','epic','legendary','champion') NOT NULL,
   damage_vs_troops INT NOT NULL DEFAULT 0,
   damage_vs_towers INT NOT NULL DEFAULT 0,
   radius_tiles DECIMAL(3,1) NOT NULL DEFAULT 0,
@@ -96,6 +96,60 @@ CREATE TABLE IF NOT EXISTS card_catalog (
   rarity ENUM('common','rare','epic','legendary','champion') NOT NULL,
   playable TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = full GAME_DESIGN stats + engine support',
   note VARCHAR(255) NOT NULL DEFAULT '',
+  hp INT NOT NULL DEFAULT 0,
+  damage INT NOT NULL DEFAULT 0,
+  hit_speed_ms INT NOT NULL DEFAULT 0,
+  dps DECIMAL(10,2) NOT NULL DEFAULT 0,
+  speed DECIMAL(8,3) NOT NULL DEFAULT 0,
+  range_tiles DECIMAL(6,2) NOT NULL DEFAULT 0,
+  sight_range DECIMAL(6,2) NOT NULL DEFAULT 0,
+  targets VARCHAR(16) NOT NULL DEFAULT '',
+  unit_count TINYINT NOT NULL DEFAULT 0,
+  radius_tiles DECIMAL(6,2) NOT NULL DEFAULT 0,
+  flying TINYINT(1) NOT NULL DEFAULT 0,
+  tower_damage DECIMAL(10,2) NULL,
   INDEX idx_catalog_rarity (rarity),
   INDEX idx_catalog_elixir (elixir)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Authoritative, versioned behavior data. The TypeScript engine owns only the
+-- EffectSpec schema and generic interpreters; card-specific effects live here.
+CREATE TABLE IF NOT EXISTS card_mechanics (
+  card_id VARCHAR(40) PRIMARY KEY,
+  version INT NOT NULL DEFAULT 1,
+  attack_pattern VARCHAR(16) NULL,
+  targeting VARCHAR(16) NOT NULL,
+  movement VARCHAR(16) NULL,
+  tower_troop TINYINT(1) NOT NULL DEFAULT 0,
+  on_deploy JSON NOT NULL,
+  on_attack JSON NOT NULL,
+  on_hit JSON NOT NULL,
+  on_death JSON NOT NULL,
+  periodic JSON NOT NULL,
+  ability JSON NOT NULL,
+  FOREIGN KEY (card_id) REFERENCES card_catalog(name) ON DELETE CASCADE,
+  INDEX idx_mechanics_version (version)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Runtime-only units produced by card mechanics (Skeleton, Golemite, Egg,
+-- Guardienne, etc.). They are not deck cards but are still database data.
+CREATE TABLE IF NOT EXISTS card_spawn_templates (
+  template_id VARCHAR(40) PRIMARY KEY,
+  version INT NOT NULL DEFAULT 1,
+  hp INT NOT NULL,
+  damage INT NOT NULL,
+  hit_speed_ms INT NOT NULL,
+  speed DECIMAL(6,3) NOT NULL DEFAULT 0,
+  range_tiles DECIMAL(5,2) NOT NULL DEFAULT 0,
+  sight_range DECIMAL(5,2) NOT NULL DEFAULT 5.5,
+  targets VARCHAR(16) NOT NULL,
+  unit_count TINYINT NOT NULL DEFAULT 1,
+  flying TINYINT(1) NOT NULL DEFAULT 0,
+  attack_pattern VARCHAR(16) NOT NULL DEFAULT 'single',
+  on_deploy JSON NOT NULL,
+  on_attack JSON NOT NULL,
+  on_hit JSON NOT NULL,
+  on_death JSON NOT NULL,
+  periodic JSON NOT NULL,
+  INDEX idx_spawn_version (version)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

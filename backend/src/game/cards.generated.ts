@@ -4,14 +4,14 @@
  * Regenerate: python scripts/generate_card_table.py
  *
  * Every catalog card has full battle stats, so all of them are playable.
- * The 12 tournament-baseline cards keep their hand-tuned values; the rest are
- * derived deterministically from type + elixir cost + rarity + archetype.
+ * Numeric values are generated from catalog facts and tuning profiles. Runtime
+ * mechanics are loaded from MySQL card_mechanics.
  */
 
 export interface GeneratedCard {
   id: string;
   name: string;
-  type: "troop" | "spell" | "building";
+  type: "troop" | "spell" | "building" | "tower";
   cost: number;
   rarity: string;
   hp: number;
@@ -325,8 +325,8 @@ export const GENERATED_CARDS: Record<string, GeneratedCard> = {
   "cannoneer": {
     id: "cannoneer",
     name: "cannoneer",
-    type: "troop",
-    cost: 4,
+    type: "tower",
+    cost: 0,
     rarity: "epic",
     hp: 4847,
     damage: 1501,
@@ -362,8 +362,8 @@ export const GENERATED_CARDS: Record<string, GeneratedCard> = {
   "dagger-duchess": {
     id: "dagger-duchess",
     name: "dagger-duchess",
-    type: "troop",
-    cost: 4,
+    type: "tower",
+    cost: 0,
     rarity: "legendary",
     hp: 3547,
     damage: 1037,
@@ -1561,8 +1561,8 @@ export const GENERATED_CARDS: Record<string, GeneratedCard> = {
   "royal-chef": {
     id: "royal-chef",
     name: "royal-chef",
-    type: "troop",
-    cost: 4,
+    type: "tower",
+    cost: 0,
     rarity: "legendary",
     hp: 3547,
     damage: 1037,
@@ -1852,8 +1852,8 @@ export const GENERATED_CARDS: Record<string, GeneratedCard> = {
   "tower-princess": {
     id: "tower-princess",
     name: "tower-princess",
-    type: "troop",
-    cost: 4,
+    type: "tower",
+    cost: 0,
     rarity: "common",
     hp: 3507,
     damage: 728,

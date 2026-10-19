@@ -63,7 +63,7 @@ CARDS: dict[str, dict[str, Any]] = {
                     "type": "troop", "splash": True},
     "mini-pekka":  {"cost": 4, "hp": 1100, "dps": 344, "speed": 1.2,
                     "range": 0.8, "targets": "ground", "count": 1, "type": "troop"},
-    "rock-golem":  {"cost": 6, "hp": 4300, "dps": 130, "speed": 0.5,
+    "golem":       {"cost": 8, "hp": 5120, "dps": 124, "speed": 0.75,
                     "range": 0.8, "targets": "buildings", "count": 1,
                     "type": "troop", "deathBurst": 280},
     "fireball":    {"cost": 4, "hp": 0, "dps": 0, "speed": 0.0,
@@ -82,9 +82,8 @@ CARDS: dict[str, dict[str, Any]] = {
 
 # Common id aliases -> canonical ids (O(1) dict lookup).
 _ALIASES = {
-    "golem": "rock-golem",
-    "rock_golem": "rock-golem",
-    "rockgolem": "rock-golem",
+    "rock_golem": "golem",
+    "rockgolem": "golem",
     "baby_dragon": "baby-dragon",
     "babydragon": "baby-dragon",
     "mini_pekka": "mini-pekka",
@@ -104,14 +103,14 @@ _SPELL_VALUE: dict[str, float] = {
     for cid, spec in CARDS.items() if spec["type"] == "spell"
 }
 
-_TANKS = frozenset({"rock-golem", "giant", "knight"})
-_TANK_ORDER = ("rock-golem", "giant", "knight")  # richest win-con first
+_TANKS = frozenset({"golem", "giant", "knight"})
+_TANK_ORDER = ("golem", "giant", "knight")  # richest win-con first
 _SUPPORTS = frozenset({"musketeer", "archers", "baby-dragon"})
 
 # Threat card -> preferred answers, cheapest reliable counter first (§3).
 _COUNTERS: dict[str, tuple[str, ...]] = {
     "giant": ("cannon", "mini-pekka", "skeletons"),
-    "rock-golem": ("cannon", "mini-pekka", "skeletons"),
+    "golem": ("cannon", "mini-pekka", "skeletons"),
     "knight": ("musketeer", "mini-pekka", "cannon"),
     "mini-pekka": ("skeletons", "archers", "knight"),
     "musketeer": ("fireball", "mini-pekka", "knight"),

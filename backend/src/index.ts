@@ -43,6 +43,8 @@ import { initRedis } from "./net/redis.js";
 import { mountMeta } from "./meta.js";
 import { mountContent } from "./content.js";
 import { mountShop } from "./shop.js";
+import { ensureMysqlDatabase, hydrateMechanicsFromMysql, hydrateSpawnTemplatesFromMysql, isMysqlConfigured } from "./mysql.js";
+import { CARD_LIST } from "./game/cards.js";
 
 dotenv.config();
 
@@ -475,8 +477,31 @@ io.on("connection", (socket) => {
   });
 });
 
-httpServer.listen(PORT, () => {
-  console.log(`[backend] listening on :${PORT}`);
+void ensureMysqlDatabase().then((bootstrap) => {
+  if (isMysqlConfigured() && !bootstrap.tables) {
+    console.error("[backend] database configured but full schema bootstrap failed; refusing to start");
+    return null;
+  }
+  return Promise.all([hydrateMechanicsFromMysql(), hydrateSpawnTemplatesFromMysql()]);
+}).then((result) => {
+  if (result === null) return;
+  const [mechanics, spawns] = result;
+  const { loaded, source } = mechanics;
+  if (source === "unavailable" && isMysqlConfigured()) {
+    console.error("[backend] mechanics database configured but unavailable; refusing to start matchmaking");
+    return;
+  }
+  if (source === "mysql" && loaded !== CARD_LIST.length) {
+    console.error(`[backend] mechanic readiness failure: ${loaded}/${CARD_LIST.length} card rows loaded`);
+    return;
+  }
+  if (loaded === 0) {
+    console.warn("[backend] mechanics database unavailable; mechanic-dependent matches are not ready");
+  }
+  if (spawns.loaded === 0) console.warn("[backend] spawn template data unavailable; spawner cards are not ready");
+  httpServer.listen(PORT, () => {
+    console.log(`[backend] listening on :${PORT}`);
+  });
 });
 
 // Let the room registry notify the bot brain when a match ends.

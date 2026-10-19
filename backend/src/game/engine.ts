@@ -17,7 +17,8 @@
  * SimTower/SimUnit → shared Tower/Unit when emitting `state:update`.
  */
 
-import { getCard } from "./cards";
+import { getCard, getSpawnTemplate } from "./cards";
+import type { EffectSpec } from "./cardMechanics";
 import {
   Pocket,
   TOWER_SPAWNS,
@@ -61,6 +62,11 @@ export interface SimTower {
   active: boolean;
   cooldown: number; // sec until next shot
   stunUntil: number; // timeSec — stunned while timeSec < stunUntil
+  frozenUntil: number;
+  slowUntil: number;
+  slowMultiplier: number;
+  rageUntil: number;
+  rageMultiplier: number;
   damage: number;
   hitSpeed: number;
   range: number;
@@ -78,6 +84,11 @@ export interface SimUnit {
   isBuilding: boolean;
   cooldown: number;
   stunUntil: number;
+  frozenUntil: number;
+  slowUntil: number;
+  slowMultiplier: number;
+  rageUntil: number;
+  rageMultiplier: number;
   readyAt: number; // spawn + deploy delay (Cannon 1.0s)
   expiresAt?: number; // Cannon lifetime 30s
   damage: number;
@@ -89,6 +100,24 @@ export interface SimUnit {
   splash: number; // baby-dragon splash radius, 0 = single-target
   deathBurst?: number;
   deathBurstRadius?: number;
+  mechanics?: import("./cardMechanics").CardMechanicSpec;
+  shieldHp?: number;
+  isClone?: boolean;
+  periodicNextAt?: number[];
+}
+
+interface DamageField {
+  id: number;
+  owner: PlayerSide;
+  x: number;
+  y: number;
+  radius: number;
+  remainingSec: number;
+  intervalSec: number;
+  cooldown: number;
+  effect: EffectSpec;
+  damage: number;
+  towerDamage: number;
 }
 
 export interface EngineState {
@@ -109,6 +138,8 @@ export interface EngineState {
   endsAtMs?: number;
   nextUnitId: number;
   playTicks: Record<PlayerSide, number[]>; // recent play ticks (rate cap)
+  fields: DamageField[];
+  nextFieldId: number;
   bluePlayerId?: string;
   redPlayerId?: string;
 }
@@ -237,6 +268,11 @@ function makeTowers(): SimTower[] {
       active: s.kind === "princess", // king starts INACTIVE (§6.2)
       cooldown: 0,
       stunUntil: -1,
+      frozenUntil: -1,
+      slowUntil: -1,
+      slowMultiplier: 1,
+      rageUntil: -1,
+      rageMultiplier: 1,
       damage: st.damage,
       hitSpeed: st.hitSpeed,
       range: st.range,
@@ -284,6 +320,8 @@ export function createGame(
     endsAtMs: undefined,
     nextUnitId: 1,
     playTicks: { blue: [], red: [] },
+    fields: [],
+    nextFieldId: 1,
     bluePlayerId: opts?.bluePlayerId,
     redPlayerId: opts?.redPlayerId,
   };
@@ -321,65 +359,297 @@ function spawnPositions(
   return out;
 }
 
+function spawnChildUnits(
+  state: EngineState,
+  side: PlayerSide,
+  childId: string,
+  x: number,
+  y: number,
+  count: number,
+): string[] {
+  const card = getSpawnTemplate(childId);
+  if (card === undefined) return [];
+  const positions = spawnPositions(count, x, y);
+  const ids: string[] = [];
+  for (const position of positions) {
+    const id = `u${state.nextUnitId++}`;
+    ids.push(id);
+    state.units.push({
+      id,
+      cardId: childId,
+      owner: side,
+      hp: card.hp,
+      maxHp: card.hp,
+      x: Math.min(Math.max(position.x, 0), 18),
+      y: Math.min(Math.max(position.y, 0), 32),
+      flying: card.flying === true,
+      isBuilding: card.type === "building",
+      cooldown: 0,
+      stunUntil: -1,
+      frozenUntil: -1,
+      slowUntil: -1,
+      slowMultiplier: 1,
+      rageUntil: -1,
+      rageMultiplier: 1,
+      readyAt: state.timeSec,
+      damage: card.damage,
+      hitSpeed: card.hitSpeed,
+      range: card.range,
+      sightRange: card.sightRange,
+      speed: card.speed,
+      targets: runtimeTargetMask(card),
+      splash: runtimeSplashRadius(card),
+      mechanics: card.mechanics,
+      shieldHp: initialShield(card),
+      periodicNextAt: card.mechanics?.periodic?.map(
+        (effect) => state.timeSec + Number(effect.intervalMs ?? 0) / 1000,
+      ),
+    });
+  }
+  return ids;
+}
+
+function runtimeTargetMask(card: ReturnType<typeof getCard>): SimUnit["targets"] {
+  const target = card?.mechanics?.targeting;
+  return target === "ground" || target === "air+ground" || target === "buildings" || target === "all"
+    ? target
+    : (card?.targets ?? "ground");
+}
+
+function runtimeSplashRadius(card: ReturnType<typeof getCard>): number {
+  if (card?.mechanics?.attack !== "splash") return card?.flying === true ? card.radius : 0;
+  const effectRadius = card.mechanics.onAttack?.find((effect) => effect.kind === "areaDamage")?.radius;
+  return Number(effectRadius ?? card.radius);
+}
+
+function initialShield(card: ReturnType<typeof getCard>): number | undefined {
+  const effect = card?.mechanics?.onDeploy?.find(
+    (item) => item.kind === "status" && item.status === "shield",
+  );
+  return effect === undefined ? undefined : Number(effect.amount ?? 0);
+}
+
 function fail(code: string, message: string): PlayResult {
   return { ok: false, code, message };
 }
 
-function applySpell(
+function effectTargetMatches(effect: EffectSpec, unit: SimUnit): boolean {
+  if (effect.target === "ground" && unit.flying) return false;
+  if (effect.target === "air" && !unit.flying) return false;
+  if (effect.target === "building" && !unit.isBuilding) return false;
+  return true;
+}
+
+function applyStatus(
+  target: SimUnit | SimTower,
+  effect: EffectSpec,
+  now: number,
+): void {
+  const status = typeof effect.status === "string" ? effect.status : "";
+  const duration = Math.max(0, Number(effect.durationMs ?? 0) / 1000);
+  if (status === "stun" || status === "freeze") {
+    const until = now + duration;
+    target.stunUntil = Math.max(target.stunUntil, until);
+    if (status === "freeze") target.frozenUntil = Math.max(target.frozenUntil, until);
+    if (target.cooldown < duration) target.cooldown = duration;
+  } else if (status === "slow") {
+    target.slowUntil = Math.max(target.slowUntil, now + duration);
+    target.slowMultiplier = Math.min(target.slowMultiplier, Number(effect.multiplier ?? 0.65));
+  } else if (status === "rage") {
+    target.rageUntil = Math.max(target.rageUntil, now + duration);
+    target.rageMultiplier = Math.max(target.rageMultiplier, Number(effect.multiplier ?? 1.35));
+  } else if (status === "shield" && "shieldHp" in target) {
+    target.shieldHp = Math.max(target.shieldHp ?? 0, Number(effect.amount ?? 0));
+  }
+}
+
+function damageUnit(unit: SimUnit, amount: number): void {
+  if (amount <= 0) return;
+  const shield = unit.shieldHp ?? 0;
+  if (shield > 0) {
+    const absorbed = Math.min(shield, amount);
+    unit.shieldHp = shield - absorbed;
+    amount -= absorbed;
+  }
+  unit.hp -= amount;
+}
+
+function applyAreaDamage(
   state: EngineState,
   side: PlayerSide,
-  cardId: string,
   x: number,
   y: number,
+  effect: EffectSpec,
+  damage: number,
+  towerDamage: number,
 ): void {
   const foe = other(side);
-  if (cardId === "fireball" || cardId === "arrows" || cardId === "zap") {
-    const radius = cardId === "fireball" ? 2.5 : cardId === "arrows" ? 4.0 : 2.5;
-    const dmg = cardId === "fireball" ? 700 : cardId === "arrows" ? 300 : 220;
-    const towerDmg = cardId === "fireball" ? 280 : cardId === "arrows" ? 120 : 88;
-    const stun = cardId === "zap" ? 0.5 : 0;
-    // O(u+t) single-pass with squared ranges + AABB early-out (no sqrt).
-    // PERF: hoisted radius/dmg/stun/timeSec; dx/dy box reject before dist2.
-    const r = radius + RANGE_EPS;
-    const r2 = r * r;
-    const units = state.units;
-    const timeSec = state.timeSec;
-    for (let i = 0; i < units.length; i++) {
-      const u = units[i];
-      if (u.owner !== foe || u.hp <= 0) continue;
-      const dx = x - u.x;
-      if (dx > r || dx < -r) continue;
-      const dy = y - u.y;
-      if (dy > r || dy < -r) continue;
-      if (dx * dx + dy * dy <= r2) {
-        u.hp -= dmg;
-        if (stun > 0) {
-          const until = timeSec + stun;
-          if (until > u.stunUntil) u.stunUntil = until;
-          if (u.cooldown < stun) u.cooldown = stun; // reset/retarget
-        }
-      }
+  const radius = Math.max(0, Number(effect.radius ?? 0));
+  const r = radius + RANGE_EPS;
+  const r2 = r * r;
+  const amount = Number(effect.amount ?? damage);
+  const towerAmount = Number(
+    effect.towerDamage ?? (effect.towerMultiplier !== undefined
+      ? amount * Number(effect.towerMultiplier)
+      : towerDamage),
+  );
+  for (const unit of state.units) {
+    if (unit.owner !== foe || unit.hp <= 0 || !effectTargetMatches(effect, unit)) continue;
+    if (dist2(x, y, unit.x, unit.y) <= r2) damageUnit(unit, amount);
+  }
+  for (const tower of state.towers) {
+    if (tower.owner !== foe || tower.destroyed) continue;
+    if (dist2(x, y, tower.x, tower.y) <= (radius + 0.5 + RANGE_EPS) ** 2) {
+      damageTower(state, tower, towerAmount, side);
     }
-    const tr = radius + 0.5 + RANGE_EPS;
-    const tr2 = tr * tr;
-    const towers = state.towers;
-    for (let i = 0; i < towers.length; i++) {
-      const t = towers[i];
-      if (t.owner !== foe || t.destroyed) continue;
-      const dx = x - t.x;
-      if (dx > tr || dx < -tr) continue;
-      const dy = y - t.y;
-      if (dy > tr || dy < -tr) continue;
-      if (dx * dx + dy * dy <= tr2) {
-        damageTower(state, t, towerDmg, side);
-        if (stun > 0) {
-          const until = timeSec + stun;
-          if (until > t.stunUntil) t.stunUntil = until;
-          if (t.cooldown < stun) t.cooldown = stun;
+  }
+}
+
+function applyDatabaseEffects(
+  state: EngineState,
+  side: PlayerSide,
+  x: number,
+  y: number,
+  damage: number,
+  towerDamage: number | undefined,
+  ...effectLists: Array<EffectSpec[] | undefined>
+): void {
+  const defaultTowerDamage = towerDamage ?? damage * 0.4;
+  for (const list of effectLists) {
+    if (list === undefined) continue;
+    for (const effect of list) {
+      const radius = Number(effect.radius ?? 0);
+      if (effect.kind === "areaDamage") {
+        const volleys = Math.max(1, Number(effect.volleyCount ?? 1));
+        const effectDamage = damage / volleys;
+        const effectTowerDamage = defaultTowerDamage / volleys;
+        applyAreaDamage(state, side, x, y, effect, effectDamage, effectTowerDamage);
+        const duration = Number(effect.durationMs ?? 0) / 1000;
+        const interval = Number(effect.intervalMs ?? 0) / 1000;
+        if (duration > 0 && interval > 0) {
+          state.fields.push({
+            id: state.nextFieldId++,
+            owner: side,
+            x,
+            y,
+            radius,
+            remainingSec: Math.max(0, duration - interval),
+            intervalSec: interval,
+            cooldown: interval,
+            effect,
+            damage: effectDamage,
+            towerDamage: effectTowerDamage,
+          });
         }
+      } else if (effect.kind === "status") {
+        const statusRadius = radius + RANGE_EPS;
+        const targetOwner = effect.target === "friendly" ? side : other(side);
+        for (const unit of state.units) {
+          if (unit.owner !== targetOwner || unit.hp <= 0 || !effectTargetMatches(effect, unit)) continue;
+          if (dist2(x, y, unit.x, unit.y) <= statusRadius * statusRadius) applyStatus(unit, effect, state.timeSec);
+        }
+        for (const tower of state.towers) {
+          if (tower.owner !== targetOwner || tower.destroyed) continue;
+          if (dist2(x, y, tower.x, tower.y) <= (statusRadius + 0.5) ** 2) applyStatus(tower, effect, state.timeSec);
+        }
+      } else if (effect.kind === "knockback") {
+        const knockRadius = Math.max(1, radius);
+        for (const unit of state.units) {
+          if (unit.owner !== other(side) || unit.hp <= 0) continue;
+          const dx = unit.x - x;
+          const dy = unit.y - y;
+          if (dx * dx + dy * dy > knockRadius * knockRadius) continue;
+          const length = Math.max(0.001, Math.hypot(dx, dy));
+          const distance = Number(effect.distance ?? 0.8);
+          unit.x = Math.min(18, Math.max(0, unit.x + (dx / length) * distance));
+          unit.y = Math.min(32, Math.max(0, unit.y + (dy / length) * distance));
+        }
+      } else if (effect.kind === "clone") {
+        const cloneRadius = Math.max(0, radius);
+        const originalCount = state.units.length;
+        for (let i = 0; i < originalCount; i++) {
+          const original = state.units[i];
+          if (original.owner !== side || original.hp <= 0 || original.isBuilding) continue;
+          if (dist2(x, y, original.x, original.y) > (cloneRadius + RANGE_EPS) ** 2) continue;
+          state.units.push({ ...original, id: `u${state.nextUnitId++}`, hp: 1, maxHp: 1, isClone: true });
+        }
+      } else if (effect.kind === "spawn" || effect.kind === "split") {
+        const childId = typeof effect.childId === "string" ? effect.childId : "";
+        const count = Math.max(1, Math.min(20, Number(effect.count ?? 1)));
+        spawnChildUnits(state, side, childId, x, y, count);
+        const duration = Number(effect.durationMs ?? 0) / 1000;
+        const interval = Number(effect.intervalMs ?? 0) / 1000;
+        if (effect.kind === "spawn" && duration > 0 && interval > 0) {
+          state.fields.push({
+            id: state.nextFieldId++, owner: side, x, y, radius,
+            remainingSec: Math.max(0, duration - interval), intervalSec: interval,
+            cooldown: interval, effect, damage, towerDamage: defaultTowerDamage,
+          });
+        }
+      } else if (effect.kind === "elixir") {
+        const amount = Math.max(0, Number(effect.amount ?? 0));
+        state.elixir[other(side)] = Math.min(ELIXIR_CAP, state.elixir[other(side)] + amount);
       }
     }
   }
+}
+
+function fieldPhase(state: EngineState, dt: number): void {
+  const fields = state.fields;
+  let write = 0;
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i];
+    field.remainingSec -= dt;
+    field.cooldown -= dt;
+    if (field.cooldown <= 0) {
+      if (field.effect.kind === "spawn" && typeof field.effect.childId === "string") {
+        spawnChildUnits(
+          state,
+          field.owner,
+          field.effect.childId,
+          field.x,
+          field.y,
+          Math.max(1, Number(field.effect.count ?? 1)),
+        );
+      } else {
+        applyAreaDamage(state, field.owner, field.x, field.y, field.effect, field.damage, field.towerDamage);
+      }
+      field.cooldown += field.intervalSec;
+    }
+    if (field.remainingSec > 0) fields[write++] = field;
+  }
+  fields.length = write;
+}
+
+function periodicPhase(state: EngineState): void {
+  for (const unit of state.units) {
+    if (unit.hp <= 0 || unit.mechanics?.periodic === undefined || unit.periodicNextAt === undefined) continue;
+    for (let i = 0; i < unit.mechanics.periodic.length; i++) {
+      const effect = unit.mechanics.periodic[i];
+      const nextAt = unit.periodicNextAt[i] ?? Infinity;
+      if (state.timeSec + CLOCK_EPS < nextAt) continue;
+      const interval = Math.max(0.1, Number(effect.intervalMs ?? 0) / 1000);
+      unit.periodicNextAt[i] = nextAt + interval;
+      if (effect.kind === "elixir") {
+        state.elixir[unit.owner] = Math.min(ELIXIR_CAP, state.elixir[unit.owner] + Number(effect.amount ?? 0));
+      } else if (effect.kind === "spawn" && typeof effect.childId === "string") {
+        spawnChildUnits(state, unit.owner, effect.childId, unit.x, unit.y, Math.max(1, Number(effect.count ?? 1)));
+      }
+    }
+  }
+}
+
+function isFrozen(entity: { frozenUntil: number }, now: number): boolean {
+  return now < entity.frozenUntil;
+}
+
+function speedMultiplier(
+  entity: { slowUntil: number; slowMultiplier: number; rageUntil: number; rageMultiplier: number },
+  now: number,
+): number {
+  const slow = now < entity.slowUntil ? entity.slowMultiplier : 1;
+  const enraged = now < entity.rageUntil ? entity.rageMultiplier : 1;
+  return slow * enraged;
 }
 
 /**
@@ -434,6 +704,9 @@ export function playCard(
   }
   const card = getCard(playedId);
   if (!card) return fail("CARD_REJECTED", `unknown card: ${playedId}`);
+  if (card.type === "spell" && card.mechanics === undefined) {
+    return fail("CARD_REJECTED", "card mechanics are not loaded");
+  }
 
   // 4. elixir (§11.1) — server table only, client cost ignored
   if (state.elixir[side] + 1e-9 < card.cost) {
@@ -474,12 +747,15 @@ export function playCard(
   state.hands[side][req.handIndex] = nextId;
 
   if (card.type === "spell") {
-    applySpell(state, side, card.id, x, y);
+    applyDatabaseEffects(state, side, x, y, card.damage, card.towerDamage, card.mechanics?.onDeploy, card.mechanics?.onAttack);
     return { ok: true, cardId: card.id, unitIds: [] };
   }
 
   const isBuilding = card.type === "building";
-  const positions = spawnPositions(card.count, x, y);
+  const replaceSelf = card.mechanics?.onDeploy?.some(
+    (effect) => effect.kind === "spawn" && effect.replaceSelf === true,
+  ) === true;
+  const positions = replaceSelf ? [] : spawnPositions(card.count, x, y);
   const unitIds: string[] = [];
   for (let i = 0; i < positions.length; i++) {
     const p = positions[i];
@@ -497,6 +773,11 @@ export function playCard(
       isBuilding,
       cooldown: 0,
       stunUntil: -1,
+      frozenUntil: -1,
+      slowUntil: -1,
+      slowMultiplier: 1,
+      rageUntil: -1,
+      rageMultiplier: 1,
       readyAt: state.timeSec + (card.deployDelaySec ?? 0),
       expiresAt:
         card.durationMs !== undefined
@@ -507,11 +788,27 @@ export function playCard(
       range: card.range,
       sightRange: card.sightRange,
       speed: card.speed,
-      targets: card.targets,
-      splash: card.radius && card.flying ? card.radius : 0,
+      targets: runtimeTargetMask(card),
+      splash: runtimeSplashRadius(card),
       deathBurst: card.deathBurst,
       deathBurstRadius: card.deathBurstRadius,
+      mechanics: card.mechanics,
+      shieldHp: initialShield(card),
+      periodicNextAt: card.mechanics?.periodic?.map(
+        (effect) => state.timeSec + Number(effect.intervalMs ?? 0) / 1000,
+      ),
     });
+  }
+  if (card.mechanics?.onDeploy !== undefined) {
+    applyDatabaseEffects(
+      state,
+      side,
+      x,
+      y,
+      card.damage,
+      card.towerDamage,
+      card.mechanics.onDeploy,
+    );
   }
   return { ok: true, cardId: card.id, unitIds };
 }
@@ -686,6 +983,7 @@ function decideStoppage(state: EngineState): PlayerSide | "draw" | null {
 
 function moveUnit(state: EngineState, u: SimUnit, dt: number): void {
   if (u.isBuilding || u.speed <= 0) return;
+  if (isFrozen(u, state.timeSec)) return;
   const target = acquireUnitTarget(state, u);
   if (!target) return;
   const tx = target.kind === "tower" ? target.tower.x : target.unit.x;
@@ -724,7 +1022,7 @@ function moveUnit(state: EngineState, u: SimUnit, dt: number): void {
   if (dd <= 1e-9) return;
   // Stop at the edge of attack range (no orbiting).
   const stopAt = wx === tx && wy === ty ? u.range : 0;
-  const travel = Math.min(u.speed * dt, Math.max(0, dd - stopAt));
+  const travel = Math.min(u.speed * speedMultiplier(u, state.timeSec) * dt, Math.max(0, dd - stopAt));
   if (travel <= 0) return;
   u.x += ((wx - u.x) / dd) * travel;
   u.y += ((wy - u.y) / dd) * travel;
@@ -744,12 +1042,12 @@ function towerPhase(state: EngineState, dt: number): void {
   for (let i = 0; i < towers.length; i++) {
     const t = towers[i];
     if (t.destroyed || !t.active) continue;
-    if (now < t.stunUntil) continue;
-    t.cooldown -= dt;
+    if (now < t.stunUntil || isFrozen(t, now)) continue;
+    t.cooldown -= dt * speedMultiplier(t, now);
     if (t.cooldown > 0) continue;
     const target = acquireTowerTarget(state, t);
     if (!target) continue;
-    target.hp -= t.damage; // hitscan on the firing tick (§6.5)
+    damageUnit(target, t.damage); // hitscan on the firing tick (§6.5)
     if (target.hp <= 0 && target.deathBurst) {
       golemBurst(state, target);
     }
@@ -757,6 +1055,71 @@ function towerPhase(state: EngineState, dt: number): void {
   }
   // Sweep unit deaths from tower fire before troops shoot (§6.4).
   sweepDeadUnits(state);
+}
+
+function applyMultiTargetAttack(
+  state: EngineState,
+  attacker: SimUnit,
+  primary: { kind: "tower"; tower: SimTower } | { kind: "unit"; unit: SimUnit },
+): void {
+  const pattern = attacker.mechanics?.attack;
+  if (pattern !== "chain" && pattern !== "pierce") return;
+  const chainEffect = attacker.mechanics?.onAttack?.find((effect) => effect.kind === "chain");
+  const maxTargets = Math.max(1, Number(chainEffect?.maxTargets ?? 3));
+  const hitIds = new Set<string>([primary.kind === "tower" ? primary.tower.id : primary.unit.id]);
+  let lastX = primary.kind === "tower" ? primary.tower.x : primary.unit.x;
+  let lastY = primary.kind === "tower" ? primary.tower.y : primary.unit.y;
+
+  if (pattern === "chain") {
+    for (let hit = 1; hit < maxTargets; hit++) {
+      let best: SimUnit | SimTower | null = null;
+      let bestDistance = Infinity;
+      for (const unit of state.units) {
+        if (unit.owner === attacker.owner || unit.hp <= 0 || hitIds.has(unit.id)) continue;
+        const distance = dist2(lastX, lastY, unit.x, unit.y);
+        if (distance < bestDistance && distance <= 4.5 * 4.5) {
+          best = unit;
+          bestDistance = distance;
+        }
+      }
+      for (const tower of state.towers) {
+        if (tower.owner === attacker.owner || tower.destroyed || hitIds.has(tower.id)) continue;
+        const distance = dist2(lastX, lastY, tower.x, tower.y);
+        if (distance < bestDistance && distance <= 4.5 * 4.5) {
+          best = tower;
+          bestDistance = distance;
+        }
+      }
+      if (best === null) break;
+      hitIds.add(best.id);
+      if ("hp" in best && "maxHp" in best && "kind" in best) {
+        damageTower(state, best, attacker.damage, attacker.owner);
+        lastX = best.x;
+        lastY = best.y;
+      } else {
+        damageUnit(best, attacker.damage);
+        lastX = best.x;
+        lastY = best.y;
+      }
+      if (attacker.mechanics?.onAttack !== undefined) {
+        applyDatabaseEffects(state, attacker.owner, lastX, lastY, attacker.damage, undefined, attacker.mechanics.onAttack);
+      }
+    }
+  } else {
+    const tx = primary.kind === "tower" ? primary.tower.x : primary.unit.x;
+    const ty = primary.kind === "tower" ? primary.tower.y : primary.unit.y;
+    const vx = tx - attacker.x;
+    const vy = ty - attacker.y;
+    const length2 = Math.max(0.001, vx * vx + vy * vy);
+    for (const unit of state.units) {
+      if (unit.owner === attacker.owner || unit.hp <= 0 || hitIds.has(unit.id)) continue;
+      const projection = ((unit.x - attacker.x) * vx + (unit.y - attacker.y) * vy) / length2;
+      if (projection <= 0 || projection >= 1.05) continue;
+      const px = attacker.x + vx * projection;
+      const py = attacker.y + vy * projection;
+      if (dist2(px, py, unit.x, unit.y) <= 0.6 * 0.6) damageUnit(unit, attacker.damage);
+    }
+  }
 }
 
 /** Fill + sort the shared scratch with live unit refs in id order (deterministic). */
@@ -781,9 +1144,9 @@ function unitPhase(state: EngineState, dt: number): void {
   for (let oi = 0; oi < ordered.length; oi++) {
     const u = ordered[oi];
     if (u.hp <= 0) continue;
-    if (now < u.stunUntil) continue;
+    if (now < u.stunUntil || isFrozen(u, now)) continue;
     if (now < u.readyAt) continue; // Cannon deploy 1.0s
-    u.cooldown -= dt;
+    u.cooldown -= dt * speedMultiplier(u, now);
     const target = acquireUnitTarget(state, u);
     if (!target) continue;
     const tx = target.kind === "tower" ? target.tower.x : target.unit.x;
@@ -801,7 +1164,7 @@ function unitPhase(state: EngineState, dt: number): void {
       damageTower(state, target.tower, u.damage, u.owner);
       if (state.over) return;
     } else {
-      target.unit.hp -= u.damage;
+      damageUnit(target.unit, u.damage);
       if (u.splash > 0) {
         const sr = u.splash + RANGE_EPS;
         const sr2 = sr * sr;
@@ -811,18 +1174,31 @@ function unitPhase(state: EngineState, dt: number): void {
         for (let i = 0; i < units.length; i++) {
           const e = units[i];
           if (e.owner === uowner || e.hp <= 0 || e.id === tid) continue;
+          if (u.targets === "ground" && e.flying) continue;
           const dx = tx - e.x;
           if (dx > sr || dx < -sr) continue;
           const dy = ty - e.y;
           if (dy > sr || dy < -sr) continue;
-          if (dx * dx + dy * dy <= sr2) e.hp -= udmg;
+          if (dx * dx + dy * dy <= sr2) damageUnit(e, udmg);
         }
       }
       if (target.unit.hp <= 0 && target.unit.deathBurst) {
         golemBurst(state, target.unit);
       }
     }
-    u.cooldown = u.hitSpeed > 0 ? u.hitSpeed : 0;
+    applyMultiTargetAttack(state, u, target);
+    if (u.mechanics?.onAttack !== undefined) {
+      applyDatabaseEffects(
+        state,
+        u.owner,
+        tx,
+        ty,
+        u.damage,
+        undefined,
+        u.mechanics.onAttack,
+      );
+    }
+    u.cooldown = u.hitSpeed > 0 ? u.hitSpeed / speedMultiplier(u, now) : 0;
     if (state.over) return;
   }
   sweepDeadUnits(state);
@@ -847,7 +1223,7 @@ function golemBurst(state: EngineState, dead: SimUnit): void {
     if (dx > r || dx < -r) continue;
     const dy = dy0 - e.y;
     if (dy > r || dy < -r) continue;
-    if (dx * dx + dy * dy <= r2) e.hp -= dmg;
+    if (dx * dx + dy * dy <= r2) damageUnit(e, dmg);
   }
   const tr = radius + 0.5 + RANGE_EPS;
   const tr2 = tr * tr;
@@ -871,7 +1247,14 @@ function sweepDeadUnits(state: EngineState): void {
   const arr = state.units;
   let w = 0;
   for (let i = 0; i < arr.length; i++) {
-    if (arr[i].hp > 0) arr[w++] = arr[i];
+    const unit = arr[i];
+    if (unit.hp > 0) {
+      arr[w++] = unit;
+      continue;
+    }
+    if (unit.mechanics?.onDeath !== undefined) {
+      applyDatabaseEffects(state, unit.owner, unit.x, unit.y, unit.damage, undefined, unit.mechanics.onDeath);
+    }
   }
   arr.length = w;
 }
@@ -903,6 +1286,11 @@ export function tickGame(state: EngineState, dt: number = TICK_DT): EngineState 
   const perSec = doubleRate ? ELIXIR_DOUBLE_SEC : ELIXIR_SINGLE_SEC;
   state.elixir.blue = Math.min(ELIXIR_CAP, state.elixir.blue + step / perSec);
   state.elixir.red = Math.min(ELIXIR_CAP, state.elixir.red + step / perSec);
+
+  // Database-defined persistent area effects (Poison, Earthquake, Rage, etc.)
+  // resolve before movement and combat on the authoritative clock.
+  fieldPhase(state, step);
+  periodicPhase(state);
 
   // (3) movement — deterministic id order via shared scratch (no spread/sort alloc).
   const ordered = sortedUnits(state);

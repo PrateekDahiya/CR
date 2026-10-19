@@ -78,7 +78,7 @@ CATALOG: list[tuple] = [
     ("executioner", "troop", 5, "epic", 0, ""),
     ("giant-skeleton", "troop", 6, "epic", 0, ""),
     ("goblin-giant", "troop", 6, "epic", 0, ""),
-    ("golem", "troop", 8, "epic", 1, "engine rock-golem substitute"),
+    ("golem", "troop", 8, "epic", 1, "full catalog card"),
     ("guards", "troop", 3, "epic", 0, ""),
     ("pekka", "troop", 7, "epic", 0, ""),
     ("prince", "troop", 5, "epic", 0, ""),

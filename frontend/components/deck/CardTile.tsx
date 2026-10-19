@@ -25,6 +25,7 @@ const TYPE_BADGE: Record<CardInfo["type"], string> = {
   troop: "bg-emerald-900 text-emerald-200",
   spell: "bg-purple-900 text-purple-200",
   building: "bg-amber-900 text-amber-200",
+  tower: "bg-cyan-900 text-cyan-200",
 };
 
 export default function CardTile({ card, selected = false, disabled = false, onToggle }: CardTileProps) {

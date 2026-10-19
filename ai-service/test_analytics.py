@@ -90,7 +90,7 @@ def test_ring_cap_eviction_small_override():
 def test_pick_rate_sums_to_hand_share():
     store = BalanceAnalytics()
     deck_blue = ["knight", "archers", "giant", "skeletons", "musketeer", "baby-dragon", "fireball", "cannon"]
-    deck_red = ["mini-pekka", "rock-golem", "arrows", "zap", "knight", "archers", "musketeer", "cannon"]
+    deck_red = ["mini-pekka", "golem", "arrows", "zap", "knight", "archers", "musketeer", "cannon"]
     store.record_game(deck_blue, deck_red, winner="blue")
     stats = store.card_stats()
     total_pick = sum(r["pick_rate"] for r in stats)

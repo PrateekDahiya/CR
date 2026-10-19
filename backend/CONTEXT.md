@@ -86,3 +86,9 @@ npm start
 - Data: infra/mysql/schema.sql (cards/sprites/menus/users/decks/matches) + infra/mysql/seed.py (12 same-name CR cards/stats + 7 menus + 12 sprite metadata rows, original placeholders only). Live verified: cards source:mysql count 12, menus 7, sprites 12.
 - Secrets: real creds env-only (infra/.env, gitignored); .env.example placeholders. No .env tracked.
 - Tests: tests/content.test.ts 3 suites; full npm test 38/38 PASS; tsc --noEmit clean.
+
+## Card mechanics update (2026-10-19, branch card-mechanics)
+- `src/game/cards.ts` now builds from the generated 108-row catalog only; the duplicate hand-written 12-card table and `rock-golem` runtime alias were removed.
+- MySQL `card_mechanics` stores versioned JSON effect definitions; `src/mysql.ts` loads all rows before matchmaking and uses the same checked-in seed JSON for local development.
+- When `DB_HOST` is set, startup runs `ensureMysqlDatabase()`: schema migration plus idempotent full seed of cards/stats, 108 catalog rows, mechanics, child templates, menus, and sprites before opening the listener. See `docs/DATABASE_BOOTSTRAP.md`.
+- `src/game/engine.ts` interprets database-defined area damage, status, knockback, clone, splash, and persistent field effects without card-id branches. Full card-by-card implementation remains tracked in `docs/CARD_MECHANICS_PLAN.md`.

@@ -4,7 +4,8 @@
 # Usage: docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml up -d --build
 # Differences vs dev compose:
 #   - restart: always on every service (container host / VM expectation).
-#   - No bind-mounts for code (only named volumes pgdata/redisdata).
+#   - No bind-mounts for application code; backend receives read-only versioned
+#     MySQL schema/seed content so automatic database bootstrap works.
 #   - DATABASE_URL + SEASON wired for backend Prisma (Phase 7); memory fallback if unset.
 #   - CORS_ORIGIN documented (backend currently CORS * dev-only; set explicit origin in prod).
 #   - Healthchecks on postgres/redis/backend/ai-service; frontend depends on backend healthy.
@@ -51,6 +52,14 @@ services:
       - DATABASE_URL=${DATABASE_URL:-postgresql://cr:crpass@postgres:5432/crdb}
       - SEASON=${SEASON:-s1}
       - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+      - DB_HOST=${DB_HOST:-}
+      - DB_USER=${DB_USER:-}
+      - DB_PASS=${DB_PASS:-}
+      - DB_NAME=${DB_NAME:-cr}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_SSL=${DB_SSL:-true}
+    volumes:
+      - ./mysql:/app/infra/mysql:ro
     networks:
       - cr-net
     restart: always

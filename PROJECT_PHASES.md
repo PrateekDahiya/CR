@@ -27,7 +27,7 @@
 - [ ] Phase 10 - Authentic CR Content + Aiven MySQL (started 2026-10-17, branch `feature/phase-10-authentic-content`): same 12-card roster/naming/stats + menu labels/structure as CR (original art only), MySQL `cr` store (cards/sprites-meta/menus + users/decks/matches mirror), `infra/mysql/schema.sql` + seed, `backend/src/mysql.ts` (optional import + fallback, SSL per DB_SSL, O(1)) + `/content/*` endpoints, frontend same-name cards/menus via /content with fallback. Secrets env-only (gitignored `infra/.env`), examples placeholders. Pipeline: main-agent (subagents deprecated) + live MySQL verify + no-secrets scan. Run-to-completion per MEMORY#21.
 
 ## NEXT (Planned)
-- (none - v0.2.0 closes authentic-content scope; future ideas via SUGGESTIONS.md)
+- [ ] Card mechanics - 108-card catalog and database-defined mechanics (branch `card-mechanics`; plan: `docs/CARD_MECHANICS_PLAN.md`). Phase 1 removes the duplicate 12-card runtime tables, makes the generated 108-row catalog authoritative, adds `card_mechanics` MySQL seed data, and begins generic server effect interpretation. Remaining phases implement and verify every card-specific effect.
 
 ## Phase Log
 | Phase | Branch | Main merge commit | Date | Notes |
