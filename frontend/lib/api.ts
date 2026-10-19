@@ -298,6 +298,7 @@ export interface PlayerProfile {
   decks: DeckRecord[];
   activeDeck: DeckRecord;
   cards: Record<string, number>;
+  towerLevels?: Record<string, number>;
   season: string;
 }
 
@@ -344,6 +345,20 @@ export interface UpgradeCardResponse {
 export function upgradePlayerCard(playerId: string, cardId: string, baseUrl?: string): Promise<UpgradeCardResponse> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
   return postJson(`${base}/profile/${encodeURIComponent(playerId)}/cards/${encodeURIComponent(cardId)}/upgrade`, {});
+}
+
+export interface UpgradeTowerResponse {
+  ok: true;
+  towerId: string;
+  level: number;
+  cost: number;
+  coins: number;
+}
+
+/** POST /profile/:id/towers/:towerId/upgrade — crown-tower progression. */
+export function upgradePlayerTower(playerId: string, towerId: string, baseUrl?: string): Promise<UpgradeTowerResponse> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return postJson(`${base}/profile/${encodeURIComponent(playerId)}/towers/${encodeURIComponent(towerId)}/upgrade`, {});
 }
 
 /** GET /players — the player table (rank, trophies, W/L, win rate). O(n log n). */

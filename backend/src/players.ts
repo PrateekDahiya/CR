@@ -28,8 +28,10 @@ export interface Player {
   wins: number;
   losses: number;
   draws: number;
-  /** Card id -> level (1..15). Owned cards only. */
+  /** Card id -> level (1..16). Owned cards only. */
   cards: Record<string, number>;
+  /** Crown-tower troop id -> level (1..16); progressed independently. */
+  towerLevels: Record<string, number>;
   decks: Deck[];
   activeDeckId: string | null;
   createdAtMs: number;
@@ -107,6 +109,11 @@ export function ensurePlayer(playerId: string): Player {
     // dead. The deck builder remains card-agnostic, so all 108 cards stay
     // usable in battle; the shop simply has inventory again.
     cards: Object.fromEntries(STARTER_COLLECTION.map((id) => [id, 9])),
+    towerLevels: Object.fromEntries(
+      Object.values(CARDS)
+        .filter((card) => card.type === "tower")
+        .map((card) => [card.id, 1]),
+    ),
     decks: [deck],
     activeDeckId: deck.id,
     createdAtMs: Date.now(),
@@ -248,6 +255,29 @@ export const CARD_MAX_LEVEL = 16;
 /** Coin cost to take a card from `level` to `level + 1`. O(1). */
 export function cardUpgradeCost(level: number): number {
   return Math.round(200 * Math.pow(1.35, Math.max(0, level - 1)));
+}
+
+export type TowerUpgradeResult =
+  | { ok: true; towerId: string; level: number; cost: number; coins: number }
+  | { ok: false; code: "BAD_TOWER" | "MAX_LEVEL" | "NO_COINS"; message: string; level: number; cost: number };
+
+/** Upgrade one crown tower troop by one level (separate from card levels). */
+export function upgradeTower(playerId: string, towerId: string): TowerUpgradeResult {
+  const p = ensurePlayer(playerId);
+  if (CARDS[towerId]?.type !== "tower") {
+    return { ok: false, code: "BAD_TOWER", message: "unknown tower troop", level: 0, cost: 0 };
+  }
+  const current = p.towerLevels[towerId] ?? 1;
+  if (current >= CARD_MAX_LEVEL) {
+    return { ok: false, code: "MAX_LEVEL", message: "tower is already at max level", level: current, cost: 0 };
+  }
+  const cost = cardUpgradeCost(current);
+  if (p.coins < cost) {
+    return { ok: false, code: "NO_COINS", message: "not enough coins", level: current, cost };
+  }
+  p.coins -= cost;
+  p.towerLevels[towerId] = current + 1;
+  return { ok: true, towerId, level: current + 1, cost, coins: p.coins };
 }
 
 export type UpgradeResult =

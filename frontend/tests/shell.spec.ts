@@ -168,22 +168,20 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(page.getByTestId("collection-list")).toBeVisible();
   });
 
-  test("decks: every catalog card is playable (no locked cards)", async ({ page }) => {
+  test("decks: locked cards are separated and cannot be used", async ({ page }) => {
     await page.goto(`${BASE}/decks`);
     await expect(page.locator('[data-testid^="deck-card-"]')).toHaveCount(8, { timeout: 15000 });
     await page.getByTestId("deck-tab-collection").click();
     await expect(page.getByTestId("collection-list")).toBeVisible({ timeout: 15000 });
-    // No card is locked/unplayable any more.
-    await expect(page.locator('[data-testid^="collection-card-"][data-locked]')).toHaveCount(0);
-    // A non-baseline card (mega-knight) can be added like any other.
-    const target = page.locator('[data-testid="collection-card-mega-knight"]');
-    await expect(target).toBeVisible();
-    await target.click();
-    await expect(page.getByTestId("card-info-use")).toBeVisible();
-    await page.getByTestId("card-info-use").click();
-    await expect(page.getByTestId("replace-picker")).toBeVisible();
-    await page.getByTestId("replace-slot-5").click();
-    await expect(page.getByTestId("deck-card-5")).toHaveAttribute("aria-label", /mega-knight/i);
+    // Locked cards remain visible in their own, dimmed section.
+    const locked = page.locator('[data-testid^="locked-card-mega-knight"]');
+    await expect(locked).toBeVisible();
+    await expect(locked).toHaveAttribute("data-locked", "true");
+    // Opening a locked card offers no Use action.
+    await locked.click();
+    await expect(page.getByTestId("card-info-overlay")).toBeVisible();
+    await expect(page.getByTestId("card-info-use")).toHaveCount(0);
+    await page.getByTestId("card-info-close").click();
   });
 
   test("collection /collection can add and remove cards in My Deck", async ({ page }) => {

@@ -73,6 +73,10 @@ export interface UseBattleOptions {
   backendUrl: string;
   playerId: string;
   deck: string[];
+  /** Owned-card levels sent with match creation (server validates). */
+  levels?: Record<string, number>;
+  /** Selected crown-tower troop profile. */
+  towerTroopId?: string;
 }
 
 export interface DeployResult {
@@ -292,7 +296,7 @@ export interface UseBattle {
   resync: () => void;
 }
 
-export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): UseBattle {
+export function useBattle({ backendUrl, playerId, deck, levels, towerTroopId }: UseBattleOptions): UseBattle {
   const [phase, setPhase] = useState<BattlePhase>("idle");
   const [connected, setConnected] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
@@ -345,6 +349,8 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
   playerIdRef.current = playerId;
   const deckRef = useRef(deck);
   deckRef.current = deck;
+  const matchExtrasRef = useRef<{ levels?: Record<string, number>; towerTroopId?: string }>({ levels, towerTroopId });
+  matchExtrasRef.current = { levels, towerTroopId };
   // Ref mirrors for the 60fps loop + deploy (ISS-F5-006: read refs/locals outside
   // setState updaters so no nested setState runs inside another updater).
   const snapshotRef = useRef<StateUpdate | null>(null);
@@ -407,12 +413,12 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
     try {
       const sock = connect(backendUrl);
       setConnected(sock.connected);
-      const sel = await selectDeck(id, d);
+      const sel = await selectDeck(id, d, matchExtrasRef.current);
       if (!sel.ok) {
         setError(sel.error ? `${sel.error.code}: ${sel.error.message}` : "deck:select rejected");
         return;
       }
-      const ack = await joinQueue(id, d);
+      const ack = await joinQueue(id, d, matchExtrasRef.current);
       if (!ack.ok) {
         setError(ack.error ? `${ack.error.code}: ${ack.error.message}` : "queue:join rejected");
         return;
@@ -448,12 +454,12 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
       try {
         const sock = connect(backendUrl);
         setConnected(sock.connected);
-        const sel = await selectDeck(id, d);
+        const sel = await selectDeck(id, d, matchExtrasRef.current);
         if (!sel.ok) {
           setError(sel.error ? `${sel.error.code}: ${sel.error.message}` : "deck:select rejected");
           return;
         }
-        const ack = await joinAiMatch(id, d, difficulty);
+        const ack = await joinAiMatch(id, d, difficulty, matchExtrasRef.current);
         if (!ack.ok) {
           setError(ack.error ? `${ack.error.code}: ${ack.error.message}` : "match:practice rejected");
           return;
@@ -485,12 +491,12 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
       try {
         const sock = connect(backendUrl);
         setConnected(sock.connected);
-        const sel = await selectDeck(id, d);
+        const sel = await selectDeck(id, d, matchExtrasRef.current);
         if (!sel.ok) {
           setError(sel.error ? `${sel.error.code}: ${sel.error.message}` : "deck:select rejected");
           return;
         }
-        const ack = await joinQueue(id, d);
+        const ack = await joinQueue(id, d, matchExtrasRef.current);
         if (!ack.ok) {
           // Queue rejected (e.g. BAD_DECK) -> straight to a playable AI game.
           await joinPractice(difficulty);

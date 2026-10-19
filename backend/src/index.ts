@@ -45,6 +45,7 @@ import { initRedis } from "./net/redis.js";
 import { mountMeta } from "./meta.js";
 import { mountContent } from "./content.js";
 import { mountShop } from "./shop.js";
+import { ensurePlayer } from "./players.js";
 import { ensureMysqlDatabase, hydrateLevelStatsFromMysql, hydrateMechanicsFromMysql, hydrateSpawnTemplatesFromMysql, isMysqlConfigured } from "./mysql.js";
 import { CARD_LIST } from "./game/cards.js";
 
@@ -162,7 +163,7 @@ function handlePracticeMatch(
     return;
   }
   const validDeck = deck as string[];
-  const levels = validateCardLevels(payload.levels, validDeck);
+  const levels = validateCardLevels(payload.levels, validDeck, payload.towerTroopId);
   const towerTroop = validateTowerTroopId(payload.towerTroopId);
   if (!levels.ok) {
     fail(socket, ack, levels.code ?? "BAD_DECK", levels.message ?? "invalid level selection");
@@ -177,10 +178,23 @@ function handlePracticeMatch(
     : "medium";
   const matchId = `ai-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const botDeck = botDeckFor(matchId);
+  // AI fairness: every bot card is normalized to the player deck's average
+  // owned-card level, so a level-5 player never faces level-15 bots.
+  const playerProfile = ensurePlayer(playerId);
+  const averageLevel = Math.max(
+    1,
+    Math.min(
+      16,
+      Math.round(
+        validDeck.reduce((sum, id) => sum + (playerProfile.cards[id] ?? 1), 0) / validDeck.length,
+      ),
+    ),
+  );
+  const botLevels = Object.fromEntries(botDeck.map((id) => [id, averageLevel]));
   const room = createRoom(
     matchId,
     { playerId, socketId: socket.id, deck: validDeck, levels: (levels as { levels: Record<string, number> }).levels, towerTroopId: payload.towerTroopId },
-    { playerId: `bot-${matchId}`, socketId: `bot-${matchId}`, deck: botDeck },
+    { playerId: `bot-${matchId}`, socketId: `bot-${matchId}`, deck: botDeck, levels: botLevels, towerTroopId: "tower-princess" },
   );
   socketPlayer.set(socket.id, playerId);
   playerSocket.set(playerId, socket.id);
@@ -216,7 +230,7 @@ function handleQueueJoin(socket: Socket, payload: QueueJoinPayload, ack?: AckFn)
     return;
   }
   const validDeck = deck as string[];
-  const levels = validateCardLevels(payload.levels, validDeck);
+  const levels = validateCardLevels(payload.levels, validDeck, payload.towerTroopId);
   const towerTroop = validateTowerTroopId(payload.towerTroopId);
   if (!levels.ok) {
     fail(socket, ack, levels.code ?? "BAD_DECK", levels.message ?? "invalid level selection");

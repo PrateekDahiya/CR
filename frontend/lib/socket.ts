@@ -104,13 +104,18 @@ export function getSocket(): Socket | null {
 // Auto-connect singleton used by matchmaking loader / home Battle. Returns a
 // stable wrapper that exposes joinQueue / leaveQueue / selectDeck / onMatched
 // / onGameError, hiding the underlying Socket.io instance.
+export interface MatchExtras {
+  levels?: Record<string, number>;
+  towerTroopId?: string;
+}
+
 export interface SocketClient {
   socket: Socket | null;
-  joinQueue: (playerId: string, deck?: string[]) => void;
+  joinQueue: (playerId: string, deck?: string[], extras?: MatchExtras) => void;
   /** Instant real match vs the server-side bot (match:practice). */
-  joinAiMatch: (playerId: string, deck: string[], difficulty?: "easy" | "medium" | "hard") => void;
+  joinAiMatch: (playerId: string, deck: string[], difficulty?: "easy" | "medium" | "hard", extras?: MatchExtras) => void;
   leaveQueue: (playerId?: string) => void;
-  selectDeck: (playerId: string, deck: string[]) => void;
+  selectDeck: (playerId: string, deck: string[], extras?: MatchExtras) => void;
   onMatched: (cb: (matchId: string, side: "blue" | "red", opponentId?: string) => void) => Unsubscribe;
   onGameError: (cb: (code: string, message: string) => void) => Unsubscribe;
   close: () => void;
@@ -119,23 +124,36 @@ export interface SocketClient {
 function wrapSocket(s: Socket | null): SocketClient {
   return {
     socket: s,
-    joinQueue: (playerId, deck) => {
+    joinQueue: (playerId, deck, extras) => {
       if (!s) return;
       const payload: Record<string, unknown> = { playerId };
       if (deck) payload.deck = deck;
+      if (extras?.levels) payload.levels = extras.levels;
+      if (extras?.towerTroopId) payload.towerTroopId = extras.towerTroopId;
       s.emit("queue:join", payload);
     },
-    joinAiMatch: (playerId, deck, difficulty) => {
+    joinAiMatch: (playerId, deck, difficulty, extras) => {
       if (!s) return;
-      s.emit("match:practice", { playerId, deck, ...(difficulty ? { difficulty } : {}) });
+      s.emit("match:practice", {
+        playerId,
+        deck,
+        ...(difficulty ? { difficulty } : {}),
+        ...(extras?.levels ? { levels: extras.levels } : {}),
+        ...(extras?.towerTroopId ? { towerTroopId: extras.towerTroopId } : {}),
+      });
     },
     leaveQueue: (playerId) => {
       if (!s) return;
       s.emit("queue:leave", playerId ? { playerId } : {});
     },
-    selectDeck: (playerId, deck) => {
+    selectDeck: (playerId, deck, extras) => {
       if (!s) return;
-      s.emit("deck:select", { playerId, deck });
+      s.emit("deck:select", {
+        playerId,
+        deck,
+        ...(extras?.levels ? { levels: extras.levels } : {}),
+        ...(extras?.towerTroopId ? { towerTroopId: extras.towerTroopId } : {}),
+      });
     },
     onMatched: (cb) => {
       if (!s) return () => {};
@@ -273,8 +291,13 @@ function emitWithAck(event: string, payload: unknown, timeoutMs = 5000): Promise
 }
 
 /** Request matchmaking. Deck must be 8 distinct card ids (GAME_DESIGN §4/§11). */
-export function joinQueue(playerId: string, deck: string[]): Promise<Ack> {
-  return emitWithAck("queue:join", { playerId, deck });
+export function joinQueue(playerId: string, deck: string[], extras?: MatchExtras): Promise<Ack> {
+  return emitWithAck("queue:join", {
+    playerId,
+    deck,
+    ...(extras?.levels ? { levels: extras.levels } : {}),
+    ...(extras?.towerTroopId ? { towerTroopId: extras.towerTroopId } : {}),
+  });
 }
 
 /**
@@ -286,8 +309,15 @@ export function joinAiMatch(
   playerId: string,
   deck: string[],
   difficulty: "easy" | "medium" | "hard" = "medium",
+  extras?: MatchExtras,
 ): Promise<Ack> {
-  return emitWithAck("match:practice", { playerId, deck, difficulty });
+  return emitWithAck("match:practice", {
+    playerId,
+    deck,
+    difficulty,
+    ...(extras?.levels ? { levels: extras.levels } : {}),
+    ...(extras?.towerTroopId ? { towerTroopId: extras.towerTroopId } : {}),
+  });
 }
 
 /** Leave matchmaking. Idempotent — server acks ok even if not queued. */
@@ -296,8 +326,13 @@ export function leaveQueue(playerId: string): Promise<Ack> {
 }
 
 /** Lock/select deck pre-queue (lobby/deck-builder). Validates without queueing. */
-export function selectDeck(playerId: string, deck: string[]): Promise<Ack> {
-  return emitWithAck("deck:select", { playerId, deck });
+export function selectDeck(playerId: string, deck: string[], extras?: MatchExtras): Promise<Ack> {
+  return emitWithAck("deck:select", {
+    playerId,
+    deck,
+    ...(extras?.levels ? { levels: extras.levels } : {}),
+    ...(extras?.towerTroopId ? { towerTroopId: extras.towerTroopId } : {}),
+  });
 }
 
 /** Core gameplay intent — validated + applied on the next 10 Hz server tick. */

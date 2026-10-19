@@ -49,6 +49,13 @@ describe('level selection validation', () => {
     assert.equal(validateTowerTroopId('knight').ok, false);
   });
 
+  it('allows the selected tower-troop level alongside deck levels', () => {
+    const selected = validateCardLevels({ 'tower-princess': 5 }, BLUE_DECK, 'tower-princess');
+    assert.equal(selected.ok, true);
+    const rejected = validateCardLevels({ 'tower-princess': 5 }, BLUE_DECK);
+    assert.equal(rejected.ok, false);
+  });
+
   it('keeps validated levels as an immutable match-start snapshot', () => {
     const state = createGame('level-snapshot', BLUE_DECK, RED_DECK, {
       blueCardLevels: { knight: 9 },

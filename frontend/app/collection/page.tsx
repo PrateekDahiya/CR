@@ -25,6 +25,8 @@ export default function CollectionPage() {
   const [source, setSource] = useState("local");
   const [filter, setFilter] = useState<"all" | "common" | "rare" | "epic" | "legendary" | "champion">("all");
   const [cost, setCost] = useState<number | "all">("all");
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState<"name" | "elixir" | "level">("name");
   const [loading, setLoading] = useState(true);
   const [info, setInfo] = useState<{ name: string } | null>(null);
   const [replace, setReplace] = useState<{ name: string } | null>(null);
@@ -87,11 +89,25 @@ export default function CollectionPage() {
     return out;
   }, [factsByName]);
 
-  const filtered = catalog.filter((c) => {
+  const ownedNames = useMemo(() => new Set(Object.keys(profile?.cards ?? {})), [profile]);
+  const unlocked = catalog.filter((c) => ownedNames.has(c.name));
+  const locked = catalog.filter((c) => !ownedNames.has(c.name));
+
+  const matchesFilters = (c: CatalogEntry): boolean => {
+    const q = query.trim().toLowerCase();
+    if (q.length > 0 && !c.name.toLowerCase().includes(q)) return false;
     if (filter !== "all" && c.rarity !== filter) return false;
     if (cost !== "all" && c.elixir !== cost) return false;
     return true;
-  });
+  };
+  const splitFiltered = (list: CatalogEntry[]): { matched: CatalogEntry[]; rest: CatalogEntry[] } => {
+    const sorted = [...list].sort((a, b) => {
+      if (sortKey === "elixir") return a.elixir - b.elixir || a.name.localeCompare(b.name);
+      if (sortKey === "level") return (profile?.cards?.[b.name] ?? 0) - (profile?.cards?.[a.name] ?? 0) || a.name.localeCompare(b.name);
+      return a.name.localeCompare(b.name);
+    });
+    return { matched: sorted.filter(matchesFilters), rest: sorted.filter((c) => !matchesFilters(c)) };
+  };
   const found = catalog.length;
   const playable = catalog.filter((c) => c.playable).length;
 
@@ -108,6 +124,10 @@ export default function CollectionPage() {
   };
 
   const requestUse = (name: string) => {
+    if (!ownedNames.has(name)) {
+      say(`${pretty(name)} is locked — unlock it in the shop first`);
+      return;
+    }
     const res = useCard(name);
     if (res.kind === "placed") {
       setInfo(null);
@@ -156,8 +176,44 @@ export default function CollectionPage() {
     }
   };
 
+  const renderGroups = (list: CatalogEntry[], groupId: string, isLocked: boolean) => {
+    const { matched, rest } = splitFiltered(list);
+    const tile = (c: CatalogEntry) => (
+      <li key={c.name} className="flex justify-center">
+        <CardTile
+          name={c.name}
+          rarity={c.rarity}
+          cost={c.elixir}
+          level={isLocked ? 0 : profile?.cards?.[c.name] ?? 1}
+          testId={`${groupId}-${c.name}`}
+          inDeck={deck.includes(c.name)}
+          locked={isLocked}
+          onClick={() => setInfo({ name: c.name })}
+          ariaLabel={`${c.name}, ${c.elixir} elixir${isLocked ? ", locked" : ""}`}
+        />
+      </li>
+    );
+    return (
+      <>
+        <ul className="grid grid-cols-4 gap-2" data-testid={`${groupId}-matched`} data-count={matched.length}>
+          {matched.map(tile)}
+        </ul>
+        {rest.length > 0 && (
+          <>
+            <p className="mb-1 mt-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              Other cards
+            </p>
+            <ul className="grid grid-cols-4 gap-2 opacity-80" data-testid={`${groupId}-rest`} data-count={rest.length}>
+              {rest.map(tile)}
+            </ul>
+          </>
+        )}
+      </>
+    );
+  };
+
   return (
-    <PageShell active="cards" topBarCurrencies={{ cards: found, coins: 0, gems: 0 }}>
+    <PageShell active="cards" topBarCurrencies={{ cards: found, coins: profile?.coins ?? 0, gems: profile?.gems ?? 0 }}>
       <div className="px-3 py-3">
         <header className="mb-2 flex items-center justify-between">
           <h1 className="text-2xl font-extrabold tracking-tight text-white">Card Collection</h1>
@@ -165,6 +221,27 @@ export default function CollectionPage() {
             {loading ? "…" : `Found: ${found}/${playable || found}`}
           </div>
         </header>
+
+        <div className="mb-2 flex items-center gap-2">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search cards…"
+            data-testid="collection-search"
+            className="min-w-0 flex-1 rounded-md border border-slate-600 bg-slate-900/70 px-2 py-1 text-xs text-slate-100 placeholder:text-slate-500"
+          />
+          <select
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value as typeof sortKey)}
+            data-testid="collection-sort"
+            className="rounded-md border border-slate-600 bg-slate-900/70 px-1.5 py-1 text-[10px] font-bold text-slate-200"
+          >
+            <option value="name">Sort: Name</option>
+            <option value="elixir">Sort: Elixir</option>
+            <option value="level">Sort: Level</option>
+          </select>
+        </div>
 
         <div className="mb-2 flex flex-wrap items-center gap-1" data-testid="collection-filters">
           {(["all", "common", "rare", "epic", "legendary", "champion"] as const).map((r) => (
@@ -207,31 +284,16 @@ export default function CollectionPage() {
             Loading collection…
           </p>
         ) : (
-          <ul
-            data-testid="collection-grid"
-            className="grid grid-cols-4 gap-2"
-            data-count={filtered.length}
-          >
-            {filtered.map((c) => (
-              <li key={c.name} className="flex justify-center">
-                <CardTile
-                  name={c.name}
-                  rarity={c.rarity}
-                  cost={c.elixir}
-                  level={15}
-                  testId={`collection-card-${c.name}`}
-                  inDeck={deck.includes(c.name)}
-                  onClick={() => setInfo({ name: c.name })}
-                  ariaLabel={`${c.name}, ${c.elixir} elixir`}
-                />
-              </li>
-            ))}
-            {filtered.length === 0 && (
-              <li className="col-span-4 py-4 text-center text-sm text-slate-300">
-                No cards match those filters.
-              </li>
-            )}
-          </ul>
+          <>
+            <h3 className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-emerald-300">
+              Unlocked ({unlocked.length})
+            </h3>
+            <div data-testid="collection-grid">{renderGroups(unlocked, "collection-card", false)}</div>
+            <h3 className="mb-1 mt-4 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              Locked ({locked.length})
+            </h3>
+            {renderGroups(locked, "locked-card", true)}
+          </>
         )}
 
         <p className="mt-3 text-center text-[11px] text-slate-400">
@@ -249,6 +311,7 @@ export default function CollectionPage() {
         (() => {
           const f = factsByName[info.name];
           const inDeck = deck.includes(info.name);
+          const isOwned = ownedNames.has(info.name);
           const stats = statsByName[info.name];
           return (
             <CardInfoOverlay
@@ -272,9 +335,9 @@ export default function CollectionPage() {
                   : undefined
               }
               onClose={() => setInfo(null)}
-              onUse={() => requestUse(info.name)}
-              onRemove={inDeck ? () => doRemove(info.name) : undefined}
-              onUpgrade={() => void doUpgrade(info.name)}
+              onUse={isOwned ? () => requestUse(info.name) : undefined}
+              onRemove={isOwned && inDeck ? () => doRemove(info.name) : undefined}
+              onUpgrade={isOwned ? () => void doUpgrade(info.name) : undefined}
               inDeck={inDeck}
             />
           );

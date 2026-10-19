@@ -19,6 +19,7 @@ import {
   setName,
   updateDeck,
   upgradeCard,
+  upgradeTower,
 } from "./players.js";
 
 const SEASON = process.env.SEASON ?? "s1";
@@ -101,6 +102,7 @@ export function mountMeta(app: Express): void {
       decks: listDecks(p.playerId),
       activeDeck: activeDeck(p.playerId),
       cards: p.cards,
+      towerLevels: p.towerLevels,
       season: SEASON,
       db: isDbLive(),
     });
@@ -121,6 +123,17 @@ export function mountMeta(app: Express): void {
     const result = upgradeCard(req.params.playerId, req.params.cardId);
     if (!result.ok) {
       const status = result.code === "NOT_OWNED" ? 404 : result.code === "NO_COINS" ? 402 : 400;
+      res.status(status).json(result);
+      return;
+    }
+    res.json(result);
+  });
+
+  /** Upgrade one crown tower troop independently of card levels. */
+  app.post("/profile/:playerId/towers/:towerId/upgrade", (req: Request, res: Response) => {
+    const result = upgradeTower(req.params.playerId, req.params.towerId);
+    if (!result.ok) {
+      const status = result.code === "BAD_TOWER" ? 404 : result.code === "NO_COINS" ? 402 : 400;
       res.status(status).json(result);
       return;
     }

@@ -57,6 +57,7 @@ import {
 import { getSocket, requestSync, sendEmote } from "../../lib/socket";
 import { reportMatch, getPlayerProfile, getMatchRoster } from "../../lib/api";
 import { usePlayer } from "../../lib/playerContext";
+import { DEFAULT_TOWER_ID, loadTowerSelection } from "../../lib/towerSelection";
 import { crBgStyle } from "../../lib/crTheme";
 import { CRButton } from "../../components/ui";
 import type { Tower, Unit } from "../../../shared/types";
@@ -169,9 +170,28 @@ export default function BattlePage() {
     }
   }, []);
 
-  const battle = useBattle({ backendUrl, playerId, deck });
-  const { phase, matchId, side, opponentId, renderState, displayElixir } = battle;
   const { refresh: refreshProfile, profile } = usePlayer();
+  const [towerTroopId, setTowerTroopId] = useState(DEFAULT_TOWER_ID);
+  useEffect(() => {
+    setTowerTroopId(loadTowerSelection());
+  }, []);
+  const battleLevels = useMemo(
+    () => ({
+      ...(profile?.cards ?? {}),
+      ...(profile?.towerLevels?.[towerTroopId] !== undefined
+        ? { [towerTroopId]: profile.towerLevels[towerTroopId] }
+        : {}),
+    }),
+    [profile, towerTroopId],
+  );
+  const battle = useBattle({
+    backendUrl,
+    playerId,
+    deck,
+    levels: battleLevels,
+    towerTroopId,
+  });
+  const { phase, matchId, side, opponentId, renderState, displayElixir } = battle;
 
   // Adopt the match from the matchmaking redirect (client-side only, after
   // mount): the red player must render/deploy on their own half.

@@ -92,6 +92,7 @@ export interface ValidatedCardLevels {
 export function validateCardLevels(
   levels: unknown,
   deck: readonly string[],
+  towerTroopId?: unknown,
 ): ValidatedCardLevels | ValidationResult {
   const result: Record<string, number> = {};
   if (levels !== undefined && (typeof levels !== "object" || levels === null || Array.isArray(levels))) {
@@ -99,7 +100,7 @@ export function validateCardLevels(
   }
   const input = (levels ?? {}) as Record<string, unknown>;
   for (const [cardId, value] of Object.entries(input)) {
-    if (!deck.includes(cardId)) {
+    if (!deck.includes(cardId) && cardId !== towerTroopId) {
       return { ok: false, code: "BAD_DECK", message: `level provided for card outside deck: ${cardId}` };
     }
     if (!Number.isInteger(value) || Number(value) < 1 || Number(value) > 16) {

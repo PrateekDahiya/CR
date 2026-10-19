@@ -6,6 +6,7 @@ import {
   ensurePlayer,
   resetPlayers,
   upgradeCard,
+  upgradeTower,
 } from "../src/players.js";
 
 describe("card upgrades", () => {
@@ -57,5 +58,25 @@ describe("card upgrades", () => {
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, "MAX_LEVEL");
     assert.equal(player.cards.knight, CARD_MAX_LEVEL);
+  });
+
+  it("upgrades crown towers independently of card levels", () => {
+    const pid = "tower-upgrade";
+    const player = ensurePlayer(pid);
+    player.coins = 100_000;
+    const before = player.towerLevels["tower-princess"];
+
+    const result = upgradeTower(pid, "tower-princess");
+    assert.equal(result.ok, true);
+    if (result.ok) assert.equal(result.level, before + 1);
+    assert.equal(player.towerLevels["tower-princess"], before + 1);
+    // Card levels are untouched by tower progression.
+    assert.equal(player.cards["tower-princess"], undefined);
+  });
+
+  it("rejects non-tower ids for tower upgrades", () => {
+    const result = upgradeTower("tower-bad", "knight");
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, "BAD_TOWER");
   });
 });
