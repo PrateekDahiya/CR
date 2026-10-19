@@ -14,6 +14,8 @@ export interface CardArtProps {
   progress?: { current: number; max: number };
   /** Overrides the elixir-drop test id (battle hand uses card-hand-cost-N). */
   costTestId?: string;
+  /** Extra classes on the art box (e.g. battle hand sizing). */
+  className?: string;
 }
 
 // Renders CR card art (real PNG from /cards/<slug>.png gitignored folder) with
@@ -29,6 +31,7 @@ export default function CardArt({
   cost = 0,
   progress,
   costTestId,
+  className: extraClass,
 }: CardArtProps) {
   const dims = size === "lg" ? "h-28 w-24" : size === "sm" ? "h-12 w-10" : "h-20 w-16";
   const emoji = EMOJI_FALLBACK[name] ?? "🃏";
@@ -41,7 +44,7 @@ export default function CardArt({
     <div
       data-testid={`card-art-${safeName}`}
       data-rarity={rarity}
-      className={`card-art relative ${dims} overflow-hidden rounded-lg border-2 ${border} bg-gradient-to-b ${bg} shadow-md`}
+      className={`card-art relative ${dims} overflow-hidden rounded-lg border-2 ${border} bg-gradient-to-b ${bg} shadow-md ${extraClass ?? ""}`}
     >
       {/* Real art (gitignored /public/cards/<slug>.png; falls back via onError). */}
       {/* eslint-disable-next-line @next/next/no-img-element */}

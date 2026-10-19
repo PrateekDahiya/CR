@@ -92,15 +92,15 @@ export default function MatchmakingLoader({
         if (cancelled) return;
         setPhase("searching");
 
-        socket.onMatched((matchId, side) => {
+        socket.onMatched((matchId, side, opponentId) => {
           if (cancelled) return;
           if (fallbackTimer) clearTimeout(fallbackTimer);
           setPhase("matched");
           onMatched?.(matchId, side);
           router.push(
-            `/battle?matchId=${encodeURIComponent(matchId)}&side=${side}&mode=${
-              matchId.startsWith("ai-") ? "ai" : "pvp"
-            }`,
+            `/battle?matchId=${encodeURIComponent(matchId)}&side=${side}&opponent=${encodeURIComponent(
+              opponentId ?? "",
+            )}&mode=${matchId.startsWith("ai-") ? "ai" : "pvp"}`,
           );
         });
         socket.onGameError((code, message) => {

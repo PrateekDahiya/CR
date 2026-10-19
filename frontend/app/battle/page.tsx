@@ -38,6 +38,7 @@ import ArenaCanvas from "../../components/battle/ArenaCanvas";
 import BattleTopBar from "../../components/battle/BattleTopBar";
 import ElixirBar from "../../components/battle/ElixirBar";
 import Hand from "../../components/battle/Hand";
+import NextCardPanel from "../../components/battle/NextCardPanel";
 import { getCard, type CardInfo } from "../../lib/cards";
 import {
   isDeployValid,
@@ -54,7 +55,7 @@ import {
   toggleMute,
 } from "../../lib/battle/sfx";
 import { requestSync, sendEmote } from "../../lib/socket";
-import { reportMatch } from "../../lib/api";
+import { reportMatch, getPlayerProfile, getMatchRoster } from "../../lib/api";
 import { usePlayer } from "../../lib/playerContext";
 import { crBgStyle } from "../../lib/crTheme";
 import { CRButton } from "../../components/ui";
@@ -149,6 +150,7 @@ export default function BattlePage() {
   const reportedRef = useRef<string | null>(null);
   const [trophyDelta, setTrophyDelta] = useState<number | null>(null);
   const [coinDelta, setCoinDelta] = useState<number | null>(null);
+  const [foe, setFoe] = useState<{ name: string; club: string; trophies: number } | null>(null);
 
   useEffect(() => {
     setDeck(loadDeck());
@@ -170,7 +172,7 @@ export default function BattlePage() {
 
   const battle = useBattle({ backendUrl, playerId, deck });
   const { phase, matchId, side, opponentId, renderState, displayElixir } = battle;
-  const { refresh: refreshProfile } = usePlayer();
+  const { refresh: refreshProfile, profile } = usePlayer();
 
   // Adopt the match from the matchmaking redirect (client-side only, after
   // mount): the red player must render/deploy on their own half.
@@ -295,6 +297,50 @@ export default function BattlePage() {
   const opponentSide = side === "blue" ? "red" : "blue";
   const opponentElixir = battle.snapshot?.elixir?.[opponentSide] ?? null;
 
+  /**
+   * Show the opponent's REAL name + trophies, not a placeholder. The redirect
+   * carries `?opponent=`; when it does not (direct load / refresh) we read the
+   * match roster and resolve the other side's profile. The bot keeps "AI".
+   */
+  useEffect(() => {
+    let cancelled = false;
+
+    const showFoe = (oid: string | null) => {
+      const isBot =
+        oid === null || /^ai\b/i.test(oid) || oid.startsWith("bot-") || oid.startsWith("ai-");
+      if (isBot) {
+        if (!cancelled) setFoe(oid === null ? null : { name: "AI", club: "Difficulty: medium", trophies: 0 });
+        return;
+      }
+      void getPlayerProfile(oid as string, backendUrl)
+        .then((p) => {
+          if (cancelled) return;
+          setFoe({ name: p.name, club: p.season ? `Season ${p.season}` : "Player", trophies: p.trophies });
+        })
+        .catch(() => {
+          if (!cancelled) setFoe({ name: oid as string, club: "Player", trophies: 0 });
+        });
+    };
+
+    if (opponentId !== null && opponentId.length > 0) {
+      showFoe(opponentId);
+      return () => {
+        cancelled = true;
+      };
+    }
+    if (matchId === null) return () => undefined;
+    void getMatchRoster(matchId, backendUrl)
+      .then((r) => {
+        if (cancelled) return;
+        const other = side === "blue" ? r.redId : r.blueId;
+        showFoe(other);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [opponentId, matchId, side, backendUrl]);
+
   const pocket = useMemo(
     () => pocketSidesFromTowers(renderState?.towers, side),
     [renderState, side],
@@ -341,18 +387,6 @@ export default function BattlePage() {
     [battle, side, pocket, displayElixir, matchId, flashInvalid],
   );
 
-  // Desktop hover preview → sibling selectedCell (sibling has no onHover callback;
-  // wrapper div synthesizes hover; touch deploy works via click synthesis).
-  const tileFromClient = useCallback((clientX: number, clientY: number, rect: DOMRect) => {
-    if (rect.width === 0 || rect.height === 0) return null;
-    const x = Math.floor(((clientX - rect.left) / rect.width) * 18);
-    const y = Math.floor(((clientY - rect.top) / rect.height) * 32);
-    return {
-      x: Math.max(0, Math.min(17, x)),
-      y: Math.max(0, Math.min(31, y)),
-    };
-  }, []);
-
   const resultTitle = useMemo(() => {
     const r = battle.result;
     if (!r) return "";
@@ -385,26 +419,21 @@ export default function BattlePage() {
         data-phase={phase}
         data-match={matchId ?? ""}
         data-pid={playerId}
-        className="relative h-[100dvh] w-full max-w-[440px] overflow-hidden"
+        className="flex h-[100dvh] w-full max-w-[440px] flex-col overflow-hidden"
       >
-        {/* Arena fills the viewport; the bottom HUD overlaps only its lower edge so the
-            player's king tower stays visible and the page never scrolls. */}
+        {/* Arena takes all free space; the HUD is a sibling below it, so no part
+            of the playable board is ever covered and the page never scrolls. */}
         <div
-          className={`absolute inset-x-0 top-0 flex h-[calc(100%-86px)] items-center justify-center ${
+          className={`relative flex min-h-0 flex-1 items-center justify-center overflow-hidden ${
             invalidFlash ? "battle-shake" : ""
           }`}
-          onMouseMove={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const t = tileFromClient(e.clientX, e.clientY, rect);
-            setHover(t);
-          }}
-          onMouseLeave={() => setHover(null)}
         >
           <ArenaCanvas
             towers={towers}
             entities={entities}
             selectedCell={hover}
             mySide={side}
+            onHover={(cell) => setHover(cell)}
             onTileClick={(x, y) => void handleTile(x, y)}
             className="h-full"
           />
@@ -448,23 +477,11 @@ export default function BattlePage() {
         {/* Top HUD — translucent strip over the arena. */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10">
           <BattleTopBar
-            enemyName={opponentId ?? "Opponent"}
-            enemyTrophies={0}
-            playerName={playerId || "you"}
-            playerTrophies={0}
+            enemyName={foe?.name ?? opponentId ?? "Opponent"}
+            enemyClub={foe?.club ?? "Guest"}
+            enemyTrophies={foe?.trophies ?? 0}
             timeLeftSec={battle.timeLeftSec}
             isOvertime={battle.isOvertime}
-            isMuted={muted}
-            onToggleMute={() => setMutedState(toggleMute())}
-            onEmote={() => {
-              if (matchId && playerId) {
-                try {
-                  void sendEmote(matchId, playerId, "wave");
-                } catch {
-                  // cosmetic only
-                }
-              }
-            }}
           />
           {battle.isDoubleElixir && !battle.isOvertime && phase === "in-match" && (
             <div
@@ -487,17 +504,53 @@ export default function BattlePage() {
           )}
         </div>
 
-        {/* Bottom HUD — elixir bar + hand float over the arena with a scrim. */}
-        <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-[#050b1c] via-[#050b1c]/80 to-transparent px-1 pb-1 pt-7">
-          <ElixirBar elixir={ready ? displayElixir : 5} max={10} opponentElixir={opponentElixir} />
-          <div className="mt-1">
+        {/* Bottom HUD - CR blue bar: emote + Next on the left, 4 cards, elixir strip.
+            Sits BELOW the arena (flex sibling), never on top of the board. */}
+        <div className="z-10 shrink-0 bg-gradient-to-b from-[#1f4b9c] via-[#17407f] to-[#102f63] px-1 pb-0.5 pt-1 shadow-[0_-4px_14px_rgba(0,0,0,0.5)]">
+          <div className="flex items-end gap-1">
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  data-testid="emote-button"
+                  onClick={() => {
+                    if (matchId && playerId) {
+                      try {
+                        void sendEmote(matchId, playerId, "wave");
+                      } catch {
+                        // cosmetic only
+                      }
+                    }
+                  }}
+                  title="Emotes"
+                  aria-label="Open emotes"
+                  className="grid h-7 w-7 place-items-center rounded-lg border-2 border-white/60 bg-white/90 text-sm text-slate-800 shadow active:translate-y-0.5"
+                >
+                  💬
+                </button>
+                <button
+                  type="button"
+                  data-testid="mute-toggle"
+                  onClick={() => setMutedState(toggleMute())}
+                  title={muted ? "Unmute" : "Mute"}
+                  aria-label={muted ? "Unmute sound" : "Mute sound"}
+                  aria-pressed={muted}
+                  className="grid h-7 w-6 place-items-center rounded-lg border-2 border-white/40 bg-white/25 text-[11px] text-white shadow active:translate-y-0.5"
+                >
+                  {muted ? "🔇" : "🔊"}
+                </button>
+              </div>
+              <NextCardPanel card={nextCardInfo} />
+            </div>
             <Hand
               hand={handCards}
               elixir={displayElixir}
               selectedIndex={battle.selected}
-              nextCard={nextCardInfo}
               onSelect={battle.selectCard}
             />
+          </div>
+          <div className="mt-0.5">
+            <ElixirBar elixir={ready ? displayElixir : 5} max={10} opponentElixir={opponentElixir} />
           </div>
         </div>
 
@@ -506,7 +559,7 @@ export default function BattlePage() {
           <div
             data-testid="battle-error"
             role={battle.error ? "alert" : "status"}
-            className="absolute inset-x-4 bottom-28 z-20 flex items-start justify-between gap-2 rounded-lg border border-red-700 bg-red-950/95 px-3 py-1.5 text-[11px] text-red-100"
+            className="absolute inset-x-4 bottom-4 z-20 flex items-start justify-between gap-2 rounded-lg border border-red-700 bg-red-950/95 px-3 py-1.5 text-[11px] text-red-100"
           >
             <span>{battle.error ?? notice}</span>
             <button
@@ -524,7 +577,7 @@ export default function BattlePage() {
         )}
 
         {!battle.connected && phase !== "idle" && (
-          <p className="absolute inset-x-0 bottom-32 z-20 text-center text-[11px] text-white/70">
+          <p className="absolute inset-x-0 top-16 z-20 text-center text-[11px] text-amber-200">
             Socket offline — backend at {backendUrl}
           </p>
         )}

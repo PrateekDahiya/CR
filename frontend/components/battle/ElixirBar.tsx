@@ -1,10 +1,9 @@
 "use client";
 
 /**
- * ElixirBar — exact-CR bottom elixir bar (docs/UI_REFERENCE.md §4).
- * Purple gradient #c93cff → #8a2be2, 10 diamond pips, number left,
- * fill animates per tick, shake + glow when full (10).
- * Spectator leak: optional right-side number via `opponentElixir`.
+ * ElixirBar — CR elixir strip (docs/gameUI/08-clan-wars-battle.png):
+ * a pink droplet with the current amount on the left, a magenta fill bar with
+ * 10 segment dividers, and "Max: 10" underneath. Grows/shakes at full.
  * Pure presentational — no socket. Server float 0..10 (GAME_DESIGN §7).
  */
 
@@ -13,14 +12,11 @@ interface ElixirBarProps {
   elixir: number;
   /** Cap, always 10 per GAME_DESIGN §7. */
   max?: number;
-  /**
-   * Spectator / leaked enemy elixir (wiki: number right of bar).
-   * When provided, renders right-side mini drop. Null hides it.
-   */
+  /** Leaked enemy elixir for spectators; null hides it. */
   opponentElixir?: number | null;
 }
 
-const FULL_GRADIENT = "linear-gradient(180deg, #c93cff 0%, #a83cf0 45%, #8a2be2 100%)";
+const FULL_GRADIENT = "linear-gradient(180deg, #f472d0 0%, #e64bd0 45%, #c026d3 100%)";
 
 function clamp(v: number, lo: number, hi: number): number {
   if (Number.isNaN(v)) return lo;
@@ -32,11 +28,10 @@ export default function ElixirBar({ elixir, max = 10, opponentElixir = null }: E
   const floored = Math.floor(safe);
   const pct = (safe / max) * 100;
   const isFull = floored >= max;
-
   const pips = Array.from({ length: max }, (_, i) => i);
 
   return (
-    <div className="w-full select-none" data-testid="elixir-bar">
+    <div className="w-full select-none px-1" data-testid="elixir-bar">
       <style>{`
         @keyframes elixir-shake {
           0%, 100% { transform: translateX(0); }
@@ -45,69 +40,62 @@ export default function ElixirBar({ elixir, max = 10, opponentElixir = null }: E
           60% { transform: translateX(-1px); }
           80% { transform: translateX(1px); }
         }
-        .elixir-full-shake {
-          animation: elixir-shake 0.5s ease-in-out infinite;
-        }
+        .elixir-full-shake { animation: elixir-shake 0.5s ease-in-out infinite; }
       `}</style>
 
-      <div className="flex items-center gap-1.5 px-1">
-        {/* Number left — elixir drop count */}
+      <div className="flex items-center gap-1">
+        {/* Elixir droplet with the amount */}
         <div
           className={[
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-white/90 text-sm font-extrabold text-white",
-            isFull ? "bg-fuchsia-500 shadow-[0_0_12px_rgba(201,60,255,0.9)]" : "bg-[#7a1fa2]",
+            "grid h-7 w-7 shrink-0 place-items-center rounded-[50%] border-2 border-fuchsia-300 font-black text-white shadow-md",
+            isFull ? "bg-gradient-to-b from-fuchsia-400 to-purple-700 elixir-full-shake" : "bg-gradient-to-b from-pink-400 to-pink-700",
           ].join(" ")}
           data-testid="elixir-count"
           aria-label={`Elixir ${floored}`}
         >
-          {floored}
+          <span className="text-xs tabular-nums">{floored}</span>
         </div>
 
-        {/* Bar track + fill + pips */}
+        {/* Bar with 10 segments */}
         <div
           className={[
-            "relative h-6 flex-1 overflow-hidden rounded-full border border-white/30 bg-[#3d0f57]",
-            isFull
-              ? "elixir-full-shake shadow-[0_0_14px_rgba(201,60,255,0.95)]"
-              : "shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]",
+            "relative h-3 flex-1 overflow-hidden rounded-full border border-fuchsia-300/70 bg-[#3b0a4a] shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]",
+            isFull ? "elixir-full-shake" : "",
           ].join(" ")}
           role="progressbar"
           aria-valuenow={floored}
           aria-valuemin={0}
           aria-valuemax={max}
         >
-          {/* Fill — animates per tick */}
           <div
-            className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-300 ease-linear"
+            className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-200 ease-linear"
             style={{ width: `${pct}%`, background: FULL_GRADIENT }}
             data-testid="elixir-fill"
           />
-          {/* Shine line */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-full bg-white/15" />
-
-          {/* 10 diamond pips */}
-          <div className="absolute inset-0 flex items-center justify-between px-2">
-            {pips.map((i) => {
-              const filled = i < floored;
-              return (
-                <span
-                  key={i}
-                  data-testid={`elixir-pip-${i}`}
-                  aria-hidden="true"
-                  className={[
-                    "inline-block h-2 w-2 rotate-45 border",
-                    filled ? "border-white bg-white/95 shadow-sm" : "border-white/50 bg-black/30",
-                  ].join(" ")}
-                />
-              );
-            })}
+          {/* Segment dividers (10 elixir slots) */}
+          <div className="absolute inset-0 flex items-stretch">
+            {pips.map((i) => (
+              <span
+                key={i}
+                data-testid={`elixir-pip-${i}`}
+                aria-hidden="true"
+                className={[
+                  "flex-1 border-r border-black/25 last:border-r-0",
+                  i < floored ? "bg-white/10" : "bg-black/20",
+                ].join(" ")}
+              />
+            ))}
           </div>
         </div>
 
-        {/* Leaked spectator number right (opponent elixir) */}
+        {/* Max label */}
+        <div className="shrink-0 text-[9px] font-extrabold leading-tight text-white/90 drop-shadow-[1px_1px_0_rgba(0,0,0,0.7)]">
+          Max: {max}
+        </div>
+
         {opponentElixir !== null && opponentElixir !== undefined && (
           <div
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-white/60 bg-[#2a0a40] text-xs font-extrabold text-fuchsia-200"
+            className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-dashed border-white/60 bg-[#2a0a40] text-[8px] font-extrabold text-fuchsia-200"
             data-testid="elixir-leak"
             title="Opponent elixir (spectator)"
             aria-label={`Opponent elixir ${Math.floor(clamp(opponentElixir, 0, max))}`}

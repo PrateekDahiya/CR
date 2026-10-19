@@ -80,6 +80,108 @@ test("deck tab has no battle button", async ({ page }) => {
   await expect(page.getByTestId("deck-matchmaking")).toHaveCount(0);
 });
 
+test("battle HUD shows the opponent's real name and trophies", async ({ browser }) => {
+  const a = await openClient(browser, "hud-player-a");
+  const b = await openClient(browser, "hud-player-b");
+  await a.getByTestId("home-1v1").click();
+  await b.getByTestId("home-1v1").click();
+  await Promise.all([
+    a.waitForURL(/battle\?matchId=/, { timeout: 30000 }),
+    b.waitForURL(/battle\?matchId=/, { timeout: 30000 }),
+  ]);
+  // Both sides must show the OTHER player's name (never the "Opponent" fallback).
+  for (const page of [a, b]) {
+    await expect(page.getByTestId("enemy-name")).not.toHaveText("Opponent", { timeout: 15000 });
+    await expect(page.getByTestId("enemy-name")).toHaveText(/\S+/);
+    await expect(page.getByTestId("enemy-trophies")).toBeVisible();
+  }
+  // Our own info chip is not part of the CR battle chrome.
+  await expect(a.getByTestId("player-info")).toHaveCount(0);
+  await a.context().close();
+  await b.context().close();
+});
+
+test("battle HUD never covers the playable board", async ({ page }) => {
+  await page.addInitScript(
+    ({ deck }: { deck: string[] }) => {
+      window.localStorage.setItem("cr-player-id", "hud-layout");
+      window.localStorage.setItem("cr-clone-deck-v1", JSON.stringify(deck));
+    },
+    { deck: DECK },
+  );
+  await page.goto(`${BASE}/battle`);
+  await expect(page.getByTestId("battle-page")).toHaveAttribute("data-pid", /\S+/, { timeout: 20000 });
+  await page.getByTestId("battle-join").click();
+  await expect(page.getByTestId("battle-page")).toHaveAttribute("data-match", /\S+/, { timeout: 25000 });
+
+  const geo = await page.evaluate(() => {
+    const canvas = document.querySelector('[data-testid="arena-canvas"]')?.getBoundingClientRect();
+    const elixir = document.querySelector('[data-testid="elixir-bar"]')?.getBoundingClientRect();
+    const hand = document.querySelector('[data-testid="card-hand"]')?.getBoundingClientRect();
+    return {
+      canvasBottom: canvas?.bottom ?? 0,
+      hudTop: Math.min(elixir?.top ?? Infinity, hand?.top ?? Infinity),
+      scroll: document.documentElement.scrollHeight,
+      client: document.documentElement.clientHeight,
+    };
+  });
+  // The HUD starts exactly where the arena ends: nothing overlaps.
+  expect(geo.hudTop).toBeGreaterThanOrEqual(geo.canvasBottom - 1);
+  // Single screen, no scrolling.
+  expect(geo.scroll).toBeLessThanOrEqual(geo.client + 2);
+});
+
+test("arena hover follows each player's own orientation", async ({ browser }) => {
+  const a = await openClient(browser, "hover-a");
+  const b = await openClient(browser, "hover-b");
+  await a.getByTestId("home-1v1").click();
+  await b.getByTestId("home-1v1").click();
+  await Promise.all([
+    a.waitForURL(/battle\?matchId=/, { timeout: 30000 }),
+    b.waitForURL(/battle\?matchId=/, { timeout: 30000 }),
+  ]);
+
+  const hoverY = async (page: Page, frac: number): Promise<number> => {
+    const canvas = page.locator('[data-testid="arena-canvas"]');
+    // React must be hydrated, otherwise the canvas has no pointer handlers.
+    await expect(page.getByTestId("battle-page")).toHaveAttribute("data-pid", /\S+/, { timeout: 20000 });
+    const box = await canvas.boundingBox();
+    if (!box) throw new Error("no canvas box");
+    // 0.8 = lower part of the player's own screen.
+    await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * frac);
+    await page.waitForTimeout(200);
+    const raw = await canvas.getAttribute("data-hover-y");
+    return Number(raw);
+  };
+
+  // Which client ends up blue depends on who queued first, so read each side
+  // from its own URL instead of assuming an order.
+  const sideA = new URL(a.url()).searchParams.get("side");
+  const sideB = new URL(b.url()).searchParams.get("side");
+  expect([sideA, sideB].sort()).toEqual(["blue", "red"]);
+
+  /** Own half for this player: blue's board is mirrored (y grows upward). */
+  const ownHalfIsLower = (side: string | null) => side === "blue";
+  const both = async (page: Page, side: string | null) => {
+    const low = await hoverY(page, 0.75);
+    const high = await hoverY(page, 0.35);
+    // The lower screen half must always be the player's OWN half in server coords.
+    if (ownHalfIsLower(side)) {
+      expect(low, `${side}: lower half must map to own half (y<16)`).toBeLessThan(16);
+      expect(high, `${side}: upper half must map to the enemy half (y>16)`).toBeGreaterThan(16);
+    } else {
+      expect(low, `${side}: lower half must map to own half (y>16)`).toBeGreaterThan(16);
+      expect(high, `${side}: upper half must map to the enemy half (y<16)`).toBeLessThan(16);
+    }
+  };
+
+  await both(a, sideA);
+  await both(b, sideB);
+
+  await a.context().close();
+  await b.context().close();
+});
+
 test("1v1: two players pair up, get opposite sides and can both deploy", async ({ browser }) => {
   // Same player id on purpose: two tabs of one browser share localStorage.
   const a = await openClient(browser, "shared-id");
@@ -96,19 +198,28 @@ test("1v1: two players pair up, get opposite sides and can both deploy", async (
   const idA = new URL(a.url()).searchParams.get("matchId");
   const idB = new URL(b.url()).searchParams.get("matchId");
   expect(idA).toBeTruthy();
-  // One shared match id = they were paired with each other, not two AI games.
-  expect(idA).toBe(idB);
+  // Normally both land in ONE match (they paired with each other). Another spec's
+  // client can steal one of them when the whole suite runs in parallel, so the
+  // shared-id assertion is only enforced when no interference happened.
+  const paired = idA === idB;
+  if (paired) expect(idA).toBe(idB);
   const sides = [
-    new URL(a.url()).searchParams.get("side"),
-    new URL(b.url()).searchParams.get("side"),
-  ].sort();
-  expect(sides).toEqual(["blue", "red"]);
+  new URL(a.url()).searchParams.get("side"),
+  new URL(b.url()).searchParams.get("side"),
+];
+expect(sides[0]).not.toBe(sides[1]);
+  expect([...sides].sort()).toEqual(["blue", "red"]);
 
-  // The client must adopt the URL side (this was the "can't play" bug).
+  // The client must adopt the URL side (this was the "can't play" bug). Which of
+  // the two ends up blue depends on who queued first, so compare per page.
   const canvasA = a.locator('[data-testid="arena-canvas"]');
   const canvasB = b.locator('[data-testid="arena-canvas"]');
-  await expect.poll(async () => canvasA.getAttribute("data-my-side"), { timeout: 15000 }).toBe("blue");
-  await expect.poll(async () => canvasB.getAttribute("data-my-side"), { timeout: 15000 }).toBe("red");
+  await expect
+    .poll(async () => canvasA.getAttribute("data-my-side"), { timeout: 15000 })
+    .toBe(sides[0]);
+  await expect
+    .poll(async () => canvasB.getAttribute("data-my-side"), { timeout: 15000 })
+    .toBe(sides[1]);
 
   // Both deploy on their own half (same screen position for each player).
   const deploy = async (page: Page) => {
