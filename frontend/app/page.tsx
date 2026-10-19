@@ -11,6 +11,7 @@ import {
 } from "../components/ui";
 import { backendUrl, getCatalog, getProfile, type CatalogEntry, type ProfileResponse } from "../lib/api";
 import { useDeckState } from "../lib/useDeck";
+import { usePlayer } from "../lib/playerContext";
 
 // Home: matches docs/gameUI/03-home-battle-tab.png + 04-game-modes-sheet.png
 // (knight hero, big gold BATTLE, Game Modes sheet, Pass Royale widget).
@@ -23,6 +24,7 @@ export default function Home() {
   const [modesOpen, setModesOpen] = useState(false);
   const [info, setInfo] = useState<{ name: string; rarity: CardInfoOverlayProps["rarity"]; cardType: CardInfoOverlayProps["cardType"]; elixir: number } | null>(null);
   const { deck } = useDeckState();
+  const { profile: ownedProfile } = usePlayer();
 
   useEffect(() => {
     let cancelled = false;
@@ -65,6 +67,7 @@ export default function Home() {
   const factsByName = new Map(catalog.map((c) => [c.name, c]));
   // Playing Deck = the real saved deck (My Deck), 4 per row like /decks.
   const playingDeck = deck.filter(Boolean);
+  const levelOf = (name: string): number => ownedProfile?.cards?.[name] ?? 1;
   const avgElixir = playingDeck.length
     ? (playingDeck.reduce((a, n) => a + (factsByName.get(n)?.elixir ?? 0), 0) / 8).toFixed(1)
     : "—";
@@ -182,7 +185,7 @@ onClick={() => setMatchmaking("pvp")}
                     name={f.name}
                     rarity={f.rarity}
                     cost={f.elixir}
-                    level={15}
+                    level={levelOf(f.name)}
                     testId={`home-playing-${f.name}`}
                     ariaLabel={f.name}
                     onClick={() => showInfo(f.name)}
@@ -257,7 +260,7 @@ onClick={() => setMatchmaking("pvp")}
                 rarity={info.rarity}
                 cardType={info.cardType}
                 elixir={info.elixir}
-                level={15}
+                level={levelOf(info.name)}
                 onClose={() => setInfo(null)}
                 onUse={() => setInfo(null)}
                 inDeck={inDeck}
