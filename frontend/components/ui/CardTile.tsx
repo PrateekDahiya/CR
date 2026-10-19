@@ -15,6 +15,8 @@ export interface CardTileProps {
   /** Cost drop visibility (defaults to on whenever cost > 0). */
   showCost?: boolean;
   costTestId?: string;
+  /** Extra classes for the inner art box (battle hand sizing). */
+  artClassName?: string;
   onClick?: () => void;
   /** Marks cards already in the deck (used by the collection grid). */
   inDeck?: boolean;
@@ -41,6 +43,7 @@ export default function CardTile({
   showName = false,
   showCost,
   costTestId,
+  artClassName,
   onClick,
   inDeck = false,
   selected = false,
@@ -72,6 +75,7 @@ export default function CardTile({
         showLevel={level > 0}
         showCost={showCost ?? cost > 0}
         costTestId={costTestId}
+        className={artClassName}
         size={size}
       />
       {showName && (

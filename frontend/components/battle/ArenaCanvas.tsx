@@ -64,6 +64,12 @@ export interface ArenaCanvasProps {
   serverTimeMs?: number;
   /** Tile click (deploy) callback — parent emits card:play. */
   onTileClick?: (x: number, y: number) => void;
+  /**
+   * Pointer-move preview, already mapped through the side's orientation, so the
+   * highlight always lands on the tile under the cursor for BOTH players.
+   * Null on pointer leave. O(1).
+   */
+  onHover?: (cell: Vec2 | null) => void;
   className?: string;
 }
 
@@ -240,6 +246,7 @@ export default function ArenaCanvas({
   damageNumbers,
   serverTimeMs,
   onTileClick,
+  onHover,
   className = "",
 }: ArenaCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -814,27 +821,58 @@ export default function ArenaCanvas({
     return () => cancelAnimationFrame(raf);
   }, []);
 
+/**
+   * Client point -> tile, honouring the board orientation. The blue view is
+   * mirrored, so its rows must be flipped here. Shared by click AND hover so
+   * both always agree with what the player sees under the cursor.
+   */
+  const tileAt = (clientX: number, clientY: number): Vec2 | null => {
+    const el = canvasRef.current;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return null;
+    const x = clamp(Math.floor(((clientX - rect.left) / rect.width) * COLS), 0, COLS - 1);
+    const rawY = clamp(Math.floor(((clientY - rect.top) / rect.height) * ROWS), 0, ROWS - 1);
+    const y = mySide === "blue" ? ROWS - 1 - rawY : rawY;
+    return { x, y };
+  };
+
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!onTileClick) return;
+    const cell = tileAt(e.clientX, e.clientY);
+    if (cell !== null) onTileClick(cell.x, cell.y);
+  };
+
+  const handleMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const cell = tileAt(e.clientX, e.clientY);
+    // Mirror the mapped cell onto the element (no React re-render) so tests and
+    // debugging can see which server tile the pointer is really on.
     const el = canvasRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
-    const tx = clamp(Math.floor((px / rect.width) * COLS), 0, COLS - 1);
-    // Mirrored board (player = blue): invert the row so taps map back to server-y.
-    const rawY = clamp(Math.floor((py / rect.height) * ROWS), 0, ROWS - 1);
-    const ty = mySide === "blue" ? ROWS - 1 - rawY : rawY;
-    onTileClick(tx, ty);
+    if (el !== null) {
+      el.setAttribute("data-hover-x", cell === null ? "" : String(cell.x));
+      el.setAttribute("data-hover-y", cell === null ? "" : String(cell.y));
+    }
+    onHover?.(cell);
+  };
+
+  const handleLeave = () => {
+    const el = canvasRef.current;
+    if (el !== null) {
+      el.setAttribute("data-hover-x", "");
+      el.setAttribute("data-hover-y", "");
+    }
+    onHover?.(null);
   };
 
   return (
-<div className={`mx-auto flex h-full w-full max-w-[420px] items-center justify-center ${className}`} data-testid="arena-canvas-wrap">
+    <div className={`mx-auto flex h-full w-full max-w-[420px] items-center justify-center ${className}`} data-testid="arena-canvas-wrap">
       <canvas
         ref={canvasRef}
         width={W}
         height={H}
         onClick={handleClick}
+        onMouseMove={handleMove}
+        onMouseLeave={handleLeave}
         className="h-full max-h-full w-auto max-w-full touch-manipulate rounded-lg"
         style={{ aspectRatio: "18 / 32", background: GRASS_A }}
         data-testid="arena-canvas"

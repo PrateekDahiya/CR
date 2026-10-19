@@ -337,6 +337,12 @@ export function deletePlayerDeck(playerId: string, deckId: string, baseUrl?: str
   return delJson(`${base}/decks/${encodeURIComponent(playerId)}/${deckId}`);
 }
 
+/** GET /match/:id — who is blue/red (used to show the real opponent name). */
+export function getMatchRoster(matchId: string, baseUrl?: string): Promise<{ matchId: string; blueId: string | null; redId: string | null; winner: string | null }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/match/${encodeURIComponent(matchId)}`);
+}
+
 /** POST /matches/report — awards trophies/coins and returns the per-player deltas. */
 export function reportMatch(input: {
   blueId: string | null;

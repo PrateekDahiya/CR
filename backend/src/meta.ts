@@ -4,6 +4,7 @@
 
 import type { Express, Request, Response } from "express";
 import { authPlayerId, mintGuestToken } from "./auth.js";
+import { getRoom } from "./net/rooms.js";
 import { getUser, leaderboard, recordMatch, saveDeck, upsertUser, isDbLive } from "./db.js";
 import {
   activeDeck,
@@ -168,7 +169,26 @@ export function mountMeta(app: Express): void {
     res.json({ ...row, deltas });
   });
 
-  app.get("/season", (_req: Request, res: Response) => {
+  /**
+ * Match roster lookup: who is blue, who is red. The battle screen uses it to
+ * show the opponent's real name when the redirect URL did not carry it.
+ * O(p) with p = 2 players.
+ */
+app.get("/match/:matchId", (req: Request, res: Response) => {
+  const room = getRoom(req.params.matchId);
+  if (room === undefined) {
+    res.status(404).json({ code: "NO_MATCH", message: "unknown match" });
+    return;
+  }
+  res.json({
+    matchId: room.matchId,
+    blueId: room.players.find((p) => p.side === "blue")?.playerId ?? null,
+    redId: room.players.find((p) => p.side === "red")?.playerId ?? null,
+    winner: room.state.winner ?? null,
+  });
+});
+
+app.get("/season", (_req: Request, res: Response) => {
     res.json({ season: SEASON, name: "Season 1: Goblin Stadium", endsAt: null });
   });
 }
