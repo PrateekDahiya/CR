@@ -24,6 +24,10 @@ export interface CardInfoOverlayProps {
   onUse?: () => void;
   onRemove?: () => void;
   onUpgrade?: () => void;
+  /** Coin cost for the next level. */
+  upgradeCost?: number;
+  /** True when the card is already at max level (disables Upgrade). */
+  maxLevel?: boolean;
   /** True when the card already sits in My Deck (enables the Remove button). */
   inDeck?: boolean;
 }
@@ -43,6 +47,8 @@ export default function CardInfoOverlay({
   onUse,
   onRemove,
   onUpgrade,
+  upgradeCost,
+  maxLevel = false,
   inDeck = false,
 }: CardInfoOverlayProps) {
   useEffect(() => {
@@ -176,11 +182,17 @@ export default function CardInfoOverlay({
           <button
             type="button"
             data-testid="card-info-upgrade"
-            onClick={onUpgrade}
-            className="rounded-xl border-b-4 border-purple-800 bg-gradient-to-b from-purple-400 to-purple-700 px-2 py-1.5 text-center text-white shadow-md active:translate-y-0.5"
+            onClick={maxLevel ? undefined : onUpgrade}
+            disabled={maxLevel}
+            className={[
+              "rounded-xl border-b-4 px-2 py-1.5 text-center text-white shadow-md active:translate-y-0.5",
+              maxLevel
+                ? "cursor-not-allowed border-slate-800 bg-gradient-to-b from-slate-500 to-slate-700 opacity-60"
+                : "border-purple-800 bg-gradient-to-b from-purple-400 to-purple-700",
+            ].join(" ")}
           >
-            <div className="text-[10px] font-extrabold uppercase tracking-wide">Upgrade</div>
-            <div className="text-xs font-extrabold">60000 🪙</div>
+            <div className="text-[10px] font-extrabold uppercase tracking-wide">{maxLevel ? "Max Level" : "Upgrade"}</div>
+            <div className="text-xs font-extrabold">{maxLevel ? "MAX" : `${upgradeCost ?? 200} 🪙`}</div>
           </button>
           {/* Use is hidden for cards that are already in My Deck — the card is
               already there, so only Move/Remove actions make sense. */}

@@ -18,6 +18,7 @@ import {
   getCatalog,
   selectPlayerDeck,
   updatePlayerDeck,
+  upgradePlayerCard,
   type ContentCard,
   type CatalogEntry,
   type DeckRecord,
@@ -177,6 +178,24 @@ export default function DecksPage() {
     setReplace(null);
     setInfo(null);
     say(`${pretty(name)} removed from slot ${at + 1}`);
+  };
+
+  const levelOf = (name: string): number => profile?.cards?.[name] ?? 1;
+  const upgradeCostOf = (name: string): number =>
+    Math.round(200 * Math.pow(1.35, Math.max(0, levelOf(name) - 1)));
+
+  const doUpgrade = async (name: string) => {
+    if (!playerId) {
+      say("Sign in to upgrade cards");
+      return;
+    }
+    try {
+      const res = await upgradePlayerCard(playerId, name, backendUrl());
+      say(`${pretty(name)} upgraded to level ${res.level} (−${res.cost} coins)`);
+      await refreshProfile();
+    } catch (err) {
+      say(err instanceof Error ? err.message : "Upgrade failed");
+    }
   };
 
   const avgElixir =
@@ -408,7 +427,7 @@ export default function DecksPage() {
                   name={f.name}
                   rarity={f.rarity}
                   cost={f.elixir}
-                  level={15}
+                  level={levelOf(f.name)}
                   testId={`deck-card-${i}`}
                   ariaLabel={`Card slot ${i + 1}: ${f.name}`}
                   onClick={() => setInfo({ name: f.name, slot: i })}
@@ -474,7 +493,7 @@ export default function DecksPage() {
                   name={c.name}
                   rarity={c.rarity}
                   cost={c.elixir}
-                  level={15}
+                  level={levelOf(c.name)}
                   testId={`collection-card-${c.name}`}
                   inDeck={deck.includes(c.name)}
                   onClick={() => setInfo({ name: c.name, slot: "list" })}
@@ -501,7 +520,9 @@ export default function DecksPage() {
                 rarity={f.rarity as CardInfoOverlayProps["rarity"]}
                 cardType={f.cardType as CardInfoOverlayProps["cardType"]}
                 elixir={f.elixir}
-                level={15}
+                level={levelOf(f.name)}
+                upgradeCost={upgradeCostOf(f.name)}
+                maxLevel={levelOf(f.name) >= 16}
                 stats={
                   stats
                     ? {
@@ -517,7 +538,7 @@ export default function DecksPage() {
                 onClose={() => setInfo(null)}
                 onUse={() => requestUse(info.name)}
                 onRemove={inDeck ? () => doRemove(info.slot, info.name) : undefined}
-                onUpgrade={() => setInfo(null)}
+                onUpgrade={() => void doUpgrade(info.name)}
                 inDeck={inDeck}
               />
             );

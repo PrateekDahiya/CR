@@ -332,6 +332,20 @@ export function setPlayerName(playerId: string, name: string, baseUrl?: string):
   return postJson(`${base}/profile/${encodeURIComponent(playerId)}/name`, { name });
 }
 
+export interface UpgradeCardResponse {
+  ok: true;
+  cardId: string;
+  level: number;
+  cost: number;
+  coins: number;
+}
+
+/** POST /profile/:id/cards/:cardId/upgrade — one level for the listed coin cost. */
+export function upgradePlayerCard(playerId: string, cardId: string, baseUrl?: string): Promise<UpgradeCardResponse> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return postJson(`${base}/profile/${encodeURIComponent(playerId)}/cards/${encodeURIComponent(cardId)}/upgrade`, {});
+}
+
 /** GET /players — the player table (rank, trophies, W/L, win rate). O(n log n). */
 export function getPlayers(limit = 50, baseUrl?: string): Promise<{ season: string; rows: PlayerRow[] }> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");

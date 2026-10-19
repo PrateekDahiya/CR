@@ -18,6 +18,7 @@ import {
   selectDeck,
   setName,
   updateDeck,
+  upgradeCard,
 } from "./players.js";
 
 const SEASON = process.env.SEASON ?? "s1";
@@ -113,6 +114,17 @@ export function mountMeta(app: Express): void {
     }
     const p = setName(req.params.playerId, name);
     res.json({ playerId: p.playerId, name: p.name });
+  });
+
+  /** Upgrade one owned card by one level (charges coins). O(k). */
+  app.post("/profile/:playerId/cards/:cardId/upgrade", (req: Request, res: Response) => {
+    const result = upgradeCard(req.params.playerId, req.params.cardId);
+    if (!result.ok) {
+      const status = result.code === "NOT_OWNED" ? 404 : result.code === "NO_COINS" ? 402 : 400;
+      res.status(status).json(result);
+      return;
+    }
+    res.json(result);
   });
 
   /** Player table (leaderboard) with rank + win rate. O(n log n). */

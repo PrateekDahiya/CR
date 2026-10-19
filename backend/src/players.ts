@@ -243,6 +243,44 @@ export function ownsCard(playerId: string, cardId: string): boolean {
   return (ensurePlayer(playerId).cards[cardId] ?? 0) > 0;
 }
 
+export const CARD_MAX_LEVEL = 16;
+
+/** Coin cost to take a card from `level` to `level + 1`. O(1). */
+export function cardUpgradeCost(level: number): number {
+  return Math.round(200 * Math.pow(1.35, Math.max(0, level - 1)));
+}
+
+export type UpgradeResult =
+  | { ok: true; cardId: string; level: number; cost: number; coins: number }
+  | { ok: false; code: "NOT_OWNED" | "MAX_LEVEL" | "NO_COINS"; message: string; level: number; cost: number };
+
+/**
+ * Upgrades one owned card by one level and charges the player's coins.
+ * Deck level snapshots containing the card are refreshed so the next match
+ * uses the new level immediately. O(k), k = decks per player.
+ */
+export function upgradeCard(playerId: string, cardId: string): UpgradeResult {
+  const p = ensurePlayer(playerId);
+  const current = p.cards[cardId] ?? 0;
+  if (!isBattleCard(cardId) || current <= 0) {
+    return { ok: false, code: "NOT_OWNED", message: "card is not owned", level: current, cost: 0 };
+  }
+  if (current >= CARD_MAX_LEVEL) {
+    return { ok: false, code: "MAX_LEVEL", message: "card is already at max level", level: current, cost: 0 };
+  }
+  const cost = cardUpgradeCost(current);
+  if (p.coins < cost) {
+    return { ok: false, code: "NO_COINS", message: "not enough coins", level: current, cost };
+  }
+  p.coins -= cost;
+  const next = current + 1;
+  p.cards[cardId] = next;
+  for (const deck of p.decks) {
+    if (deck.cards.includes(cardId)) deck.levels[cardId] = next;
+  }
+  return { ok: true, cardId, level: next, cost, coins: p.coins };
+}
+
 /**
  * Applies a match result to both players. O(1) per player.
  * Returns the per-player trophy deltas so the UI can show +/-
