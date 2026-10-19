@@ -59,6 +59,32 @@ export interface CardMechanicsContent {
   mechanics: CardMechanicSpec;
 }
 
+export interface CardLevelStats {
+  cardId: string;
+  level: number;
+  mode: string;
+  statVersion: number;
+  hitPoints: number;
+  damage: number;
+  hitSpeedMs: number;
+  dps: number;
+  moveSpeed: number;
+  range: number;
+  sightRange: number;
+  radius: number;
+  count: number;
+  durationMs: number;
+  deployDelayMs: number;
+  towerDamage?: number;
+  deathBurst: number;
+  deathBurstRadius: number;
+  flying: boolean;
+  targets: string;
+  attackPattern: string;
+  source: string;
+  approximation: boolean;
+}
+
 function spawnTemplateFromRow(row: Record<string, unknown>): CardDef {
   return {
     id: String(row.template_id),
@@ -195,9 +221,9 @@ function jsonFile(name: string): Record<string, Record<string, unknown>> {
  * Create every MySQL table and seed the complete game content set. This is
  * idempotent and intentionally runs before mechanic hydration on startup.
  */
-export async function ensureMysqlDatabase(): Promise<{ tables: boolean; cards: number; mechanics: number; spawns: number }> {
+export async function ensureMysqlDatabase(): Promise<{ tables: boolean; cards: number; mechanics: number; spawns: number; cardStats: number; spawnStats: number }> {
   const p = getPool();
-  if (!p) return { tables: false, cards: 0, mechanics: 0, spawns: 0 };
+  if (!p) return { tables: false, cards: 0, mechanics: 0, spawns: 0, cardStats: 0, spawnStats: 0 };
   const schema = readFileSync(workspaceFile("schema.sql"), "utf8");
   const executableSchema = schema.replace(/^[ \t]*--[^\r\n]*(?:\r?\n|$)/gm, "");
   for (const statement of executableSchema.split(";")) {
@@ -230,6 +256,10 @@ export async function ensureMysqlDatabase(): Promise<{ tables: boolean; cards: n
   }
 
   const cardRows = Object.values(CARDS);
+  const mechanics = jsonFile("card_mechanics.json");
+  const statVersion = 1;
+  const mode = "ladder";
+  const scale = (value: number, level: number): number => Math.round(value * Math.pow(1.1, level - 1));
   for (const card of cardRows) {
     await p.query(
       "INSERT INTO cards (name,card_type,elixir,hp,dmg_per_hit,hit_speed_ms,dps,speed_ms_per_tile,speed_label,range_tiles,range_kind,targets,unit_count,rarity,damage_vs_troops,damage_vs_towers,radius_tiles,stun_ms,lifetime_ms,deploy_delay_ms,death_burst,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE card_type=VALUES(card_type),elixir=VALUES(elixir),hp=VALUES(hp),dmg_per_hit=VALUES(dmg_per_hit),hit_speed_ms=VALUES(hit_speed_ms),dps=VALUES(dps),speed_ms_per_tile=VALUES(speed_ms_per_tile),range_tiles=VALUES(range_tiles),targets=VALUES(targets),unit_count=VALUES(unit_count),rarity=VALUES(rarity),damage_vs_troops=VALUES(damage_vs_troops),damage_vs_towers=VALUES(damage_vs_towers),radius_tiles=VALUES(radius_tiles),stun_ms=VALUES(stun_ms),lifetime_ms=VALUES(lifetime_ms),death_burst=VALUES(death_burst)",
@@ -239,6 +269,17 @@ export async function ensureMysqlDatabase(): Promise<{ tables: boolean; cards: n
       "INSERT INTO card_catalog (name,card_type,elixir,rarity,playable,note,hp,damage,hit_speed_ms,dps,speed,range_tiles,sight_range,targets,unit_count,radius_tiles,flying,tower_damage) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE card_type=VALUES(card_type),elixir=VALUES(elixir),rarity=VALUES(rarity),playable=VALUES(playable),hp=VALUES(hp),damage=VALUES(damage),hit_speed_ms=VALUES(hit_speed_ms),dps=VALUES(dps),speed=VALUES(speed),range_tiles=VALUES(range_tiles),sight_range=VALUES(sight_range),targets=VALUES(targets),unit_count=VALUES(unit_count),radius_tiles=VALUES(radius_tiles),flying=VALUES(flying),tower_damage=VALUES(tower_damage)",
       [card.id, card.type, card.cost, card.rarity, 1, "full catalog card", card.hp, card.damage, Math.round(card.hitSpeed * 1000), card.dps, card.speed, card.range, card.sightRange, card.targets, card.count, card.radius, card.flying ? 1 : 0, card.towerDamage ?? null],
     );
+    for (let level = 1; level <= 16; level += 1) {
+      const levelDamage = scale(card.damage, level);
+      const levelHp = scale(card.hp, level);
+      const levelDeathBurst = scale(card.deathBurst ?? 0, level);
+      const levelTowerDamage = card.towerDamage === undefined ? null : scale(card.towerDamage, level);
+      const hitSpeedMs = Math.round(card.hitSpeed * 1000);
+      await p.query(
+        "INSERT INTO card_level_stats (card_id,level,mode,stat_version,hit_points,damage,hit_speed_ms,dps,move_speed,range_tiles,sight_range,radius_tiles,unit_count,duration_ms,deploy_delay_ms,tower_damage,death_burst,death_burst_radius,flying,targets,attack_pattern,source,is_approximation,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE hit_points=VALUES(hit_points),damage=VALUES(damage),hit_speed_ms=VALUES(hit_speed_ms),dps=VALUES(dps),move_speed=VALUES(move_speed),range_tiles=VALUES(range_tiles),sight_range=VALUES(sight_range),radius_tiles=VALUES(radius_tiles),unit_count=VALUES(unit_count),duration_ms=VALUES(duration_ms),deploy_delay_ms=VALUES(deploy_delay_ms),tower_damage=VALUES(tower_damage),death_burst=VALUES(death_burst),death_burst_radius=VALUES(death_burst_radius),flying=VALUES(flying),targets=VALUES(targets),attack_pattern=VALUES(attack_pattern),source=VALUES(source),is_approximation=VALUES(is_approximation),notes=VALUES(notes)",
+        [card.id, level, mode, statVersion, levelHp, levelDamage, hitSpeedMs, hitSpeedMs > 0 ? levelDamage / (hitSpeedMs / 1000) : 0, card.speed, card.range, card.sightRange, card.radius, card.count, card.durationMs ?? 0, Math.round((card.deployDelaySec ?? 0) * 1000), levelTowerDamage, levelDeathBurst, card.deathBurstRadius ?? 0, card.flying ? 1 : 0, card.targets, mechanics[card.id]?.attack ?? "single", "generated catalog baseline", 1, "Phase 1 normalized seed approximation"],
+      );
+    }
     await p.query(
       "INSERT INTO sprites (card_name,kind,atlas_x,atlas_y,w,h,placeholder_emoji,art_path,art_note) VALUES (?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE kind=VALUES(kind),atlas_x=VALUES(atlas_x),atlas_y=VALUES(atlas_y),art_path=VALUES(art_path)",
       [card.id, card.type, (cardRows.indexOf(card) % 16) * 64, Math.floor(cardRows.indexOf(card) / 16) * 64, 64, 64, "", `assets/placeholders/${card.id}.svg`, "original placeholder - inspired by, not copied"],
@@ -262,7 +303,6 @@ export async function ensureMysqlDatabase(): Promise<{ tables: boolean; cards: n
     await p.query("INSERT INTO menus (label,route,icon,sort_order,parent) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE route=VALUES(route),icon=VALUES(icon),sort_order=VALUES(sort_order),parent=VALUES(parent)", [menu.label, menu.route, menu.icon, menu.sortOrder, null]);
   }
 
-  const mechanics = jsonFile("card_mechanics.json");
   for (const [cardId, value] of Object.entries(mechanics)) {
     await p.query(
       "INSERT INTO card_mechanics (card_id,version,attack_pattern,targeting,movement,tower_troop,on_deploy,on_attack,on_hit,on_death,periodic,ability) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE version=VALUES(version),attack_pattern=VALUES(attack_pattern),targeting=VALUES(targeting),movement=VALUES(movement),tower_troop=VALUES(tower_troop),on_deploy=VALUES(on_deploy),on_attack=VALUES(on_attack),on_hit=VALUES(on_hit),on_death=VALUES(on_death),periodic=VALUES(periodic),ability=VALUES(ability)",
@@ -276,8 +316,109 @@ export async function ensureMysqlDatabase(): Promise<{ tables: boolean; cards: n
       "INSERT INTO card_spawn_templates (template_id,version,hp,damage,hit_speed_ms,speed,range_tiles,sight_range,targets,unit_count,flying,attack_pattern,on_deploy,on_attack,on_hit,on_death,periodic) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE version=VALUES(version),hp=VALUES(hp),damage=VALUES(damage),hit_speed_ms=VALUES(hit_speed_ms),speed=VALUES(speed),range_tiles=VALUES(range_tiles),sight_range=VALUES(sight_range),targets=VALUES(targets),unit_count=VALUES(unit_count),flying=VALUES(flying),attack_pattern=VALUES(attack_pattern),on_deploy=VALUES(on_deploy),on_attack=VALUES(on_attack),on_hit=VALUES(on_hit),on_death=VALUES(on_death),periodic=VALUES(periodic)",
       [templateId, Number(value.version ?? 1), value.hp, value.damage, value.hitSpeedMs, value.speed, value.range, value.sightRange, value.targets, value.count ?? 1, value.flying === true ? 1 : 0, value.attack ?? "single", JSON.stringify(value.onDeploy ?? []), JSON.stringify(value.onAttack ?? []), JSON.stringify(value.onHit ?? []), JSON.stringify(value.onDeath ?? []), JSON.stringify(value.periodic ?? [])],
     );
+    for (let level = 1; level <= 16; level += 1) {
+      const levelDamage = scale(Number(value.damage), level);
+      const levelHp = scale(Number(value.hp), level);
+      const hitSpeedMs = Number(value.hitSpeedMs);
+      await p.query(
+        "INSERT INTO spawn_template_level_stats (template_id,level,mode,stat_version,hit_points,damage,hit_speed_ms,dps,move_speed,range_tiles,sight_range,radius_tiles,unit_count,duration_ms,deploy_delay_ms,tower_damage,death_burst,death_burst_radius,flying,targets,attack_pattern,source,is_approximation,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE hit_points=VALUES(hit_points),damage=VALUES(damage),hit_speed_ms=VALUES(hit_speed_ms),dps=VALUES(dps),move_speed=VALUES(move_speed),range_tiles=VALUES(range_tiles),sight_range=VALUES(sight_range),radius_tiles=VALUES(radius_tiles),unit_count=VALUES(unit_count),duration_ms=VALUES(duration_ms),deploy_delay_ms=VALUES(deploy_delay_ms),tower_damage=VALUES(tower_damage),death_burst=VALUES(death_burst),death_burst_radius=VALUES(death_burst_radius),flying=VALUES(flying),targets=VALUES(targets),attack_pattern=VALUES(attack_pattern),source=VALUES(source),is_approximation=VALUES(is_approximation),notes=VALUES(notes)",
+        [templateId, level, mode, statVersion, levelHp, levelDamage, hitSpeedMs, hitSpeedMs > 0 ? levelDamage / (hitSpeedMs / 1000) : 0, value.speed, value.range, value.sightRange, 0, value.count ?? 1, 0, 0, null, 0, 0, value.flying === true ? 1 : 0, value.targets, value.attack ?? "single", "spawn template baseline", 1, "Phase 1 normalized seed approximation"],
+      );
+    }
   }
-  return { tables: true, cards: cardRows.length, mechanics: Object.keys(mechanics).length, spawns: Object.keys(spawns).length };
+  return { tables: true, cards: cardRows.length, mechanics: Object.keys(mechanics).length, spawns: Object.keys(spawns).length, cardStats: cardRows.length * 16, spawnStats: Object.keys(spawns).length * 16 };
+}
+
+function fallbackLevelStats(card: CardDef, level: number, mode: string, statVersion: number): CardLevelStats {
+  const boundedLevel = Math.max(1, Math.min(16, Math.trunc(level)));
+  const multiplier = Math.pow(1.1, boundedLevel - 1);
+  const hitPoints = Math.round(card.hp * multiplier);
+  const damage = Math.round(card.damage * multiplier);
+  const hitSpeedMs = Math.round(card.hitSpeed * 1000);
+  return {
+    cardId: card.id,
+    level: boundedLevel,
+    mode,
+    statVersion,
+    hitPoints,
+    damage,
+    hitSpeedMs,
+    dps: hitSpeedMs > 0 ? damage / (hitSpeedMs / 1000) : 0,
+    moveSpeed: card.speed,
+    range: card.range,
+    sightRange: card.sightRange,
+    radius: card.radius,
+    count: card.count,
+    durationMs: card.durationMs ?? 0,
+    deployDelayMs: Math.round((card.deployDelaySec ?? 0) * 1000),
+    ...(card.towerDamage !== undefined ? { towerDamage: card.towerDamage * multiplier } : {}),
+    deathBurst: Math.round((card.deathBurst ?? 0) * multiplier),
+    deathBurstRadius: card.deathBurstRadius ?? 0,
+    flying: card.flying === true,
+    targets: card.targets,
+    attackPattern: card.mechanics?.attack ?? "single",
+    source: "local level-normalization fallback",
+    approximation: true,
+  };
+}
+
+function levelStatsFromRow(row: Record<string, unknown>): CardLevelStats {
+  return {
+    cardId: String(row.card_id),
+    level: Number(row.level),
+    mode: String(row.mode),
+    statVersion: Number(row.stat_version),
+    hitPoints: Number(row.hit_points),
+    damage: Number(row.damage),
+    hitSpeedMs: Number(row.hit_speed_ms),
+    dps: Number(row.dps),
+    moveSpeed: Number(row.move_speed),
+    range: Number(row.range_tiles),
+    sightRange: Number(row.sight_range),
+    radius: Number(row.radius_tiles),
+    count: Number(row.unit_count),
+    durationMs: Number(row.duration_ms),
+    deployDelayMs: Number(row.deploy_delay_ms),
+    ...(row.tower_damage === null || row.tower_damage === undefined ? {} : { towerDamage: Number(row.tower_damage) }),
+    deathBurst: Number(row.death_burst),
+    deathBurstRadius: Number(row.death_burst_radius),
+    flying: Number(row.flying) === 1,
+    targets: String(row.targets),
+    attackPattern: String(row.attack_pattern),
+    source: String(row.source),
+    approximation: Number(row.is_approximation) === 1,
+  };
+}
+
+/** Resolve one complete level row; the result is safe to snapshot into a match. */
+export async function getCardStats(cardId: string, level = 1, mode = "ladder", statVersion = 1): Promise<CardLevelStats | null> {
+  const card = CARDS[cardId];
+  if (card === undefined) return null;
+  const p = getPool();
+  if (p) {
+    const [rows] = await p.query(
+      "SELECT card_id,level,mode,stat_version,hit_points,damage,hit_speed_ms,dps,move_speed,range_tiles,sight_range,radius_tiles,unit_count,duration_ms,deploy_delay_ms,tower_damage,death_burst,death_burst_radius,flying,targets,attack_pattern,source,is_approximation FROM card_level_stats WHERE card_id=? AND level=? AND mode=? AND stat_version=? LIMIT 1",
+      [cardId, level, mode, statVersion],
+    );
+    const row = (rows as Record<string, unknown>[])[0];
+    if (row !== undefined) return levelStatsFromRow(row);
+  }
+  return fallbackLevelStats(card, level, mode, statVersion);
+}
+
+export async function getCardLevelSeries(cardId: string, mode = "ladder", statVersion = 1): Promise<CardLevelStats[]> {
+  const card = CARDS[cardId];
+  if (card === undefined) return [];
+  const p = getPool();
+  if (p) {
+    const [rows] = await p.query(
+      "SELECT card_id,level,mode,stat_version,hit_points,damage,hit_speed_ms,dps,move_speed,range_tiles,sight_range,radius_tiles,unit_count,duration_ms,deploy_delay_ms,tower_damage,death_burst,death_burst_radius,flying,targets,attack_pattern,source,is_approximation FROM card_level_stats WHERE card_id=? AND mode=? AND stat_version=? ORDER BY level",
+      [cardId, mode, statVersion],
+    );
+    const list = rows as Record<string, unknown>[];
+    if (list.length > 0) return list.map(levelStatsFromRow);
+  }
+  return Array.from({ length: 16 }, (_, index) => fallbackLevelStats(card, index + 1, mode, statVersion));
 }
 
 /**

@@ -6,7 +6,7 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { getCatalog, getCardMechanicsContent, getContentCards, getContentMenus, getContentSprites, hydrateMechanicsFromMysql, hydrateSpawnTemplatesFromMysql } from "../src/mysql.js";
+import { getCatalog, getCardLevelSeries, getCardMechanicsContent, getContentCards, getContentMenus, getContentSprites, hydrateMechanicsFromMysql, hydrateSpawnTemplatesFromMysql } from "../src/mysql.js";
 import { CARDS } from "../src/game/cards.js";
 
 describe("content fallback", () => {
@@ -75,5 +75,14 @@ describe("content fallback", () => {
     const fireball = data.mechanics.find((row) => row.cardId === "fireball");
     assert.ok(fireball);
     assert.equal(fireball.mechanics.onDeploy?.[0]?.kind, "areaDamage");
+  });
+
+  it("level stats: every card resolves a complete 16-level series", async () => {
+    const series = await getCardLevelSeries("knight");
+    assert.equal(series.length, 16);
+    assert.equal(series[0]?.level, 1);
+    assert.equal(series[15]?.level, 16);
+    assert.ok((series[15]?.hitPoints ?? 0) > (series[0]?.hitPoints ?? 0));
+    assert.ok((series[0]?.hitSpeedMs ?? 0) > 0);
   });
 });
