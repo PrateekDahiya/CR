@@ -18,6 +18,7 @@ import {
   selectDeck,
   setName,
   updateDeck,
+  upgradeCard,
 } from "./players.js";
 
 const SEASON = process.env.SEASON ?? "s1";
@@ -115,6 +116,17 @@ export function mountMeta(app: Express): void {
     res.json({ playerId: p.playerId, name: p.name });
   });
 
+  /** Upgrade one owned card by one level (charges coins). O(k). */
+  app.post("/profile/:playerId/cards/:cardId/upgrade", (req: Request, res: Response) => {
+    const result = upgradeCard(req.params.playerId, req.params.cardId);
+    if (!result.ok) {
+      const status = result.code === "NOT_OWNED" ? 404 : result.code === "NO_COINS" ? 402 : 400;
+      res.status(status).json(result);
+      return;
+    }
+    res.json(result);
+  });
+
   /** Player table (leaderboard) with rank + win rate. O(n log n). */
   app.get("/players", (req: Request, res: Response) => {
     const limit = Math.max(1, Math.min(100, Number(req.query.limit ?? 50) || 50));
@@ -135,7 +147,7 @@ export function mountMeta(app: Express): void {
   });
 
   app.post("/decks/:playerId", (req: Request, res: Response) => {
-    const body = (req.body ?? {}) as { name?: unknown; cards?: unknown };
+    const body = (req.body ?? {}) as { name?: unknown; cards?: unknown; levels?: unknown; towerTroopId?: unknown };
     const deck = createDeck(
       req.params.playerId,
       typeof body.name === "string" ? body.name : undefined,
@@ -145,10 +157,12 @@ export function mountMeta(app: Express): void {
   });
 
   app.put("/decks/:playerId/:deckId", (req: Request, res: Response) => {
-    const body = (req.body ?? {}) as { name?: unknown; cards?: unknown };
+    const body = (req.body ?? {}) as { name?: unknown; cards?: unknown; levels?: unknown; towerTroopId?: unknown };
     const deck = updateDeck(req.params.playerId, req.params.deckId, {
       ...(typeof body.name === "string" ? { name: body.name } : {}),
       ...(Array.isArray(body.cards) ? { cards: body.cards.map((c) => String(c)) } : {}),
+      ...(body.levels !== null && typeof body.levels === "object" && !Array.isArray(body.levels) ? { levels: body.levels as Record<string, number> } : {}),
+      ...(typeof body.towerTroopId === "string" ? { towerTroopId: body.towerTroopId } : {}),
     });
     if (deck === null) {
       res.status(400).json({ code: "BAD_DECK", message: "unknown deck or invalid 8-card list" });

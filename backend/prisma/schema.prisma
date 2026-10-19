@@ -34,6 +34,8 @@ model Deck {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String   @default("Battle Deck")
   cards     String[] // 8 card ids, validated max 2 spells (GAME_DESIGN §4)
+  levels    Json      @default("{}")
+  towerTroopId String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

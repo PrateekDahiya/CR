@@ -19,6 +19,7 @@
 
 import { getCard, getSpawnTemplate } from "./cards";
 import type { EffectSpec } from "./cardMechanics";
+import { getLevelStats, type LevelStats } from "./levelStats";
 import {
   CENTER_X,
   Pocket,
@@ -152,6 +153,10 @@ export interface EngineState {
   nextFieldId: number;
   bluePlayerId?: string;
   redPlayerId?: string;
+  cardLevels: Record<PlayerSide, Record<string, number>>;
+  towerTroopId: Record<PlayerSide, string | undefined>;
+  statVersion: number;
+  cardStats: Record<PlayerSide, Record<string, LevelStats>>;
 }
 
 /* ---------------- locked constants (§0) ---------------- */
@@ -263,15 +268,20 @@ function lowestTowerHpPct(state: EngineState, side: PlayerSide): number {
 
 /* ---------------- create ---------------- */
 
-function makeTowers(): SimTower[] {
+function makeTowers(profiles?: Record<PlayerSide, LevelStats | undefined>): SimTower[] {
   return TOWER_SPAWNS.map((s) => {
     const st = towerStatsFor(s.kind);
+    const profile = s.kind === "princess" ? profiles?.[s.owner] : undefined;
+    const hp = profile?.hitPoints ?? st.hp;
+    const damage = profile?.damage ?? st.damage;
+    const hitSpeed = profile !== undefined ? profile.hitSpeedMs / 1000 : st.hitSpeed;
+    const range = profile?.range ?? st.range;
     return {
       id: s.id,
       kind: s.kind,
       owner: s.owner as PlayerSide,
-      hp: st.hp,
-      maxHp: st.hp,
+      hp,
+      maxHp: hp,
       x: s.x,
       y: s.y,
       destroyed: false,
@@ -283,9 +293,9 @@ function makeTowers(): SimTower[] {
       slowMultiplier: 1,
       rageUntil: -1,
       rageMultiplier: 1,
-      damage: st.damage,
-      hitSpeed: st.hitSpeed,
-      range: st.range,
+      damage,
+      hitSpeed,
+      range,
     } as SimTower;
   });
 }
@@ -332,7 +342,16 @@ export function createGame(
   matchId: string,
   blueDeck: string[],
   redDeck: string[],
-  opts?: { bluePlayerId?: string; redPlayerId?: string; startTimeMs?: number },
+  opts?: {
+    bluePlayerId?: string;
+    redPlayerId?: string;
+    startTimeMs?: number;
+    blueCardLevels?: Record<string, number>;
+    redCardLevels?: Record<string, number>;
+    blueTowerTroopId?: string;
+    redTowerTroopId?: string;
+    statVersion?: number;
+  },
 ): EngineState {
   for (const [label, deck] of [
     ["blue", blueDeck],
@@ -347,13 +366,29 @@ export function createGame(
   }
   const blueOrder = matchDeckOrder(blueDeck, matchId, "blue");
   const redOrder = matchDeckOrder(redDeck, matchId, "red");
+  const statVersion = opts?.statVersion ?? 1;
+  const cardLevels = { blue: { ...(opts?.blueCardLevels ?? {}) }, red: { ...(opts?.redCardLevels ?? {}) } };
+  const cardStats: Record<PlayerSide, Record<string, LevelStats>> = { blue: {}, red: {} };
+  for (const side of ["blue", "red"] as const) {
+    const deck = side === "blue" ? blueDeck : redDeck;
+    for (const id of deck) {
+      const card = getCard(id);
+      if (card !== undefined) cardStats[side][id] = getLevelStats(card, cardLevels[side][id] ?? 1, "ladder", statVersion);
+    }
+  }
+  const towerProfiles: Record<PlayerSide, LevelStats | undefined> = { blue: undefined, red: undefined };
+  for (const side of ["blue", "red"] as const) {
+    const towerId = side === "blue" ? opts?.blueTowerTroopId : opts?.redTowerTroopId;
+    const tower = towerId === undefined ? undefined : getCard(towerId);
+    if (tower !== undefined && towerId !== undefined) towerProfiles[side] = getLevelStats(tower, cardLevels[side][towerId] ?? 1, "ladder", statVersion);
+  }
   return {
     matchId,
     tick: 0,
     timeSec: 0,
     serverTimeMs: opts?.startTimeMs ?? 0,
     elixir: { blue: ELIXIR_START, red: ELIXIR_START },
-    towers: makeTowers(),
+    towers: makeTowers(towerProfiles),
     units: [],
     crowns: { blue: 0, red: 0 },
     // Randomized per match: the opening four are not always deck[0..3].
@@ -370,6 +405,10 @@ export function createGame(
     nextFieldId: 1,
     bluePlayerId: opts?.bluePlayerId,
     redPlayerId: opts?.redPlayerId,
+    cardLevels,
+    towerTroopId: { blue: opts?.blueTowerTroopId, red: opts?.redTowerTroopId },
+    statVersion,
+    cardStats,
   };
 }
 
@@ -415,6 +454,7 @@ function spawnChildUnits(
 ): string[] {
   const card = getSpawnTemplate(childId);
   if (card === undefined) return [];
+  const stats = getLevelStats(card, state.cardLevels[side][childId] ?? 1, "ladder", state.statVersion);
   const positions = spawnPositions(count, x, y);
   const ids: string[] = [];
   for (const position of positions) {
@@ -424,11 +464,11 @@ function spawnChildUnits(
       id,
       cardId: childId,
       owner: side,
-      hp: card.hp,
-      maxHp: card.hp,
+       hp: stats.hitPoints,
+       maxHp: stats.hitPoints,
       x: Math.min(Math.max(position.x, 0), 18),
       y: Math.min(Math.max(position.y, 0), 32),
-      flying: card.flying === true,
+       flying: stats.flying,
       isBuilding: card.type === "building",
       cooldown: 0,
       stunUntil: -1,
@@ -437,12 +477,12 @@ function spawnChildUnits(
       slowMultiplier: 1,
       rageUntil: -1,
       rageMultiplier: 1,
-      readyAt: state.timeSec,
-      damage: card.damage,
-      hitSpeed: card.hitSpeed,
-      range: card.range,
-      sightRange: card.sightRange,
-      speed: card.speed,
+       readyAt: state.timeSec + stats.deployDelayMs / 1000,
+       damage: stats.damage,
+       hitSpeed: stats.hitSpeedMs / 1000,
+       range: stats.range,
+       sightRange: stats.sightRange,
+       speed: stats.moveSpeed,
       targets: runtimeTargetMask(card),
       splash: runtimeSplashRadius(card),
       mechanics: card.mechanics,
@@ -973,6 +1013,7 @@ export function playCard(
   if (card.type === "tower" || card.mechanics?.towerTroop === true) {
     return fail("CARD_REJECTED", "tower troops are selected before a match, not played from the hand");
   }
+  const stats = state.cardStats[side][card.id] ?? getLevelStats(card, state.cardLevels[side][card.id] ?? 1, "ladder", state.statVersion);
 
   // 4. elixir (§11.1) — server table only, client cost ignored
   if (state.elixir[side] + 1e-9 < card.cost) {
@@ -1029,8 +1070,8 @@ export function playCard(
       side,
       x,
       y,
-      card.damage,
-      card.towerDamage,
+      stats.damage,
+      stats.towerDamage,
       withTerminalRelease(card.mechanics?.onDeploy, card.mechanics?.onDeath),
       card.mechanics?.onAttack,
     );
@@ -1041,7 +1082,7 @@ export function playCard(
   const replaceSelf = card.mechanics?.onDeploy?.some(
     (effect) => effect.kind === "spawn" && effect.replaceSelf === true,
   ) === true;
-  const positions = replaceSelf ? [] : spawnPositions(card.count, x, y);
+  const positions = replaceSelf ? [] : spawnPositions(stats.count, x, y);
   const unitIds: string[] = [];
   for (let i = 0; i < positions.length; i++) {
     const p = positions[i];
@@ -1051,11 +1092,11 @@ export function playCard(
       id,
       cardId: card.id,
       owner: side,
-      hp: card.hp,
-      maxHp: card.hp,
+      hp: stats.hitPoints,
+      maxHp: stats.hitPoints,
       x: Math.min(Math.max(p.x, 0), 18),
       y: Math.min(Math.max(p.y, 0), 32),
-      flying: card.flying === true,
+       flying: stats.flying,
       isBuilding,
       cooldown: 0,
       stunUntil: -1,
@@ -1064,21 +1105,23 @@ export function playCard(
       slowMultiplier: 1,
       rageUntil: -1,
       rageMultiplier: 1,
-      readyAt: state.timeSec + (card.deployDelaySec ?? 0),
-      expiresAt:
-        card.durationMs !== undefined
-          ? state.timeSec + card.durationMs / 1000
-          : undefined,
-      lifetimeSec: card.durationMs !== undefined ? card.durationMs / 1000 : undefined,
-      damage: card.damage,
-      hitSpeed: card.hitSpeed,
-      range: card.range,
-      sightRange: card.sightRange,
-      speed: card.speed,
-      targets: runtimeTargetMask(card),
-      splash: runtimeSplashRadius(card),
-      deathBurst: card.deathBurst,
-      deathBurstRadius: card.deathBurstRadius,
+       readyAt: state.timeSec + stats.deployDelayMs / 1000,
+       expiresAt:
+         stats.durationMs > 0
+           ? state.timeSec + stats.durationMs / 1000
+           : undefined,
+       lifetimeSec: stats.durationMs > 0 ? stats.durationMs / 1000 : undefined,
+       damage: stats.damage,
+       hitSpeed: stats.hitSpeedMs / 1000,
+       range: stats.range,
+       sightRange: stats.sightRange,
+       speed: stats.moveSpeed,
+       // Phase 3 retains mechanic-defined target semantics; level rows own the
+       // numeric block while the mechanics table remains the behavior source.
+       targets: runtimeTargetMask(card),
+       splash: card.mechanics?.attack === "splash" ? stats.radius : 0,
+       deathBurst: stats.deathBurst,
+       deathBurstRadius: stats.deathBurstRadius,
       mechanics: card.mechanics,
       shieldHp: initialShield(card),
       minRange: Number(
@@ -1101,8 +1144,8 @@ export function playCard(
       side,
       x,
       y,
-      card.damage,
-      card.towerDamage,
+       stats.damage,
+       stats.towerDamage,
       card.mechanics.onDeploy,
     );
   }

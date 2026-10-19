@@ -18,6 +18,8 @@ export interface DeckRow {
   userId: string;
   name: string;
   cards: string[];
+  levels: Record<string, number>;
+  towerTroopId?: string;
   isActive: boolean;
 }
 
@@ -102,19 +104,19 @@ export async function getUser(playerId: string): Promise<UserRow | null> {
   return u ? { ...u } : null;
 }
 
-export async function saveDeck(playerId: string, cards: string[], name = "Battle Deck"): Promise<DeckRow> {
+export async function saveDeck(playerId: string, cards: string[], name = "Battle Deck", levels: Record<string, number> = {}, towerTroopId?: string): Promise<DeckRow> {
   // O(k) k<=8 validation + O(1) store.
   const db = getPrisma();
   const user = await upsertUser(playerId);
   if (db) {
     const d = (await db.deck.upsert({
       where: { id: `${user.id}-active` },
-      update: { cards, name, isActive: true },
-      create: { id: `${user.id}-active`, userId: user.id, cards, name, isActive: true },
+      update: { cards, name, levels, towerTroopId, isActive: true },
+      create: { id: `${user.id}-active`, userId: user.id, cards, levels, towerTroopId, name, isActive: true },
     })) as DeckRow;
     return d;
   }
-  const row: DeckRow = { id: `${user.id}-active`, userId: user.id, name, cards: [...cards], isActive: true };
+  const row: DeckRow = { id: `${user.id}-active`, userId: user.id, name, cards: [...cards], levels: { ...levels }, towerTroopId, isActive: true };
   memDecks.set(playerId, [row]);
   return { ...row };
 }

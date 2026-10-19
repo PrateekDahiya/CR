@@ -247,6 +247,37 @@ export function getCatalog(baseUrl?: string): Promise<{ catalog: CatalogEntry[];
   return fetchJson(`${base}/content/catalog`);
 }
 
+export interface CardLevelStats {
+  cardId: string;
+  level: number;
+  mode: string;
+  statVersion: number;
+  hitPoints: number;
+  damage: number;
+  hitSpeedMs: number;
+  dps: number;
+  moveSpeed: number;
+  range: number;
+  sightRange: number;
+  radius: number;
+  count: number;
+  durationMs: number;
+  deployDelayMs: number;
+  towerDamage?: number;
+  deathBurst: number;
+  deathBurstRadius: number;
+  flying: boolean;
+  targets: string;
+  attackPattern: string;
+  source: string;
+  approximation: boolean;
+}
+
+export function getCardLevels(cardId: string, mode = "ladder", statVersion = 1, baseUrl?: string): Promise<{ cardId: string; mode: string; statVersion: number; levels: CardLevelStats[]; count: number }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/content/cards/${encodeURIComponent(cardId)}/levels?mode=${encodeURIComponent(mode)}&statVersion=${statVersion}`);
+}
+
 /** GET {backend}/leaderboard — legacy rows (kept for older clients). O(n log n). */
 export function getLeaderboardRows(limit = 20, baseUrl?: string): Promise<{ season: string; entries: LeaderboardEntry[] }> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
@@ -299,6 +330,20 @@ export function getPlayerProfile(playerId: string, baseUrl?: string): Promise<Pl
 export function setPlayerName(playerId: string, name: string, baseUrl?: string): Promise<{ name: string }> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
   return postJson(`${base}/profile/${encodeURIComponent(playerId)}/name`, { name });
+}
+
+export interface UpgradeCardResponse {
+  ok: true;
+  cardId: string;
+  level: number;
+  cost: number;
+  coins: number;
+}
+
+/** POST /profile/:id/cards/:cardId/upgrade — one level for the listed coin cost. */
+export function upgradePlayerCard(playerId: string, cardId: string, baseUrl?: string): Promise<UpgradeCardResponse> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return postJson(`${base}/profile/${encodeURIComponent(playerId)}/cards/${encodeURIComponent(cardId)}/upgrade`, {});
 }
 
 /** GET /players — the player table (rank, trophies, W/L, win rate). O(n log n). */

@@ -69,6 +69,8 @@ CREATE TABLE IF NOT EXISTS decks (
   user_id VARCHAR(64) NOT NULL,
   name VARCHAR(64) NOT NULL DEFAULT 'Battle Deck',
   cards JSON NOT NULL,
+  levels JSON NOT NULL,
+  tower_troop_id VARCHAR(40) NULL,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -152,4 +154,67 @@ CREATE TABLE IF NOT EXISTS card_spawn_templates (
   on_death JSON NOT NULL,
   periodic JSON NOT NULL,
   INDEX idx_spawn_version (version)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Complete effective stat block for every catalog card at every supported level.
+-- Runtime combat resolves one immutable row per card at match creation.
+CREATE TABLE IF NOT EXISTS card_level_stats (
+  card_id VARCHAR(40) NOT NULL,
+  level TINYINT NOT NULL,
+  mode VARCHAR(32) NOT NULL DEFAULT 'ladder',
+  stat_version INT NOT NULL DEFAULT 1,
+  hit_points INT NOT NULL DEFAULT 0,
+  damage INT NOT NULL DEFAULT 0,
+  hit_speed_ms INT NOT NULL DEFAULT 0,
+  dps DECIMAL(10,2) NOT NULL DEFAULT 0,
+  move_speed DECIMAL(8,3) NOT NULL DEFAULT 0,
+  range_tiles DECIMAL(6,2) NOT NULL DEFAULT 0,
+  sight_range DECIMAL(6,2) NOT NULL DEFAULT 0,
+  radius_tiles DECIMAL(6,2) NOT NULL DEFAULT 0,
+  unit_count TINYINT NOT NULL DEFAULT 0,
+  duration_ms INT NOT NULL DEFAULT 0,
+  deploy_delay_ms INT NOT NULL DEFAULT 0,
+  tower_damage DECIMAL(10,2) NULL,
+  death_burst INT NOT NULL DEFAULT 0,
+  death_burst_radius DECIMAL(6,2) NOT NULL DEFAULT 0,
+  flying TINYINT(1) NOT NULL DEFAULT 0,
+  targets VARCHAR(16) NOT NULL DEFAULT '',
+  attack_pattern VARCHAR(16) NOT NULL DEFAULT 'single',
+  source VARCHAR(255) NOT NULL DEFAULT '',
+  is_approximation TINYINT(1) NOT NULL DEFAULT 1,
+  notes VARCHAR(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (card_id, level, mode, stat_version),
+  FOREIGN KEY (card_id) REFERENCES card_catalog(name) ON DELETE CASCADE,
+  INDEX idx_card_level_lookup (card_id, level, mode, stat_version)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Same normalized stat block for non-deck child units produced by mechanics.
+CREATE TABLE IF NOT EXISTS spawn_template_level_stats (
+  template_id VARCHAR(40) NOT NULL,
+  level TINYINT NOT NULL,
+  mode VARCHAR(32) NOT NULL DEFAULT 'ladder',
+  stat_version INT NOT NULL DEFAULT 1,
+  hit_points INT NOT NULL DEFAULT 0,
+  damage INT NOT NULL DEFAULT 0,
+  hit_speed_ms INT NOT NULL DEFAULT 0,
+  dps DECIMAL(10,2) NOT NULL DEFAULT 0,
+  move_speed DECIMAL(8,3) NOT NULL DEFAULT 0,
+  range_tiles DECIMAL(6,2) NOT NULL DEFAULT 0,
+  sight_range DECIMAL(6,2) NOT NULL DEFAULT 0,
+  radius_tiles DECIMAL(6,2) NOT NULL DEFAULT 0,
+  unit_count TINYINT NOT NULL DEFAULT 0,
+  duration_ms INT NOT NULL DEFAULT 0,
+  deploy_delay_ms INT NOT NULL DEFAULT 0,
+  tower_damage DECIMAL(10,2) NULL,
+  death_burst INT NOT NULL DEFAULT 0,
+  death_burst_radius DECIMAL(6,2) NOT NULL DEFAULT 0,
+  flying TINYINT(1) NOT NULL DEFAULT 0,
+  targets VARCHAR(16) NOT NULL DEFAULT '',
+  attack_pattern VARCHAR(16) NOT NULL DEFAULT 'single',
+  source VARCHAR(255) NOT NULL DEFAULT '',
+  is_approximation TINYINT(1) NOT NULL DEFAULT 1,
+  notes VARCHAR(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (template_id, level, mode, stat_version),
+  FOREIGN KEY (template_id) REFERENCES card_spawn_templates(template_id) ON DELETE CASCADE,
+  INDEX idx_spawn_level_lookup (template_id, level, mode, stat_version)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -38,12 +38,14 @@ import {
   checkPlayRate,
   checkEmoteRate,
   getCardCost,
+  validateCardLevels,
+  validateTowerTroopId,
 } from "./net/validation.js";
 import { initRedis } from "./net/redis.js";
 import { mountMeta } from "./meta.js";
 import { mountContent } from "./content.js";
 import { mountShop } from "./shop.js";
-import { ensureMysqlDatabase, hydrateMechanicsFromMysql, hydrateSpawnTemplatesFromMysql, isMysqlConfigured } from "./mysql.js";
+import { ensureMysqlDatabase, hydrateLevelStatsFromMysql, hydrateMechanicsFromMysql, hydrateSpawnTemplatesFromMysql, isMysqlConfigured } from "./mysql.js";
 import { CARD_LIST } from "./game/cards.js";
 
 dotenv.config();
@@ -93,12 +95,16 @@ type AckFn = (res: Ack) => void;
 interface QueueJoinPayload {
   playerId?: string;
   deck?: string[];
+  levels?: Record<string, number>;
+  towerTroopId?: string;
 }
 
 interface LegacyJoinPayload {
   matchId?: string;
   playerId?: string;
   deck?: string[];
+  levels?: Record<string, number>;
+  towerTroopId?: string;
 }
 
 interface CardPlayPayload {
@@ -141,7 +147,7 @@ function fail(socket: Socket, ack: AckFn | undefined, code: string, message: str
  */
 function handlePracticeMatch(
   socket: Socket,
-  payload: { playerId?: string; deck?: string[]; difficulty?: string },
+  payload: { playerId?: string; deck?: string[]; difficulty?: string; levels?: Record<string, number>; towerTroopId?: string },
   ack?: AckFn,
 ): void {
   const playerId = payload?.playerId;
@@ -156,6 +162,16 @@ function handlePracticeMatch(
     return;
   }
   const validDeck = deck as string[];
+  const levels = validateCardLevels(payload.levels, validDeck);
+  const towerTroop = validateTowerTroopId(payload.towerTroopId);
+  if (!levels.ok) {
+    fail(socket, ack, levels.code ?? "BAD_DECK", levels.message ?? "invalid level selection");
+    return;
+  }
+  if (!towerTroop.ok) {
+    fail(socket, ack, towerTroop.code ?? "BAD_DECK", towerTroop.message ?? "invalid tower troop");
+    return;
+  }
   const difficulty = payload?.difficulty === "hard" || payload?.difficulty === "easy"
     ? payload.difficulty
     : "medium";
@@ -163,7 +179,7 @@ function handlePracticeMatch(
   const botDeck = botDeckFor(matchId);
   const room = createRoom(
     matchId,
-    { playerId, socketId: socket.id, deck: validDeck },
+    { playerId, socketId: socket.id, deck: validDeck, levels: (levels as { levels: Record<string, number> }).levels, towerTroopId: payload.towerTroopId },
     { playerId: `bot-${matchId}`, socketId: `bot-${matchId}`, deck: botDeck },
   );
   socketPlayer.set(socket.id, playerId);
@@ -200,8 +216,18 @@ function handleQueueJoin(socket: Socket, payload: QueueJoinPayload, ack?: AckFn)
     return;
   }
   const validDeck = deck as string[];
+  const levels = validateCardLevels(payload.levels, validDeck);
+  const towerTroop = validateTowerTroopId(payload.towerTroopId);
+  if (!levels.ok) {
+    fail(socket, ack, levels.code ?? "BAD_DECK", levels.message ?? "invalid level selection");
+    return;
+  }
+  if (!towerTroop.ok) {
+    fail(socket, ack, towerTroop.code ?? "BAD_DECK", towerTroop.message ?? "invalid tower troop");
+    return;
+  }
   setDeck(playerId, validDeck);
-  const { position } = joinQueue(socket.id, playerId, validDeck);
+  const { position } = joinQueue(socket.id, playerId, validDeck, (levels as { levels: Record<string, number> }).levels, payload.towerTroopId);
   socketPlayer.set(socket.id, playerId);
   playerSocket.set(playerId, socket.id);
   ack?.({ ok: true, position });
@@ -397,7 +423,7 @@ io.on("connection", (socket) => {
 
   // Legacy alias: matchId is ignored, treated as queue:join (§11/§12.3).
   socket.on("match:join", (payload: LegacyJoinPayload, ack?: AckFn) => {
-    handleQueueJoin(socket, { playerId: payload?.playerId, deck: payload?.deck }, ack);
+    handleQueueJoin(socket, { playerId: payload?.playerId, deck: payload?.deck, levels: payload?.levels, towerTroopId: payload?.towerTroopId }, ack);
   });
 
   socket.on("queue:leave", (payload: { playerId?: string }, ack?: AckFn) => {
@@ -482,10 +508,10 @@ void ensureMysqlDatabase().then((bootstrap) => {
     console.error("[backend] database configured but full schema bootstrap failed; refusing to start");
     return null;
   }
-  return Promise.all([hydrateMechanicsFromMysql(), hydrateSpawnTemplatesFromMysql()]);
+  return Promise.all([hydrateMechanicsFromMysql(), hydrateSpawnTemplatesFromMysql(), hydrateLevelStatsFromMysql()]);
 }).then((result) => {
   if (result === null) return;
-  const [mechanics, spawns] = result;
+  const [mechanics, spawns, levels] = result;
   const { loaded, source } = mechanics;
   if (source === "unavailable" && isMysqlConfigured()) {
     console.error("[backend] mechanics database configured but unavailable; refusing to start matchmaking");
@@ -499,6 +525,7 @@ void ensureMysqlDatabase().then((bootstrap) => {
     console.warn("[backend] mechanics database unavailable; mechanic-dependent matches are not ready");
   }
   if (spawns.loaded === 0) console.warn("[backend] spawn template data unavailable; spawner cards are not ready");
+  if (levels.loaded === 0) console.warn("[backend] level stat data unavailable; fallback stats are active");
   httpServer.listen(PORT, () => {
     console.log(`[backend] listening on :${PORT}`);
   });

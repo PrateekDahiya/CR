@@ -6,6 +6,7 @@ interface CardTileProps {
   card: CardInfo;
   selected?: boolean;
   disabled?: boolean;
+  level?: number;
   onToggle?: (id: string) => void;
 }
 
@@ -28,7 +29,7 @@ const TYPE_BADGE: Record<CardInfo["type"], string> = {
   tower: "bg-cyan-900 text-cyan-200",
 };
 
-export default function CardTile({ card, selected = false, disabled = false, onToggle }: CardTileProps) {
+export default function CardTile({ card, selected = false, disabled = false, level, onToggle }: CardTileProps) {
   const isSpell = card.type === "spell";
   return (
     <button
@@ -52,7 +53,10 @@ export default function CardTile({ card, selected = false, disabled = false, onT
           {card.type}
         </span>
       </div>
-      <div className="mt-1 truncate text-sm font-semibold text-slate-100">{card.name}</div>
+      <div className="mt-1 flex items-center justify-between gap-2">
+        <span className="truncate text-sm font-semibold text-slate-100">{card.name}</span>
+        {level !== undefined ? <span className="shrink-0 text-[10px] font-bold uppercase text-amber-300">Lv {level}</span> : null}
+      </div>
       <div className="mt-1 space-y-0.5 text-[11px] leading-tight text-slate-300">
         <div className="flex justify-between">
           <span className="text-slate-400">HP</span>

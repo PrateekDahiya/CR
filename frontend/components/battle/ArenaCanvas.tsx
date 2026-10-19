@@ -46,6 +46,14 @@ export interface DamageNumber {
   color?: string;
 }
 
+export interface InspectTarget {
+  kind: "tower" | "unit";
+  id: string;
+  cardId?: string;
+  x: number;
+  y: number;
+}
+
 export interface ArenaCanvasProps {
   /** Live towers (6 total). */
   towers: Tower[];
@@ -71,6 +79,19 @@ export interface ArenaCanvasProps {
    * Null on pointer leave. O(1).
    */
   onHover?: (cell: Vec2 | null) => void;
+  /**
+   * Attack/effect radius (tiles) of the selected hand card. When set and the
+   * pointer is over the arena, a ring is drawn at the hovered tile.
+   */
+  selectedRadius?: number | null;
+  /** Ring for a clicked building/tower (null clears it). */
+  inspectRange?: { x: number; y: number; radius: number } | null;
+  /**
+   * When true, clicking the board inspects a tower/unit instead of deploying.
+   * The parent sets this when no hand card is selected.
+   */
+  inspectEnabled?: boolean;
+  onInspect?: (target: InspectTarget | null) => void;
   className?: string;
 }
 
@@ -291,6 +312,10 @@ export default function ArenaCanvas({
   serverTimeMs,
   onTileClick,
   onHover,
+  selectedRadius = null,
+  inspectRange = null,
+  inspectEnabled = false,
+  onInspect,
   className = "",
 }: ArenaCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -304,6 +329,10 @@ export default function ArenaCanvas({
   const towersRef = useRef<Tower[]>(towers);
   const liveRef = useRef<Unit[]>(live);
   const selRef = useRef<Vec2 | null>(selectedCell);
+  const selectedRadiusRef = useRef<number | null>(selectedRadius);
+  const inspectRangeRef = useRef<{ x: number; y: number; radius: number } | null>(inspectRange);
+  const inspectEnabledRef = useRef<boolean>(inspectEnabled);
+  const onInspectRef = useRef<ArenaCanvasProps["onInspect"]>(onInspect);
   const sideRef = useRef<PlayerSide>(mySide);
   const spellsRef = useRef<SpellFx[]>(spells);
   const extDmgRef = useRef<DamageNumber[] | undefined>(damageNumbers);
@@ -318,6 +347,10 @@ export default function ArenaCanvas({
   towersRef.current = towers;
   liveRef.current = live;
   selRef.current = selectedCell;
+  selectedRadiusRef.current = selectedRadius;
+  inspectRangeRef.current = inspectRange;
+  inspectEnabledRef.current = inspectEnabled;
+  onInspectRef.current = onInspect;
   sideRef.current = mySide;
   spellsRef.current = spells;
   extDmgRef.current = damageNumbers;
@@ -442,6 +475,8 @@ export default function ArenaCanvas({
     let drawnTowers: unknown = null;
     let drawnLive: unknown = null;
     let drawnSel: unknown = null;
+    let drawnPreview: number | null = -1;
+    let drawnInspect: unknown = undefined;
     let drawnSpellsLen = -1;
 
     const SNAP_MS = 100; // 10Hz authoritative tick
@@ -457,11 +492,15 @@ export default function ArenaCanvas({
       const tw0 = towersRef.current;
       const lv0 = liveRef.current;
       const sel0 = selRef.current;
+      const preview0 = selectedRadiusRef.current;
+      const inspect0 = inspectRangeRef.current;
       const spells0 = spellsRef.current;
       if (
         tw0 === drawnTowers &&
         lv0 === drawnLive &&
         sel0 === drawnSel &&
+        preview0 === drawnPreview &&
+        inspect0 === drawnInspect &&
         spells0.length === drawnSpellsLen &&
         particlesRef.current.length === 0 &&
         floatsRef.current.length === 0 &&
@@ -474,6 +513,8 @@ export default function ArenaCanvas({
       drawnTowers = towersRef.current;
       drawnLive = liveRef.current;
       drawnSel = selRef.current;
+      drawnPreview = selectedRadiusRef.current;
+      drawnInspect = inspectRangeRef.current;
       drawnSpellsLen = spellsRef.current.length;
     };
 
@@ -601,6 +642,35 @@ export default function ArenaCanvas({
           c.stroke();
         }
         c.restore();
+      }
+
+      // --- range / effect radius rings ---
+      // Deployment hover preview (selected card) and clicked-target inspection.
+      // Drawn in board space; circles stay circular because TW === TH.
+      const ring = (bx: number, by: number, radius: number, stroke: string, fill: string) => {
+        const cx = (bx + 0.5) * TW;
+        const cy = (by + 0.5) * TH;
+        const r = Math.max(0.5, radius) * TW;
+        c.save();
+        c.fillStyle = fill;
+        c.beginPath();
+        c.arc(cx, cy, r, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = stroke;
+        c.lineWidth = 2;
+        c.setLineDash([6, 4]);
+        c.beginPath();
+        c.arc(cx, cy, r, 0, Math.PI * 2);
+        c.stroke();
+        c.restore();
+      };
+      const previewR = selectedRadiusRef.current;
+      if (sel && previewR !== null && previewR > 0) {
+        ring(sel.x, sel.y, previewR, "rgba(250,204,21,0.95)", "rgba(250,204,21,0.16)");
+      }
+      const inspected = inspectRangeRef.current;
+      if (inspected !== null) {
+        ring(inspected.x, inspected.y, inspected.radius, "rgba(56,189,248,0.95)", "rgba(56,189,248,0.14)");
       }
 
       // --- towers: O(t), t=6 ---
@@ -909,10 +979,43 @@ export default function ArenaCanvas({
     return { x, y };
   };
 
+  /** Nearest tower/unit under a clicked tile (for the range inspector). O(t+u). */
+  const inspectTargetAt = (cell: Vec2): InspectTarget | null => {
+    const wx = cell.x + 0.5;
+    const wy = cell.y + 0.5;
+    for (const t of towersRef.current) {
+      if (t.destroyed) continue;
+      const half = (t.kind === "king" ? 4 : 3) / 2;
+      if (Math.abs(wx - t.position.x) <= half && Math.abs(wy - t.position.y) <= half) {
+        return { kind: "tower", id: t.id, x: t.position.x, y: t.position.y };
+      }
+    }
+    let best: InspectTarget | null = null;
+    let bestD2 = 1.2 * 1.2;
+    for (const u of liveRef.current) {
+      if (u.hitPoints <= 0) continue;
+      const dx = wx - u.position.x;
+      const dy = wy - u.position.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 <= bestD2) {
+        bestD2 = d2;
+        best = { kind: "unit", id: u.id, cardId: u.cardId, x: u.position.x, y: u.position.y };
+      }
+    }
+    return best;
+  };
+
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!onTileClick) return;
     const cell = tileAt(e.clientX, e.clientY);
-    if (cell !== null) onTileClick(cell.x, cell.y);
+    if (cell === null) return;
+    if (inspectEnabledRef.current) {
+      // No hand card selected: clicking a building or crown tower inspects its
+      // range; clicking empty ground clears the inspector.
+      onInspectRef.current?.(inspectTargetAt(cell));
+      return;
+    }
+    if (!onTileClick) return;
+    onTileClick(cell.x, cell.y);
   };
 
   const handleMove = (e: React.MouseEvent<HTMLCanvasElement>) => {

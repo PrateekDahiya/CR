@@ -11,8 +11,9 @@ import {
   type CardInfoOverlayProps,
   type DeckSlotFact,
 } from "../../components/ui";
-import { backendUrl, getCatalog, getContentCards, type CatalogEntry, type ContentCard } from "../../lib/api";
+import { backendUrl, getCatalog, getContentCards, upgradePlayerCard, type CatalogEntry, type ContentCard } from "../../lib/api";
 import { useDeckState } from "../../lib/useDeck";
+import { usePlayer } from "../../lib/playerContext";
 import { CARDS } from "../../lib/cards";
 
 // Collection: full catalog (108), rarity + elixir filters, grid of the shared
@@ -30,6 +31,7 @@ export default function CollectionPage() {
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { deck, placeAt, useCard, removeCard } = useDeckState();
+  const { playerId, profile, refresh: refreshProfile } = usePlayer();
 
   useEffect(() => {
     let cancelled = false;
@@ -135,6 +137,25 @@ export default function CollectionPage() {
     say(`${pretty(name)} removed from slot ${at + 1}`);
   };
 
+  const levelOf = (name: string): number => profile?.cards?.[name] ?? 1;
+  const upgradeCost = (name: string): number =>
+    Math.round(200 * Math.pow(1.35, Math.max(0, levelOf(name) - 1)));
+
+  const doUpgrade = async (name: string) => {
+    if (!playerId) {
+      say("Sign in to upgrade cards");
+      return;
+    }
+    try {
+      const res = await upgradePlayerCard(playerId, name, backendUrl());
+      say(`${pretty(name)} upgraded to level ${res.level} (−${res.cost} coins)`);
+      await refreshProfile();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Upgrade failed";
+      say(message);
+    }
+  };
+
   return (
     <PageShell active="cards" topBarCurrencies={{ cards: found, coins: 0, gems: 0 }}>
       <div className="px-3 py-3">
@@ -235,7 +256,9 @@ export default function CollectionPage() {
               rarity={f.rarity as CardInfoOverlayProps["rarity"]}
               cardType={f.cardType as CardInfoOverlayProps["cardType"]}
               elixir={f.elixir}
-              level={15}
+              level={levelOf(f.name)}
+              upgradeCost={upgradeCost(f.name)}
+              maxLevel={levelOf(f.name) >= 16}
               stats={
                 stats
                   ? {
@@ -251,7 +274,7 @@ export default function CollectionPage() {
               onClose={() => setInfo(null)}
               onUse={() => requestUse(info.name)}
               onRemove={inDeck ? () => doRemove(info.name) : undefined}
-              onUpgrade={() => setInfo(null)}
+              onUpgrade={() => void doUpgrade(info.name)}
               inDeck={inDeck}
             />
           );

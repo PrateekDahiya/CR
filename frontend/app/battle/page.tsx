@@ -34,7 +34,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import ArenaCanvas from "../../components/battle/ArenaCanvas";
+import ArenaCanvas, { type InspectTarget } from "../../components/battle/ArenaCanvas";
 import BattleTopBar from "../../components/battle/BattleTopBar";
 import ElixirBar from "../../components/battle/ElixirBar";
 import Hand from "../../components/battle/Hand";
@@ -128,6 +128,7 @@ export default function BattlePage() {
   const [muted, setMutedState] = useState(false);
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
   const [invalidFlash, setInvalidFlash] = useState(false);
+  const [inspectRange, setInspectRange] = useState<{ x: number; y: number; radius: number } | null>(null);
   const [showBanner, setShowBanner] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const seenUnitsRef = useRef<Set<string>>(new Set());
@@ -345,6 +346,43 @@ export default function BattlePage() {
   );
 
   const selectedCardId = battle.selected !== null ? battle.hand[battle.selected] ?? null : null;
+  const selectedCard = selectedCardId !== null ? getCard(selectedCardId) : undefined;
+
+  /** Radius the selected card will cover/attack (null for melee/no-area cards). */
+  const selectedRadius = useMemo(() => {
+    if (!selectedCard) return null;
+    if (selectedCard.type === "spell") return selectedCard.radius > 0 ? selectedCard.radius : null;
+    if (selectedCard.type === "building") return selectedCard.range > 0 ? selectedCard.range : null;
+    return selectedCard.range > 1.2 ? selectedCard.range : null;
+  }, [selectedCard]);
+
+  const handleInspect = useCallback((target: InspectTarget | null) => {
+    if (!target) {
+      setInspectRange(null);
+      return;
+    }
+    if (target.kind === "tower") {
+      // Crown tower ranges (GAME_DESIGN §6.1).
+      const radius = target.id.includes("king") ? 7.0 : 7.5;
+      setInspectRange({ x: target.x, y: target.y, radius });
+      return;
+    }
+    const card = target.cardId ? getCard(target.cardId) : undefined;
+    if (!card) {
+      setInspectRange(null);
+      return;
+    }
+    if (card.type === "building" || card.range > 1.2) {
+      setInspectRange({ x: target.x, y: target.y, radius: card.range });
+    } else {
+      setInspectRange(null);
+    }
+  }, []);
+
+  // Picking a hand card starts a deploy; hide the inspect ring.
+  useEffect(() => {
+    if (battle.selected !== null) setInspectRange(null);
+  }, [battle.selected]);
 
   const flashInvalid = useCallback((message: string) => {
     setNotice(message);
@@ -456,6 +494,10 @@ export default function BattlePage() {
             entities={entities}
             selectedCell={hover}
             mySide={side}
+            selectedRadius={selectedRadius}
+            inspectRange={inspectRange}
+            inspectEnabled={battle.selected === null}
+            onInspect={handleInspect}
             onHover={(cell) => setHover(cell)}
             onTileClick={(x, y) => void handleTile(x, y)}
             className="h-full"

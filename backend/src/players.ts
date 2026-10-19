@@ -39,6 +39,8 @@ export interface Deck {
   id: string;
   name: string;
   cards: string[];
+  levels: Record<string, number>;
+  towerTroopId?: string;
 }
 
 /** Trophy/coin payout per result (real-CR-like: win is worth playing). */
@@ -62,7 +64,7 @@ function defaultName(playerId: string): string {
 }
 
 function starterDeck(name = "Battle Deck"): Deck {
-  return { id: nextId("deck"), name, cards: [...DECK_FALLBACK] };
+  return { id: nextId("deck"), name, cards: [...DECK_FALLBACK], levels: Object.fromEntries(DECK_FALLBACK.map((id) => [id, 1])) };
 }
 
 /**
@@ -126,7 +128,7 @@ export function setName(playerId: string, name: string): Player {
 
 /** O(d) deck list for one player. */
 export function listDecks(playerId: string): Deck[] {
-  return ensurePlayer(playerId).decks.map((d) => ({ ...d, cards: [...d.cards] }));
+  return ensurePlayer(playerId).decks.map((d) => ({ ...d, cards: [...d.cards], levels: { ...d.levels } }));
 }
 
 export function getDeck(playerId: string, deckId: string): Deck | undefined {
@@ -143,21 +145,23 @@ export function activeDeck(playerId: string): Deck {
 export function createDeck(playerId: string, name?: string, cards?: string[]): Deck {
   const p = ensurePlayer(playerId);
   const clean = normalizeCards(cards);
+  const selected = clean ?? [...DECK_FALLBACK];
   const deck: Deck = {
     id: nextId("deck"),
     name: (name ?? `Deck ${p.decks.length + 1}`).trim().slice(0, 20) || `Deck ${p.decks.length + 1}`,
-    cards: clean ?? [...DECK_FALLBACK],
+    cards: selected,
+    levels: Object.fromEntries(selected.map((id) => [id, ensurePlayer(playerId).cards[id] ?? 1])),
   };
   p.decks.push(deck);
   if (p.activeDeckId === null) p.activeDeckId = deck.id;
-  return { ...deck, cards: [...deck.cards] };
+  return { ...deck, cards: [...deck.cards], levels: { ...deck.levels } };
 }
 
 /** Updates name/cards. O(d). Unknown ids or an invalid 8-card set are rejected. */
 export function updateDeck(
   playerId: string,
   deckId: string,
-  patch: { name?: string; cards?: string[] },
+  patch: { name?: string; cards?: string[]; levels?: Record<string, number>; towerTroopId?: string },
 ): Deck | null {
   const p = ensurePlayer(playerId);
   const deck = p.decks.find((d) => d.id === deckId);
@@ -170,8 +174,11 @@ export function updateDeck(
     const clean = normalizeCards(patch.cards);
     if (clean === null) return null;
     deck.cards = clean;
+    deck.levels = Object.fromEntries(clean.map((id) => [id, deck.levels[id] ?? p.cards[id] ?? 1]));
   }
-  return { ...deck, cards: [...deck.cards] };
+  if (patch.levels !== undefined) deck.levels = { ...deck.levels, ...patch.levels };
+  if (patch.towerTroopId !== undefined) deck.towerTroopId = patch.towerTroopId;
+  return { ...deck, cards: [...deck.cards], levels: { ...deck.levels } };
 }
 
 /** Picks the deck used for the next match. O(d). */
@@ -234,6 +241,44 @@ export function grantCards(playerId: string, ids: string[], level = 1): void {
 
 export function ownsCard(playerId: string, cardId: string): boolean {
   return (ensurePlayer(playerId).cards[cardId] ?? 0) > 0;
+}
+
+export const CARD_MAX_LEVEL = 16;
+
+/** Coin cost to take a card from `level` to `level + 1`. O(1). */
+export function cardUpgradeCost(level: number): number {
+  return Math.round(200 * Math.pow(1.35, Math.max(0, level - 1)));
+}
+
+export type UpgradeResult =
+  | { ok: true; cardId: string; level: number; cost: number; coins: number }
+  | { ok: false; code: "NOT_OWNED" | "MAX_LEVEL" | "NO_COINS"; message: string; level: number; cost: number };
+
+/**
+ * Upgrades one owned card by one level and charges the player's coins.
+ * Deck level snapshots containing the card are refreshed so the next match
+ * uses the new level immediately. O(k), k = decks per player.
+ */
+export function upgradeCard(playerId: string, cardId: string): UpgradeResult {
+  const p = ensurePlayer(playerId);
+  const current = p.cards[cardId] ?? 0;
+  if (!isBattleCard(cardId) || current <= 0) {
+    return { ok: false, code: "NOT_OWNED", message: "card is not owned", level: current, cost: 0 };
+  }
+  if (current >= CARD_MAX_LEVEL) {
+    return { ok: false, code: "MAX_LEVEL", message: "card is already at max level", level: current, cost: 0 };
+  }
+  const cost = cardUpgradeCost(current);
+  if (p.coins < cost) {
+    return { ok: false, code: "NO_COINS", message: "not enough coins", level: current, cost };
+  }
+  p.coins -= cost;
+  const next = current + 1;
+  p.cards[cardId] = next;
+  for (const deck of p.decks) {
+    if (deck.cards.includes(cardId)) deck.levels[cardId] = next;
+  }
+  return { ok: true, cardId, level: next, cost, coins: p.coins };
 }
 
 /**

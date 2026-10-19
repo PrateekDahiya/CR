@@ -4,6 +4,7 @@
 import type { Express, Request, Response } from "express";
 import {
   getCatalog,
+  getCardLevelSeries,
   getCardMechanicsContent,
   getContentCards,
   getContentMenus,
@@ -42,6 +43,18 @@ export function mountContent(app: Express): void {
   app.get("/content/mechanics", async (_req: Request, res: Response) => {
     const data = await getCardMechanicsContent();
     res.json({ ...data, count: data.mechanics.length });
+  });
+
+  app.get("/content/cards/:id/levels", async (req: Request, res: Response) => {
+    const cardId = String(req.params.id);
+    const mode = typeof req.query.mode === "string" ? req.query.mode : "ladder";
+    const statVersion = Number(req.query.statVersion ?? 1);
+    const levels = await getCardLevelSeries(cardId, mode, statVersion);
+    if (levels.length === 0) {
+      res.status(404).json({ error: "unknown card" });
+      return;
+    }
+    res.json({ cardId, mode, statVersion, levels, count: levels.length });
   });
 
   // O(1) store status (env presence + live ping).
