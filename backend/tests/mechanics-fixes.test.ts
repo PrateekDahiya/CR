@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { hydrateMechanicsFromMysql } from "../src/mysql.js";
 import { createGame, playCard, tickGame } from "../src/game/engine.js";
 import type { EngineState } from "../src/game/engine.js";
+import { forceInHand } from "./deckHelpers.js";
 
 /**
  * Phase 13 regression tests.
@@ -105,7 +106,7 @@ describe("phase 13 — siege buildings can contest towers", () => {
     // Forward placement on the enemy half, in the left lane, in range.
     state.elixir.blue = 10;
     const placed = playCard(state, "blue", {
-      handIndex: handIndexOf(deck, "x-bow"),
+      handIndex: forceInHand(state, "blue", "x-bow"),
       x: tower.x,
       y: tower.y - 4,
     });
@@ -120,7 +121,7 @@ describe("phase 13 — siege buildings can contest towers", () => {
     const state = createGame("siege-xbow-river", deck, RED_DECK);
     state.elixir.blue = 10;
     const result = playCard(state, "blue", {
-      handIndex: handIndexOf(deck, "x-bow"),
+      handIndex: forceInHand(state, "blue", "x-bow"),
       x: 3.5,
       y: 16,
     });
@@ -140,7 +141,7 @@ describe("phase 13 — dash primitive", () => {
 
     state.elixir.blue = 10;
     const placed = playCard(state, "blue", {
-      handIndex: handIndexOf(deck, "bandit"),
+      handIndex: forceInHand(state, "blue", "bandit"),
       x: 17,
       y: 9.5,
     });
@@ -173,7 +174,7 @@ describe("phase 13 — dash primitive", () => {
     const deck = deckWith("bandit");
     const state = createGame("dash-bandit-once", deck, RED_DECK);
     state.elixir.blue = 10;
-    playCard(state, "blue", { handIndex: handIndexOf(deck, "bandit"), x: 3.5, y: 8 });
+    playCard(state, "blue", { handIndex: forceInHand(state, "blue", "bandit"), x: 3.5, y: 8 });
     const bandit = state.units.find((u) => u.cardId === "bandit");
     assert.ok(bandit);
     bandit.dashReady = false;
@@ -187,6 +188,47 @@ describe("phase 13 — dash primitive", () => {
       "a walking step is far smaller than a dash",
     );
   });
+
+  it("does not dash across the map at a distant tower", () => {
+    const deck = deckWith("bandit");
+    const state = createGame("dash-bandit-tower", deck, RED_DECK);
+    const banditSlot = forceInHand(state, "blue", "bandit");
+    state.elixir.blue = 10;
+    // Not on the blue princess footprint at (3.5, 6.5).
+    const placed = playCard(state, "blue", { handIndex: banditSlot, x: 3.5, y: 10 });
+    assert.equal(placed.ok, true);
+    const bandit = state.units.find((u) => u.cardId === "bandit");
+    assert.ok(bandit);
+
+    // No enemy troops: the only target is the far princess tower, ~18 tiles away.
+    const tower = redPrincess(state);
+    const distanceBefore = Math.hypot(tower.x - bandit.x, tower.y - bandit.y);
+    assert.ok(distanceBefore > bandit.sightRange, "the tower must start out of dash reach");
+
+    for (let i = 0; i < 5; i++) tickGame(state);
+
+    const distanceAfter = Math.hypot(tower.x - bandit.x, tower.y - bandit.y);
+    const closed = distanceBefore - distanceAfter;
+    assert.ok(
+      closed < bandit.sightRange,
+      `bandit must not blink most of the map toward a tower (closed ${closed.toFixed(2)})`,
+    );
+  });
+
+  it("dashes land adjacent to the target rather than at standoff range", () => {
+    const deck = deckWith("bandit");
+    const state = createGame("dash-bandit-contact", deck, RED_DECK);
+    state.elixir.blue = 10;
+    playCard(state, "blue", { handIndex: forceInHand(state, "blue", "bandit"), x: 17, y: 9.5 });
+    const bandit = state.units.find((u) => u.cardId === "bandit");
+    assert.ok(bandit);
+    pinTarget(state, { cardId: "giant", hp: 100_000 }, 17, 14);
+    const giant = state.units[state.units.length - 1];
+
+    tickGame(state);
+    const gap = Math.hypot(bandit.x - giant.x, bandit.y - giant.y);
+    assert.ok(gap <= 1.25, `a dash should land adjacent (gap=${gap})`);
+  });
 });
 
 describe("phase 13 — minimum range", () => {
@@ -198,7 +240,7 @@ describe("phase 13 — minimum range", () => {
     const deck = deckWith("mortar");
     const state = createGame("minrange-mortar", deck, RED_DECK);
     state.elixir.blue = 10;
-    playCard(state, "blue", { handIndex: handIndexOf(deck, "mortar"), x: 13.5, y: 4 });
+    playCard(state, "blue", { handIndex: forceInHand(state, "blue", "mortar"), x: 13.5, y: 4 });
     const mortar = state.units.find((u) => u.cardId === "mortar");
     assert.ok(mortar);
     assert.equal(mortar.minRange, 3, "mortar declares minimumRange 3");
@@ -255,7 +297,7 @@ describe("phase 13 — ramping beam", () => {
     const state = createGame("ramp-inferno", deck, RED_DECK);
     state.elixir.blue = 10;
     playCard(state, "blue", {
-      handIndex: handIndexOf(deck, "inferno-tower"),
+      handIndex: forceInHand(state, "blue", "inferno-tower"),
       x: 13.5,
       y: 4,
     });
@@ -286,7 +328,7 @@ describe("phase 13 — ramping beam", () => {
     const state = createGame("ramp-reset", deck, RED_DECK);
     state.elixir.blue = 10;
     playCard(state, "blue", {
-      handIndex: handIndexOf(deck, "inferno-tower"),
+      handIndex: forceInHand(state, "blue", "inferno-tower"),
       x: 13.5,
       y: 4,
     });
@@ -328,7 +370,7 @@ describe("phase 13 — burrowers", () => {
     const state = createGame("burrow-miner", deck, RED_DECK);
     state.elixir.blue = 10;
     const result = playCard(state, "blue", {
-      handIndex: handIndexOf(deck, "miner"),
+      handIndex: forceInHand(state, "blue", "miner"),
       x: 13.5,
       y: 26,
     });
@@ -357,7 +399,7 @@ describe("phase 13 — spell primitives", () => {
 
     state.elixir.blue = 10;
     const cast = playCard(state, "blue", {
-      handIndex: handIndexOf(deck, "lightning"),
+      handIndex: forceInHand(state, "blue", "lightning"),
       x: 3.5,
       y: 22,
     });
@@ -380,7 +422,7 @@ describe("phase 13 — spell primitives", () => {
 
     state.elixir.blue = 10;
     const cast = playCard(state, "blue", {
-      handIndex: handIndexOf(deck, "the-log"),
+      handIndex: forceInHand(state, "blue", "the-log"),
       x: 3.5,
       y: 21,
     });

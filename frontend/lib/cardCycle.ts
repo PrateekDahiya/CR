@@ -14,6 +14,47 @@
 
 export const HAND_SIZE = 4;
 
+/**
+ * Deterministic PRNG for match-start shuffling.
+ *
+ * The authoritative server and every client must derive the SAME opening hand
+ * without an extra network message, so the shuffle is seeded from the match id
+ * rather than `Math.random()`. Different matches produce different orders;
+ * replaying one match id reproduces it exactly.
+ */
+export function matchRandom(matchId: string, side: string): () => number {
+  let state = 2166136261 >>> 0;
+  const key = `${matchId}:${side}`;
+  for (let i = 0; i < key.length; i += 1) {
+    state ^= key.charCodeAt(i);
+    state = Math.imul(state, 16777619) >>> 0;
+  }
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * The opening hand + queue for a match: the deck in a per-match random order,
+ * so the four starting cards are NOT always the first four in deck order.
+ */
+export function matchCycle(deck: readonly string[], matchId: string, side: string): {
+  hand: string[];
+  queue: string[];
+  order: string[];
+} {
+  const order = shuffleDeck(deck, matchRandom(matchId, side));
+  return {
+    hand: order.slice(0, HAND_SIZE),
+    queue: order.slice(HAND_SIZE),
+    order,
+  };
+}
+
 export type CardCycleState = Readonly<{
   hand: readonly string[];
   queue: readonly string[];

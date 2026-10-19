@@ -293,6 +293,39 @@ function makeTowers(): SimTower[] {
  * the net layer enforces BAD_DECK at queue:join per §11 — engine throws
  * on unknown ids so a bad deck can never enter simulation).
  */
+/**
+ * Deterministic per-match shuffle of the deck order (Phase 14).
+ *
+ * The opening four cards must not always be the first four in deck order. The
+ * shuffle is seeded from `matchId:side` so the authoritative server and every
+ * client derive the identical opening hand with no extra wire message, while
+ * two different matches still start differently. No `Math.random()` — the engine
+ * stays deterministic and replayable.
+ */
+export function matchDeckOrder(deck: readonly string[], matchId: string, side: PlayerSide): string[] {
+  let state = 2166136261 >>> 0;
+  const key = `${matchId}:${side}`;
+  for (let i = 0; i < key.length; i += 1) {
+    state ^= key.charCodeAt(i);
+    state = Math.imul(state, 16777619) >>> 0;
+  }
+  const next = (): number => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const out = deck.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(next() * (i + 1));
+    const swap = out[i];
+    out[i] = out[j];
+    out[j] = swap;
+  }
+  return out;
+}
+
 export function createGame(
   matchId: string,
   blueDeck: string[],
@@ -310,6 +343,8 @@ export function createGame(
       if (!getCard(id)) throw new Error(`[engine] unknown card: ${id}`);
     }
   }
+  const blueOrder = matchDeckOrder(blueDeck, matchId, "blue");
+  const redOrder = matchDeckOrder(redDeck, matchId, "red");
   return {
     matchId,
     tick: 0,
@@ -319,9 +354,10 @@ export function createGame(
     towers: makeTowers(),
     units: [],
     crowns: { blue: 0, red: 0 },
-    hands: { blue: blueDeck.slice(0, 4), red: redDeck.slice(0, 4) },
-    decks: { blue: blueDeck.slice(), red: redDeck.slice() },
-    queue: { blue: blueDeck.slice(4), red: redDeck.slice(4) },
+    // Randomized per match: the opening four are not always deck[0..3].
+    hands: { blue: blueOrder.slice(0, 4), red: redOrder.slice(0, 4) },
+    decks: { blue: blueOrder.slice(), red: redOrder.slice() },
+    queue: { blue: blueOrder.slice(4), red: redOrder.slice(4) },
     winner: undefined,
     over: false,
     overtime: false,
@@ -1431,12 +1467,22 @@ function tryDash(
   const minimumDistance = Math.max(0, Number(effect.minimumDistance ?? 0));
   const distance = dist(u.x, u.y, tx, ty);
   if (distance < minimumDistance + RANGE_EPS) return false;
+  // Upper bound: a dash is a short engage, not a map-wide blink. Without this a
+  // unit whose only target is a distant tower (towers are acquired with no sight
+  // limit) teleported most of the arena in a single tick. Bounded by the unit's
+  // own sight range, which is also roughly Clash Royale's dash reach.
+  const maximumDistance = Math.max(
+    minimumDistance,
+    Number(effect.maxDistance ?? u.sightRange),
+  );
+  if (distance > maximumDistance + RANGE_EPS) return false;
 
-  // Blink into contact range, clamped into the arena.
+  // Blink right up to the target (a dash lands adjacent, it does not stop at a
+  // ranged standoff), clamped into the arena.
   const dx = tx - u.x;
   const dy = ty - u.y;
   const length = Math.max(0.001, Math.hypot(dx, dy));
-  const contact = Math.max(0, u.range);
+  const contact = Math.max(0, Math.min(u.range, 1.2));
   const travel = Math.max(0, length - contact);
   u.x = Math.min(Math.max(0, u.x + (dx / length) * travel), 18);
   u.y = Math.min(Math.max(0, u.y + (dy / length) * travel), 32);

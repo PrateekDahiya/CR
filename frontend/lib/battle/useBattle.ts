@@ -19,7 +19,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { rotateCard } from "../cardCycle";
+import { matchCycle, rotateCard } from "../cardCycle";
 import {
   connect,
   disconnect,
@@ -304,7 +304,10 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
   const [result, setResult] = useState<MatchEnd | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Optimistic hand: first 4 of deck in hand, rest cycle as next queue.
+  // Opening hand comes from the per-match randomized deck order (shared rule with
+  // the server: lib/cardCycle.ts matchCycle seeded by `matchId:side`). Before a
+  // match id is known we fall back to the deck order itself.
+  const matchSeed = matchId;
   const [hand, setHand] = useState<string[]>(() => deck.slice(0, 4));
   const [queue, setQueue] = useState<string[]>(() => (deck.length > 4 ? deck.slice(4) : []));
 
@@ -350,14 +353,20 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
   const queueRef = useRef<string[]>(queue);
   queueRef.current = queue;
 
-  // Reset optimistic hand when the deck identity changes (lobby/deck edits).
+  // Re-roll the opening hand whenever the deck changes OR we enter a new match,
+  // so the starting four are randomized per match rather than fixed deck order.
   const deckKey = deck.join(",");
   useEffect(() => {
-    setHand(deck.slice(0, 4));
-    setQueue(deck.length > 4 ? deck.slice(4) : []);
+    if (deck.length === 0) return;
+    const cycle =
+      matchSeed === null
+        ? { hand: deck.slice(0, 4), queue: deck.length > 4 ? deck.slice(4) : [] }
+        : matchCycle(deck, matchSeed, side);
+    setHand(cycle.hand);
+    setQueue(cycle.queue);
     setSelected(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deckKey]);
+  }, [deckKey, matchSeed, side]);
 
   const trackClock = useCallback((serverTimeMs: number) => {
     if (typeof serverTimeMs === "number" && Number.isFinite(serverTimeMs) && serverTimeMs > 0) {

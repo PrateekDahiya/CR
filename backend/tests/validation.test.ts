@@ -16,6 +16,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, playCard } from '../src/game/engine.js';
 import type { EngineState } from '../src/game/engine.js';
+import { forceInHand } from './deckHelpers.js';
 
 const BLUE_DECK = [
   'knight',
@@ -30,6 +31,13 @@ const BLUE_DECK = [
 const RED_DECK = [...BLUE_DECK];
 
 let gameSeq = 1000;
+/** Phase 14: the opening hand is shuffled, so position tests must pick a
+ *  non-spell slot (deploy-zone rules apply to troops/buildings, not spells). */
+function deploySlot(state: EngineState, side: 'blue' | 'red' = 'blue'): number {
+  const idx = state.hands[side].findIndex((id) => id !== 'fireball' && id !== 'zap' && id !== 'arrows');
+  assert.ok(idx !== -1, 'blue hand must contain a deployable card');
+  return idx;
+}
 function newGame(): EngineState {
   gameSeq += 1;
   return createGame(`validation-${gameSeq}`, BLUE_DECK, RED_DECK);
@@ -80,7 +88,7 @@ describe('validation — bad x/y positions (GAME_DESIGN §§5.3/11.2)', () => {
       const s = newGame();
       s.elixir.blue = 10;
       const before = snapshot(s, 'blue');
-      const r = playCard(s, 'blue', { handIndex: 0, x, y });
+      const r = playCard(s, 'blue', { handIndex: deploySlot(s), x, y });
       assert.equal(r.ok, false, `expected rejection for (${x},${y})`);
       assert.equal((r as { code: string }).code, 'BAD_POSITION');
       assertNoMutation(s, 'blue', before);
@@ -91,7 +99,7 @@ describe('validation — bad x/y positions (GAME_DESIGN §§5.3/11.2)', () => {
     const s = newGame();
     s.elixir.blue = 10;
     const before = snapshot(s, 'blue');
-    const r = playCard(s, 'blue', { handIndex: 0, x: 9, y: 15.5 });
+    const r = playCard(s, 'blue', { handIndex: deploySlot(s), x: 9, y: 15.5 });
     assert.equal(r.ok, false, 'river band is impassable except bridges (§5.2)');
     assert.equal((r as { code: string }).code, 'BAD_POSITION');
     assertNoMutation(s, 'blue', before);
@@ -111,7 +119,7 @@ describe('validation — bad x/y positions (GAME_DESIGN §§5.3/11.2)', () => {
     const s = newGame();
     s.elixir.red = 10;
     const before = snapshot(s, 'red');
-    const r = playCard(s, 'red', { handIndex: 0, x: 9, y: 5 });
+    const r = playCard(s, 'red', { handIndex: deploySlot(s, 'red'), x: 9, y: 5 });
     assert.equal(r.ok, false, 'red troop on blue half must be rejected (§5.3)');
     assert.equal((r as { code: string }).code, 'BAD_POSITION');
     assertNoMutation(s, 'red', before);
@@ -131,9 +139,10 @@ describe('validation — insufficient elixir (GAME_DESIGN §11.1)', () => {
 
   it('rejects when elixir covers only part of the cost (1 vs knight 3)', () => {
     const s = newGame();
-    s.elixir.blue = 1; // slot 0 = knight (3 elixir)
+    s.elixir.blue = 1; // knight costs 3 elixir
+    const slot = forceInHand(s, 'blue', 'knight');
     const before = snapshot(s, 'blue');
-    const r = playCard(s, 'blue', { handIndex: 0, x: 9, y: 5 });
+    const r = playCard(s, 'blue', { handIndex: slot, x: 9, y: 5 });
     assert.equal(r.ok, false);
     assert.equal((r as { code: string }).code, 'NO_ELIXIR');
     assertNoMutation(s, 'blue', before);
@@ -179,12 +188,16 @@ describe('validation — clock/rate (GAME_DESIGN §11.4)', () => {
     const s = newGame();
     for (let i = 0; i < 5; i += 1) {
       s.elixir.blue = 10;
-      const r = playCard(s, 'blue', { handIndex: 0, x: 9, y: 5 });
+      const slot = forceInHand(s, 'blue', 'skeletons');
+      const r = playCard(s, 'blue', { handIndex: slot, x: 9, y: 5 });
       assert.equal(r.ok, true, `setup play ${i} should succeed`);
     }
-    s.elixir.blue = 10;
+s.elixir.blue = 10;
+    // Set the card up BEFORE the snapshot so the no-mutation assertion only
+    // covers the rejected play itself.
+    const slot = forceInHand(s, 'blue', 'skeletons');
     const before = snapshot(s, 'blue');
-    const r = playCard(s, 'blue', { handIndex: 0, x: 9, y: 5 });
+    const r = playCard(s, 'blue', { handIndex: slot, x: 9, y: 5 });
     assert.equal(r.ok, false);
     assert.equal((r as { code: string }).code, 'RATE_LIMITED');
     assertNoMutation(s, 'blue', before);

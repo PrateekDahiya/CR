@@ -88,14 +88,25 @@ test.describe("Random Deck button", () => {
     await page.goto(`${BASE}/battle`);
     await expect(page.getByTestId("battle-join")).toBeVisible();
 
-    // The opening hand is the first four cards of the generated deck.
-    for (let i = 0; i < 4; i++) {
-      await expect(page.locator(`[data-testid="card-hand-${i}"] .card-art`)).toHaveAttribute(
-        "data-testid",
-        `card-art-${stored[i]}`,
-        { timeout: 10000 },
-      );
-    }
+// The opening four are the generated deck in a per-match randomized order, so
+    // assert membership (not a fixed slot order) and wait for hydration rather
+    // than racing the first render.
+    await expect
+      .poll(
+        async () => {
+          const shown: string[] = [];
+          for (let i = 0; i < 4; i++) {
+            const testid = await page
+              .locator(`[data-testid="card-hand-${i}"] .card-art`)
+              .getAttribute("data-testid");
+            if (typeof testid !== "string") return "missing";
+            shown.push(testid.replace("card-art-", ""));
+          }
+          return shown.every((id) => stored.includes(id)) ? "ok" : shown.join(",");
+        },
+        { timeout: 15000 },
+      )
+      .toBe("ok");
   });
 
   test("generating twice produces a different deck (no re-render regeneration)", async ({ page }) => {

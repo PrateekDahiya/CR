@@ -14,7 +14,7 @@ import {
 import { CARD_LIST, DECK_SIZE, getCard } from "../lib/cards";
 import { analyseQuality, rolesCoveredBy, validateGeneratedDeck } from "../lib/deckValidation";
 import { generateRandomDeck, playablePool } from "../lib/deckGenerator";
-import { createCycle, rotateCard, cycleDistance } from "../lib/cardCycle";
+import { createCycle, matchCycle, rotateCard, cycleDistance } from "../lib/cardCycle";
 
 /**
  * Phase 14 — card classification, random deck generation and card cycling.
@@ -192,6 +192,63 @@ test("reports unsatisfied roles instead of returning an invalid deck", () => {
     expect(quality.averageElixir).toBeGreaterThan(2.5);
     expect(quality.averageElixir).toBeLessThan(6.5);
     expect(quality.antiAirAnswers).toBeGreaterThanOrEqual(1);
+  });
+});
+
+test.describe("match-start randomization", () => {
+  const deck = ["a", "b", "c", "d", "e", "f", "g", "h"];
+
+  test("is deterministic for the same match id (server and client agree)", () => {
+    const a = matchCycle(deck, "match-1", "blue");
+    const b = matchCycle(deck, "match-1", "blue");
+    expect(a.hand).toEqual(b.hand);
+    expect(a.queue).toEqual(b.queue);
+  });
+
+  test("gives different matches different opening hands", () => {
+    const hands = new Set<string>();
+    for (let i = 0; i < 60; i++) hands.add(matchCycle(deck, `m${i}`, "blue").hand.join(","));
+    expect(hands.size).toBeGreaterThan(1);
+  });
+
+  test("usually does not deal the first four deck cards", () => {
+    let changed = 0;
+    for (let i = 0; i < 60; i++) {
+      if (matchCycle(deck, `m${i}`, "blue").hand.join(",") !== deck.slice(0, 4).join(",")) changed++;
+    }
+    expect(changed).toBeGreaterThan(50);
+  });
+
+  test("splits into four hand + four queue, nothing lost", () => {
+    const cycle = matchCycle(deck, "match-9", "blue");
+    expect(cycle.hand).toHaveLength(4);
+    expect(cycle.queue).toHaveLength(4);
+    expect([...cycle.hand, ...cycle.queue].slice().sort()).toEqual(deck.slice().sort());
+  });
+
+  test("the two sides get independent orders", () => {
+    const blue = matchCycle(deck, "match-x", "blue");
+    const red = matchCycle(deck, "match-x", "red");
+    expect(blue.hand.join(",")).not.toBe(red.hand.join(","));
+  });
+
+  test("after start the cycle follows that order deterministically (FIFO)", () => {
+    // Shuffle once at start, then no further randomness: the cycle must follow
+    // the order that was dealt, card for card.
+    const start = matchCycle(deck, "match-fifo", "blue");
+    const expectedOrder = [...start.hand, ...start.queue];
+    let cycle = { hand: start.hand, queue: start.queue };
+    const drawn: string[] = [];
+    for (let i = 0; i < 8; i++) {
+      const slot = cycle.hand.indexOf(expectedOrder[i] as string);
+      expect(slot).toBeGreaterThanOrEqual(0);
+      cycle = rotateCard(cycle, slot);
+      drawn.push(expectedOrder[i] as string);
+    }
+    expect(drawn).toEqual(expectedOrder);
+    // Playing the full cycle returns the deck to its starting state.
+    expect(cycle.hand).toEqual(start.hand);
+    expect(cycle.queue).toEqual(start.queue);
   });
 });
 

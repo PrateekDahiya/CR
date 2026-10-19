@@ -34,6 +34,7 @@ import {
 } from '../src/game/engine.js';
 import type { EngineState } from '../src/game/engine.js';
 import { hydrateMechanicsFromMysql } from '../src/mysql.js';
+import { bringToHand } from './deckHelpers.js';
 
 before(async () => {
   await hydrateMechanicsFromMysql();
@@ -76,6 +77,16 @@ function tickTimes(state: EngineState, n: number, dt = 0.1): void {
 function troopSlot(state: EngineState, side: 'blue' | 'red'): number {
   const idx = state.hands[side].findIndex((id) => !SPELL_IDS.has(id));
   assert.ok(idx !== -1, `${side} hand should contain a troop`);
+  return idx;
+}
+
+/**
+ * Phase 14: the opening hand is shuffled per match, so a test must look the
+ * card up by id rather than assume `handIndex === deck index`.
+ */
+function slotOf(state: EngineState, side: 'blue' | 'red', cardId: string): number {
+  const idx = state.hands[side].indexOf(cardId);
+  assert.ok(idx !== -1, `${side} hand should contain ${cardId}`);
   return idx;
 }
 
@@ -197,11 +208,12 @@ describe('engine — elixir regen (GAME_DESIGN §7)', () => {
 // §11 — playCard deducts + validates
 // ---------------------------------------------------------------------------
 describe('engine — playCard deducts + cycles (GAME_DESIGN §11)', () => {
-  it('deducts the card cost and spawns the unit on a legal own-half deploy', () => {
+it('deducts the card cost and spawns the unit on a legal own-half deploy', () => {
     const s = newGame();
     s.elixir.blue = 10;
-    // Hand slot 0 = knight (troop, cost 3); queue head = giant.
-    const r = playCard(s, 'blue', { handIndex: 0, x: 9, y: 5 });
+    const slot = bringToHand(s, 'blue', 'knight');
+    const queued = s.queue.blue.slice();
+    const r = playCard(s, 'blue', { handIndex: slot, x: 9, y: 5 });
     assert.equal(r.ok, true);
     assert.equal((r as { cardId: string }).cardId, 'knight');
     assert.equal((r as { unitIds: string[] }).unitIds.length, 1);
@@ -209,27 +221,33 @@ describe('engine — playCard deducts + cycles (GAME_DESIGN §11)', () => {
     assert.equal(s.units.length, 1);
     assert.equal(s.units[0].cardId, 'knight');
     assert.equal(s.units[0].owner, 'blue');
-    // CR rotation: played knight to queue back, giant into slot 0.
-    assert.equal(s.hands.blue[0], 'giant');
+    // CR rotation on the (shuffled) cycle: the queue head fills the played slot,
+    // the played card goes to the back, and the rest of the queue shifts down.
+    assert.equal(s.hands.blue[slot], queued[0]);
+    assert.deepEqual(s.queue.blue, [...queued.slice(1), 'knight']);
   });
 
   it('red side deploys on its own half (y 17–31)', () => {
     const s = newGame();
     s.elixir.red = 10;
-    const r = playCard(s, 'red', { handIndex: 0, x: 9, y: 26 });
+    const r = playCard(s, 'red', { handIndex: troopSlot(s, 'red'), x: 9, y: 26 });
     assert.equal(r.ok, true);
     assert.equal(s.elixir.red, 7);
   });
 
-  it('rejects a mismatched cardId echo with CARD_REJECTED', () => {
+it('rejects a mismatched cardId echo with CARD_REJECTED', () => {
     const s = newGame();
     s.elixir.blue = 10;
+    // The slot genuinely holds `giant`, so echoing anything else is a mismatch.
+    const slot = bringToHand(s, 'blue', 'giant');
     const before = s.elixir.blue;
-    const r = playCard(s, 'blue', { handIndex: 0, x: 9, y: 5, cardId: 'giant' });
+const wrongId = s.hands.blue[slot] === 'musketeer' ? 'knight' : 'musketeer';
+    const unitsBefore = s.units.length;
+    const r = playCard(s, 'blue', { handIndex: slot, x: 9, y: 5, cardId: wrongId });
     assert.equal(r.ok, false);
     assert.equal((r as { code: string }).code, 'CARD_REJECTED');
     assert.equal(s.elixir.blue, before, 'no elixir deducted on reject');
-    assert.equal(s.units.length, 0, 'no spawn on reject');
+    assert.equal(s.units.length, unitsBefore, 'no spawn on reject');
   });
 });
 
@@ -260,8 +278,8 @@ describe('engine — towers + king activation (GAME_DESIGN §6)', () => {
     const s = newGame();
     const king = towerOf(s, 'king', 'blue');
     s.elixir.red = 10;
-    // Red hand slot 2 = database-defined fireball (spell, cost 4, 276 vs towers).
-    const r = playCard(s, 'red', { handIndex: 2, x: king.x, y: king.y });
+    // Database-defined fireball (spell, cost 4, 276 vs towers).\r
+    const r = playCard(s, 'red', { handIndex: bringToHand(s, 'red', 'fireball'), x: king.x, y: king.y });
     assert.equal(r.ok, true);
     assert.equal(king.hp, 2400 - 276);
     assert.equal(king.active, true, 'king must activate after taking damage (§6.2)');
@@ -273,7 +291,7 @@ describe('engine — towers + king activation (GAME_DESIGN §6)', () => {
     const s = newGame();
     const princess = towerOf(s, 'princess', 'red');
     s.elixir.blue = 10;
-    const r = playCard(s, 'blue', { handIndex: 2, x: princess.x, y: princess.y });
+    const r = playCard(s, 'blue', { handIndex: bringToHand(s, 'blue', 'fireball'), x: princess.x, y: princess.y });
     assert.equal(r.ok, true);
     assert.equal(princess.hp, 1400 - 276);
     assert.equal(princess.destroyed, false);
