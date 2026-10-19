@@ -4,7 +4,8 @@
 
 import type { Express, Request, Response } from "express";
 import { authPlayerId, mintGuestToken } from "./auth.js";
-import { getRoom } from "./net/rooms.js";
+import { login, register } from "./accounts.js";
+import { getActiveMatchForPlayer, getRoom } from "./net/rooms.js";
 import { getUser, leaderboard, recordMatch, saveDeck, upsertUser, isDbLive } from "./db.js";
 import {
   activeDeck,
@@ -22,6 +23,54 @@ import {
 const SEASON = process.env.SEASON ?? "s1";
 
 export function mountMeta(app: Express): void {
+  /**
+   * Register: creates a real account (username + hashed password) and its
+   * player profile. Returns the same shape as login so the client can continue
+   * in one step. O(1) + one scrypt hash.
+   */
+  app.post("/auth/register", (req: Request, res: Response) => {
+    const body = (req.body ?? {}) as { username?: unknown; password?: unknown };
+    const username = typeof body.username === "string" ? body.username.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const result = register(username, password);
+    if (!result.ok) {
+      res
+        .status(result.code === "USER_EXISTS" ? 409 : 400)
+        .json({ code: result.code, message: result.message });
+      return;
+    }
+    const p = result.player;
+    res.json({
+      playerId: p.playerId,
+      name: p.name,
+      token: mintGuestToken(p.playerId),
+      trophies: p.trophies,
+      coins: p.coins,
+      gems: p.gems,
+    });
+  });
+
+  /** Login: verifies the password against the stored scrypt hash. */
+  app.post("/auth/login", (req: Request, res: Response) => {
+    const body = (req.body ?? {}) as { username?: unknown; password?: unknown };
+    const username = typeof body.username === "string" ? body.username.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const result = login(username, password);
+    if (!result.ok) {
+      res.status(401).json({ code: result.code, message: result.message });
+      return;
+    }
+    const p = result.player;
+    res.json({
+      playerId: p.playerId,
+      name: p.name,
+      token: mintGuestToken(p.playerId),
+      trophies: p.trophies,
+      coins: p.coins,
+      gems: p.gems,
+    });
+  });
+
   app.post("/auth/guest", async (req: Request, res: Response) => {
     const pid = authPlayerId(req) ?? `guest_${Math.floor(Math.random() * 1e6)}`;
     const user = await upsertUser(pid);
@@ -186,6 +235,20 @@ app.get("/match/:matchId", (req: Request, res: Response) => {
     redId: room.players.find((p) => p.side === "red")?.playerId ?? null,
     winner: room.state.winner ?? null,
   });
+});
+
+/**
+ * The player's running match, if any. The client guard polls this on every
+ * screen and sends the player back into the battle (which kept simulating in
+ * the background). O(rooms + players).
+ */
+app.get("/match/active/:playerId", (req: Request, res: Response) => {
+  const active = getActiveMatchForPlayer(req.params.playerId);
+  if (active === undefined) {
+    res.json({ active: false });
+    return;
+  }
+  res.json({ active: true, ...active, elapsedMs: Math.max(0, Date.now() - active.startedAtMs) });
 });
 
 app.get("/season", (_req: Request, res: Response) => {

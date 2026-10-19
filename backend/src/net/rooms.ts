@@ -52,6 +52,8 @@ export interface GameState {
   matchId: string;
   tick: number;
   serverTimeMs: number;
+  /** Wall-clock ms when the match started (lets a resumed client restore the clock). */
+  startedAtMs: number;
   elixir: Record<PlayerSide, number>;
   towers: Tower[];
   units: Unit[];
@@ -221,11 +223,12 @@ function buildTower(
 }
 
 /** 6 towers per GAME_DESIGN.md §§5.4/6.1: Princess 1400, King 2400. */
-function buildInitialState(matchId: string): GameState {
+function buildInitialState(matchId: string, startedAtMs: number = Date.now()): GameState {
   return {
     matchId,
     tick: 0,
-    serverTimeMs: Date.now(),
+    serverTimeMs: startedAtMs,
+    startedAtMs,
     elixir: { blue: 5, red: 5 },
     towers: [
       buildTower("blue-king", "king", "blue", 2400, 8.5, 3.5),
@@ -258,6 +261,7 @@ function syncWire(room: Room): void {
   s.matchId = room.matchId;
   s.tick = sim.tick;
   s.serverTimeMs = sim.serverTimeMs;
+  s.startedAtMs = room.startedAtMs;
   s.elixir.blue = sim.elixir.blue; // reuse elixir object (no alloc)
   s.elixir.red = sim.elixir.red;
   // Towers: fixed 6 — update nested objects in place.
@@ -379,13 +383,14 @@ export function createRoom(matchId: string, blue: RoomSeed, red: RoomSeed): Room
       sim = null;
     }
   }
+  const startedAtMs = Date.now();
   const room: Room = {
     matchId,
     players: [
       { playerId: blue.playerId, side: "blue", socketId: blue.socketId, deck: [...blue.deck] },
       { playerId: red.playerId, side: "red", socketId: red.socketId, deck: [...red.deck] },
     ],
-    state: buildInitialState(matchId),
+    state: buildInitialState(matchId, startedAtMs),
     sim,
     hands: {
       blue: blue.deck.slice(0, 4),
@@ -396,7 +401,7 @@ export function createRoom(matchId: string, blue: RoomSeed, red: RoomSeed): Room
       red: red.deck.slice(4),
     },
     timer: null,
-    startedAtMs: Date.now(),
+    startedAtMs,
   };
   if (sim !== null) {
     syncWire(room);
@@ -434,8 +439,38 @@ export function getRoomForPlayer(playerId: string): Room | undefined {
   return undefined;
 }
 
+/**
+ * The player's currently RUNNING match, if any. Used by the client guard to
+ * send a player back into a battle they left (the room keeps simulating in the
+ * background, so they resume exactly where they left off). O(rooms + p).
+ */
+export function getActiveMatchForPlayer(
+  playerId: string,
+): { matchId: string; side: PlayerSide; startedAtMs: number } | undefined {
+  for (const room of rooms.values()) {
+    if (room.state.winner !== undefined || room.sim?.over === true) continue;
+    const player = room.players.find((p) => p.playerId === playerId);
+    if (player !== undefined) {
+      return { matchId: room.matchId, side: player.side, startedAtMs: room.startedAtMs };
+    }
+  }
+  return undefined;
+}
+
 export function getSide(room: Room, playerId: string): PlayerSide | null {
   return room.players.find((p) => p.playerId === playerId)?.side ?? null;
+}
+
+/**
+ * Re-binds a player's live socket after a rejoin (page reload / resume guard).
+ * The match keeps simulating meanwhile, so nothing else changes.
+ * O(p), p = 2. Returns the side when the player belongs to the room.
+ */
+export function rebindPlayerSocket(room: Room, playerId: string, socketId: string): PlayerSide | null {
+  const player = room.players.find((p) => p.playerId === playerId);
+  if (player === undefined) return null;
+  player.socketId = socketId;
+  return player.side;
 }
 
 /**
@@ -558,6 +593,27 @@ export function broadcastState(io: Server, room: Room): void {
   } catch (err) {
     console.warn(`[rooms] broadcastState emit failed for ${room.matchId}: ${String(err)} (ISS-N3-004)`);
   }
+}
+
+/**
+ * Surrender: the given side loses immediately, the opponent wins. The 10Hz loop
+ * notices the winner on its next tick and emits `match:end` to BOTH players, so
+ * a forfeit ends the battle for everyone. O(1).
+ * Returns false when the match already has a result.
+ */
+export function forfeit(room: Room, loser: PlayerSide): boolean {
+  if (room.state.winner !== undefined || room.sim?.over === true) {
+    return false;
+  }
+  const winner: PlayerSide = loser === "blue" ? "red" : "blue";
+  if (room.sim !== null) {
+    room.sim.winner = winner;
+    room.sim.over = true;
+    syncWire(room);
+  }
+  room.state.winner = winner;
+  room.lastBroadcastJson = undefined; // PERF: invalidate stringify cache
+  return true;
 }
 
 /** Start the 10Hz setInterval loop; idempotent per match. */

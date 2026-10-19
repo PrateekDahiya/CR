@@ -337,10 +337,43 @@ export function deletePlayerDeck(playerId: string, deckId: string, baseUrl?: str
   return delJson(`${base}/decks/${encodeURIComponent(playerId)}/${deckId}`);
 }
 
+export interface AuthResult {
+  playerId: string;
+  name: string;
+  token: string;
+  trophies: number;
+  coins: number;
+  gems: number;
+}
+
+/** POST /auth/register — creates a real account (username + password). */
+export function registerAccount(username: string, password: string, baseUrl?: string): Promise<AuthResult> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return postJson(`${base}/auth/register`, { username, password });
+}
+
+/** POST /auth/login — verifies the stored password hash. */
+export function loginAccount(username: string, password: string, baseUrl?: string): Promise<AuthResult> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return postJson(`${base}/auth/login`, { username, password });
+}
+
 /** GET /match/:id — who is blue/red (used to show the real opponent name). */
 export function getMatchRoster(matchId: string, baseUrl?: string): Promise<{ matchId: string; blueId: string | null; redId: string | null; winner: string | null }> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
   return fetchJson(`${base}/match/${encodeURIComponent(matchId)}`);
+}
+
+/**
+ * GET /match/active/:playerId — the player's running match (if any). The battle
+ * room keeps simulating server-side, so the client can re-enter and resume.
+ */
+export function getActiveMatch(
+  playerId: string,
+  baseUrl?: string,
+): Promise<{ active: false } | { active: true; matchId: string; side: "blue" | "red"; startedAtMs: number; elapsedMs: number }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/match/active/${encodeURIComponent(playerId)}`);
 }
 
 /** POST /matches/report — awards trophies/coins and returns the per-player deltas. */

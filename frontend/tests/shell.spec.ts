@@ -12,7 +12,7 @@
  *  - "/shop"    : Daily Deals + Trader
  *  - "/social"  : Leaderboard + Clan tabs
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 const BASE = process.env.PLAYWRIGHT_BASE_URL ?? process.env.BASE_URL ?? "http://localhost:3000";
 
@@ -261,7 +261,8 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await page.goto(`${BASE}/shop`);
     await expect(page.getByTestId("shop-coins")).toBeVisible({ timeout: 15000 });
     const coinsBefore = Number(((await page.getByTestId("shop-coins").textContent()) ?? "").replace(/[^\d]/g, ""));
-    const buy = page.locator('[data-testid^="deal-buy-"]').first();
+    // Deals for cards you already own are disabled — pick an affordable one.
+    const buy = page.locator('[data-testid^="deal-buy-"]:not([disabled])').first();
     await expect(buy).toBeEnabled();
     await buy.click();
     await expect(page.getByTestId("shop-coins")).not.toHaveText(String(coinsBefore), { timeout: 15000 });

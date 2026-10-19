@@ -27,6 +27,7 @@ import {
   joinAiMatch,
   leaveQueue,
   onGameError,
+  forfeitMatch,
   onMatchEnd,
   onMatched,
   onStateUpdate,
@@ -83,6 +84,8 @@ export const REGULATION_MS = 180_000;
 export const DOUBLE_ELIXIR_AT_MS = 120_000;
 /** Sudden-death overtime length: 60 s (§8.1). */
 export const OVERTIME_MS = 60_000;
+/** Overtime begins when regulation ends; elixir runs at 3x from here. */
+export const OVERTIME_AT_MS = REGULATION_MS;
 /** Hard cap: regulation + overtime = 240 s (§8.1). */
 export const HARD_CAP_MS = 240_000;
 /** Client interp buffer behind server clock (§9: 100 ms). */
@@ -95,10 +98,16 @@ const INTERP_DELAY_MS = 100;
 // now clear()+fill via indexed loop, zero allocs for the lookup itself.
 const _prevById = new Map<string, unknown>();
 
-/** Elixir regen rate (elixir/sec) for a match elapsed time. */
-// O(1) time/space — pure threshold. PERF: branchless-eligible, no alloc.
+/**
+ * Elixir regen rate (elixir/sec) for a match elapsed time.
+ * 1x for the first two minutes, 2x for the last regulation minute, 3x in
+ * overtime (sudden death) — matching the in-game rate hints.
+ * O(1) time/space - pure thresholds. PERF: no alloc.
+ */
 export function elixirRateFor(elapsedMs: number): number {
-  return elapsedMs >= DOUBLE_ELIXIR_AT_MS ? 1 / 1.4 : 1 / 2.8;
+  if (elapsedMs >= OVERTIME_AT_MS) return 1 / (2.8 / 3);
+  if (elapsedMs >= DOUBLE_ELIXIR_AT_MS) return 1 / 1.4;
+  return 1 / 2.8;
 }
 
 /** Pocket-4 lane sides (GAME_DESIGN §5.3): true when the enemy princess on that lane side is destroyed. */
@@ -258,6 +267,8 @@ export interface UseBattle {
   isOvertime: boolean;
   /** Double-elixir rate window: t>=120s through end of OT (GAME_DESIGN §7). */
   isDoubleElixir: boolean;
+  /** 1 normal, 2 in the double-elixir window, 3 during overtime. */
+  elixirMultiplier: 1 | 2 | 3;
   result: MatchEnd | null;
   error: string | null;
   clearError: () => void;
@@ -266,6 +277,8 @@ export interface UseBattle {
   joinSearch: (difficulty?: "easy" | "medium" | "hard", waitMs?: number) => Promise<void>;
   /** Starts a real authoritative match vs the server-side AI bot. */
   joinPractice: (difficulty?: "easy" | "medium" | "hard") => Promise<void>;
+  /** Surrender: this player loses, the opponent wins, both get match:end. */
+  surrender: () => Promise<void>;
   /** Adopt a known match id/side (matchmaking redirect). */
   adoptMatch: (m: { matchId?: string; side?: PlayerSide; opponentId?: string }) => void;
   leave: () => void;
@@ -483,6 +496,27 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
     [backendUrl],
   );
 
+  /**
+   * Surrender the current match: the caller loses and the opponent wins. The
+   * server emits match:end to BOTH clients, so the battle ends for everyone.
+   */
+  const surrender = useCallback(async () => {
+    const m = matchIdRef.current;
+    const id = playerIdRef.current.trim();
+    if (m === null || id.length === 0) {
+      setError("Not in a match.");
+      return;
+    }
+    try {
+      const ack = await forfeitMatch(m, id);
+      if (!ack.ok) {
+        setError(ack.error ? `${ack.error.code}: ${ack.error.message}` : "could not end the battle");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "could not end the battle");
+    }
+  }, []);
+
   const leave = useCallback(() => {
     const id = playerIdRef.current.trim();
     if (id.length > 0) {
@@ -514,7 +548,7 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
     const m = matchIdRef.current;
     if (m) {
       try {
-        requestSync(m);
+        requestSync(m, playerIdRef.current.trim() || undefined);
       } catch {
         // socket may be down — reconnect banner stays until snapshots resume
       }
@@ -580,7 +614,11 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
         }
         setReconnecting(false);
         setPhase((p) => (p === "ended" ? p : "in-match"));
-        if (s.matchId && !matchStartMsRef.current) matchStartMsRef.current = s.serverTimeMs;
+        if (s.matchId && !matchStartMsRef.current) {
+          // Clock anchor: the server-reported match start (resume-safe) beats
+          // "first snapshot I saw", which would restart the timer at 3:00.
+          matchStartMsRef.current = s.startedAtMs ?? s.serverTimeMs;
+        }
       });
       offEnd = onMatchEnd((m: MatchEnd) => {
         setResult(m);
@@ -623,7 +661,7 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
       const s = payload?.state;
       if (s && s.matchId) {
         trackClock(s.serverTimeMs);
-        matchStartMsRef.current = s.serverTimeMs || Date.now();
+        matchStartMsRef.current = s.startedAtMs ?? s.serverTimeMs ?? Date.now();
         setMatchId(s.matchId);
         setPrevSnapshot(null);
         setSnapshot(s);
@@ -765,8 +803,7 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
   const { timeLeftSec, isOvertime, isDoubleElixir } = useMemo(() => {
     if (phase !== "in-match" && phase !== "ended") {
       return { timeLeftSec: 180, isOvertime: false, isDoubleElixir: false };
-    }
-    const snapAny = snapshot as unknown as Record<string, unknown> | null;
+    }    const snapAny = snapshot as unknown as Record<string, unknown> | null;
     const serverFlag =
       !!snapAny &&
       (snapAny["overtime"] === true ||
@@ -789,6 +826,12 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
 
   const nextCard = queue.length > 0 ? queue[0] : null;
 
+  /**
+   * Elixir speed hint shown under the timer: 1x normal, 2x in the last
+   * regulation minute, 3x during sudden-death overtime.
+   */
+  const elixirMultiplier = isOvertime ? 3 : isDoubleElixir ? 2 : 1;
+
   return {
     phase,
     connected,
@@ -810,11 +853,13 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
     timeLeftSec,
     isOvertime,
     isDoubleElixir,
+    elixirMultiplier,
     result,
     error,
     clearError,
     join,
     joinSearch,
+    surrender,
     joinPractice,
     adoptMatch,
     leave,

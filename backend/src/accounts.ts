@@ -1,0 +1,88 @@
+/**
+ * accounts.ts — username/password accounts.
+ *
+ * Real credential handling: passwords are stored as scrypt(password, salt) with
+ * a per-account random 16-byte salt and compared in constant time. The account
+ * key IS the playerId, so registering/logging in resumes that player's
+ * trophies, coins, gems, cards and decks.
+ *
+ * Perf (MEMORY#20): lookups are O(1) map hits; hashing is intentionally slow
+ * (scrypt, ~O(16k) work factor) and runs only on register/login.
+ */
+
+import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { ensurePlayer, setName, type Player } from "./players.js";
+
+export interface Account {
+  playerId: string;
+  salt: string;
+  hash: string;
+  createdAtMs: number;
+}
+
+const accounts = new Map<string, Account>();
+
+export const USERNAME_RE = /^[A-Za-z0-9_]{3,16}$/;
+export const MIN_PASSWORD = 6;
+
+function hash(password: string, salt: string): Buffer {
+  // O(1) memory-hard hash; never stored in plain text.
+  return scryptSync(password, salt, 64);
+}
+
+export function validateCredentials(username: string, password: string): string | null {
+  if (!USERNAME_RE.test(username)) {
+    return "Username must be 3-16 characters: letters, numbers or _";
+  }
+  if (password.length < MIN_PASSWORD) {
+    return `Password must be at least ${MIN_PASSWORD} characters`;
+  }
+  return null;
+}
+
+export function isRegistered(username: string): boolean {
+  return accounts.has(username.toLowerCase());
+}
+
+/** Creates an account + its player profile. O(1) + one scrypt hash. */
+export function register(username: string, password: string): { ok: true; player: Player } | { ok: false; code: string; message: string } {
+  const invalid = validateCredentials(username, password);
+  if (invalid !== null) return { ok: false, code: "BAD_CREDENTIALS", message: invalid };
+  const key = username.toLowerCase();
+  if (accounts.has(key)) {
+    return { ok: false, code: "USER_EXISTS", message: "That username is already taken" };
+  }
+  const salt = randomBytes(16).toString("hex");
+  accounts.set(key, {
+    playerId: username,
+    salt,
+    hash: hash(password, salt).toString("hex"),
+    createdAtMs: Date.now(),
+  });
+  const player = ensurePlayer(username);
+  setName(username, username);
+  return { ok: true, player };
+}
+
+/** Verifies credentials in constant time. O(1) + one scrypt hash. */
+export function login(username: string, password: string): { ok: true; player: Player } | { ok: false; code: string; message: string } {
+  const account = accounts.get(username.toLowerCase());
+  const player = ensurePlayer(username);
+  if (account === undefined) {
+    return { ok: false, code: "NO_ACCOUNT", message: "No account with that username" };
+  }
+  const attempt = hash(password, account.salt);
+  const expected = Buffer.from(account.hash, "hex");
+  if (attempt.length !== expected.length || !timingSafeEqual(attempt, expected)) {
+    return { ok: false, code: "BAD_LOGIN", message: "Incorrect password" };
+  }
+  return { ok: true, player };
+}
+
+export function accountCount(): number {
+  return accounts.size;
+}
+
+export function resetAccounts(): void {
+  accounts.clear();
+}

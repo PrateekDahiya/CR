@@ -30,6 +30,8 @@ export interface StateUpdate {
   matchId: string;
   tick: number;
   serverTimeMs: number;
+  /** Wall-clock start of the match (resume restores the clock from this). */
+  startedAtMs?: number;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   elixir: Record<PlayerSide, number>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -318,6 +320,14 @@ export function sendEmote(matchId: string, playerId: string, emoteId: string): P
   return emitWithAck("emote:send", { matchId, playerId, emoteId });
 }
 
+/**
+ * Surrender the match: the caller loses, the opponent wins, and BOTH clients
+ * receive `match:end` so the battle finishes for everyone.
+ */
+export function forfeitMatch(matchId: string, playerId: string): Promise<Ack> {
+  return emitWithAck("match:forfeit", { matchId, playerId });
+}
+
 /** RTT / clock-offset probe. Resolves with the server timestamp. */
 export function ping(payload: unknown = null, timeoutMs = 5000): Promise<number> {
   const s = requireSocket();
@@ -333,9 +343,11 @@ export function ping(payload: unknown = null, timeoutMs = 5000): Promise<number>
   });
 }
 
-/** Reconnect helper (GAME_DESIGN §10): re-request the latest snapshot. */
-export function requestSync(matchId: string): void {
-  requireSocket().emit("match:sync", { matchId });
+/** Reconnect/resume helper (GAME_DESIGN §10): re-request the latest snapshot.
+ * Passing playerId re-binds this socket to the room so the resumed match keeps
+ * accepting deploys. */
+export function requestSync(matchId: string, playerId?: string): void {
+  requireSocket().emit("match:sync", playerId ? { matchId, playerId } : { matchId });
 }
 
 /** Subscribe to the canonical 10 Hz snapshot stream. */
