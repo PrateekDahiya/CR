@@ -454,7 +454,7 @@ export function reportMatch(input: {
 export interface ShopItem {
   id: string;
   name: string;
-  kind: "coins" | "gems" | "cards";
+  kind: "coins" | "gems" | "cards" | "gold";
   amount: number;
   cardId?: string;
   price: number;
@@ -468,6 +468,7 @@ export interface ShopData {
   items: ShopItem[];
   wallet: { coins: number; gems: number } | null;
   owned: Record<string, number>;
+  towerLevels?: Record<string, number>;
 }
 
 export function getShop(baseUrl?: string): Promise<ShopData> {
@@ -475,7 +476,7 @@ export function getShop(baseUrl?: string): Promise<ShopData> {
   return fetchJson(`${base}/shop`);
 }
 
-export function buyShopItem(itemId: string, baseUrl?: string): Promise<{ ok: boolean; granted: { cardId?: string; kind: string }; wallet: { coins: number; gems: number } }> {
+export function buyShopItem(itemId: string, baseUrl?: string): Promise<{ ok: boolean; granted: { cardId?: string; kind: string; isNew?: boolean; level?: number }; wallet: { coins: number; gems: number } }> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
   return postJson(`${base}/shop/buy`, { itemId });
 }
