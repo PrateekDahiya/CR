@@ -20,6 +20,7 @@
 import { getCard, getSpawnTemplate } from "./cards";
 import type { EffectSpec } from "./cardMechanics";
 import {
+  CENTER_X,
   Pocket,
   TOWER_SPAWNS,
   isInArena,
@@ -104,6 +105,13 @@ export interface SimUnit {
   shieldHp?: number;
   isClone?: boolean;
   periodicNextAt?: number[];
+  /** Phase 13: dash (Bandit/Prince/Dark Prince) re-arms once the unit travels. */
+  dashReady?: boolean;
+  /** Phase 13: ramping-beam (Inferno) stage index + the target it is locked on. */
+  rampStage?: number;
+  rampTargetId?: string;
+  /** Phase 13: minimum attack range (Mortar cannot hit adjacent units). */
+  minRange?: number;
 }
 
 interface DamageField {
@@ -401,6 +409,12 @@ function spawnChildUnits(
       splash: runtimeSplashRadius(card),
       mechanics: card.mechanics,
       shieldHp: initialShield(card),
+      minRange: Number(
+        card.mechanics?.onAttack?.find((effect) => effect.minimumRange !== undefined)
+          ?.minimumRange ?? 0,
+      ),
+      dashReady: true,
+      rampStage: 0,
       periodicNextAt: card.mechanics?.periodic?.map(
         (effect) => state.timeSec + Number(effect.intervalMs ?? 0) / 1000,
       ),
@@ -433,6 +447,18 @@ function fail(code: string, message: string): PlayResult {
   return { ok: false, code, message };
 }
 
+/**
+ * Phase 13 — placement classification read from the card's database mechanics.
+ * Siege buildings push forward; burrowers may be dropped anywhere.
+ */
+function isSiegePlacement(card: ReturnType<typeof getCard>): boolean {
+  return card?.type === "building" && card?.mechanics?.movement === "siege";
+}
+
+function isBurrowPlacement(card: ReturnType<typeof getCard>): boolean {
+  return card?.mechanics?.movement === "burrow";
+}
+
 function effectTargetMatches(effect: EffectSpec, unit: SimUnit): boolean {
   if (effect.target === "ground" && unit.flying) return false;
   if (effect.target === "air" && !unit.flying) return false;
@@ -460,7 +486,16 @@ function applyStatus(
     target.rageMultiplier = Math.max(target.rageMultiplier, Number(effect.multiplier ?? 1.35));
   } else if (status === "shield" && "shieldHp" in target) {
     target.shieldHp = Math.max(target.shieldHp ?? 0, Number(effect.amount ?? 0));
+  } else if (status === "heal" && "hp" in target && "maxHp" in target) {
+    // Max-HP capped friendly heal (P.E.K.K.A style support effects).
+    const maxHp = (target as { maxHp: number }).maxHp;
+    target.hp = Math.min(maxHp, target.hp + Number(effect.amount ?? 0));
   }
+  // Phase 13: statuses that describe targeting/visibility bookkeeping rather
+  // than a stat mutation are intentionally inert here — they are consumed by
+  // attack code (`lockOn`, `chargeUp`) or are presentation-only (`reveal`,
+  // `buried`, `invisible`, `curse`, `reflect`). `scripts/audit_card_mechanics.py`
+  // keeps this list honest, so a status can never be dropped without a trace.
 }
 
 function damageUnit(unit: SimUnit, amount: number): void {
@@ -487,21 +522,134 @@ function applyAreaDamage(
   const radius = Math.max(0, Number(effect.radius ?? 0));
   const r = radius + RANGE_EPS;
   const r2 = r * r;
-  const amount = Number(effect.amount ?? damage);
+  let amount = Number(effect.amount ?? damage);
   const towerAmount = Number(
     effect.towerDamage ?? (effect.towerMultiplier !== undefined
       ? amount * Number(effect.towerMultiplier)
       : towerDamage),
   );
+
+  // Earthquake: buildings in the epicenter take a multiple of troop damage.
+  const buildingMultiplier = Number(effect.buildingMultiplier ?? 1);
+  // Void: fewer targets inside the circle means a bigger hit.
+  const targetCountScaling = effect.targetCountScaling === true;
+  const excludeTowers = effect.excludeTowers === true;
+  let targetsInArea = 0;
+  if (targetCountScaling) {
+    for (const unit of state.units) {
+      if (unit.owner !== foe || unit.hp <= 0 || !effectTargetMatches(effect, unit)) continue;
+      if (dist2(x, y, unit.x, unit.y) <= r2) targetsInArea++;
+    }
+    // Tuned tiers: 1 target -> x2.0, 2 -> x1.5, 3 -> x1.0, 4+ -> x0.7.
+    const tiers = [2, 2, 1.5, 1, 1, 0.7];
+    amount *= tiers[Math.min(targetsInArea, tiers.length - 1)];
+  }
+
   for (const unit of state.units) {
     if (unit.owner !== foe || unit.hp <= 0 || !effectTargetMatches(effect, unit)) continue;
-    if (dist2(x, y, unit.x, unit.y) <= r2) damageUnit(unit, amount);
+    if (dist2(x, y, unit.x, unit.y) > r2) continue;
+    damageUnit(unit, unit.isBuilding ? amount * buildingMultiplier : amount);
   }
+  if (excludeTowers) return;
   for (const tower of state.towers) {
     if (tower.owner !== foe || tower.destroyed) continue;
     if (dist2(x, y, tower.x, tower.y) <= (radius + 0.5 + RANGE_EPS) ** 2) {
       damageTower(state, tower, towerAmount, side);
     }
+  }
+}
+
+/**
+ * Phase 13 — `chain` effect on spells (Lightning).
+ *
+ * Strikes up to `maxTargets` highest-HP enemy targets inside the area (buildings
+ * and troops), then applies the spell's remaining status effects. Ties break on
+ * entity id so the result is deterministic.
+ */
+function applyChainArea(
+  state: EngineState,
+  side: PlayerSide,
+  x: number,
+  y: number,
+  effect: EffectSpec,
+  damage: number,
+  towerDamage: number,
+): void {
+  const foe = other(side);
+  const radius = Number(effect.radius ?? 0) > 0 ? Number(effect.radius) : 12;
+  const r2 = (radius + RANGE_EPS) * (radius + RANGE_EPS);
+  const maxTargets = Math.max(1, Number(effect.maxTargets ?? 3));
+  const candidates: Array<{ id: string; hp: number; unit: SimUnit | null; tower: SimTower | null; d2: number }> = [];
+  for (const unit of state.units) {
+    if (unit.owner !== foe || unit.hp <= 0 || !effectTargetMatches(effect, unit)) continue;
+    const d2 = dist2(x, y, unit.x, unit.y);
+    if (d2 <= r2) candidates.push({ id: unit.id, hp: unit.hp, unit, tower: null, d2 });
+  }
+  for (const tower of state.towers) {
+    if (tower.owner !== foe || tower.destroyed) continue;
+    const d2 = dist2(x, y, tower.x, tower.y);
+    if (d2 <= r2) candidates.push({ id: tower.id, hp: tower.hp, unit: null, tower, d2 });
+  }
+  candidates.sort((a, b) => (b.hp - a.hp) || (a.id < b.id ? -1 : 1));
+  const hits = Math.min(maxTargets, candidates.length);
+  for (let i = 0; i < hits; i++) {
+    const chosen = candidates[i];
+    if (chosen.tower !== null) damageTower(state, chosen.tower, towerDamage, side);
+    else if (chosen.unit !== null) damageUnit(chosen.unit, damage);
+  }
+}
+
+/**
+ * Phase 13 — `damage` effect used by rolling projectiles (The Log,
+ * Barbarian Barrel). Damages every enemy ground entity along the lane line
+ * running from the caster's river edge through the drop point, and never
+ * damages Crown Towers beyond the usual spell reduction.
+ */
+function applyLineDamage(
+  state: EngineState,
+  side: PlayerSide,
+  x: number,
+  y: number,
+  effect: EffectSpec,
+  damage: number,
+  towerDamage: number,
+): void {
+  const foe = other(side);
+  const fromY = side === "blue" ? 0 : 32;
+  const toY = y;
+  const dx = x - CENTER_X;
+  const dy = toY - fromY;
+  const length2 = Math.max(0.001, dx * dx + dy * dy);
+  const width = Math.max(0.8, Number(effect.width ?? 1.2));
+  const groundOnly = effect.projectile === "roll";
+  let hitAny = false;
+  for (const unit of state.units) {
+    if (unit.owner !== foe || unit.hp <= 0) continue;
+    if (groundOnly && unit.flying) continue;
+    const projection = ((unit.x - CENTER_X) * dx + (unit.y - fromY) * dy) / length2;
+    if (projection < -0.05 || projection > 1.05) continue;
+    const px = CENTER_X + dx * projection;
+    const py = fromY + dy * projection;
+    if (dist2(px, py, unit.x, unit.y) <= width * width) {
+      damageUnit(unit, damage);
+      hitAny = true;
+    }
+  }
+  for (const tower of state.towers) {
+    if (tower.owner !== foe || tower.destroyed) continue;
+    const projection = ((tower.x - CENTER_X) * dx + (tower.y - fromY) * dy) / length2;
+    if (projection < -0.05 || projection > 1.05) continue;
+    const px = CENTER_X + dx * projection;
+    const py = fromY + dy * projection;
+    if (dist2(px, py, tower.x, tower.y) <= width * width) {
+      damageTower(state, tower, towerDamage, side);
+      hitAny = true;
+    }
+  }
+  // A rolled projectile that reaches the far edge resolves its terminal payload
+  // (Barbarian Barrel releases its Barbarian when the barrel is destroyed).
+  if (hitAny && typeof effect.spawnOnExpire === "string") {
+    spawnChildUnits(state, side, effect.spawnOnExpire, x, y, 1);
   }
 }
 
@@ -541,6 +689,15 @@ function applyDatabaseEffects(
             towerDamage: effectTowerDamage,
           });
         }
+      } else if (effect.kind === "damage") {
+        // Rolling/log projectiles sweep a lane line instead of a circle.
+        if (typeof effect.projectile === "string") {
+          applyLineDamage(state, side, x, y, effect, damage, defaultTowerDamage);
+        } else {
+          applyAreaDamage(state, side, x, y, effect, damage, defaultTowerDamage);
+        }
+      } else if (effect.kind === "chain") {
+        applyChainArea(state, side, x, y, effect, damage, defaultTowerDamage);
       } else if (effect.kind === "status") {
         const statusRadius = radius + RANGE_EPS;
         const targetOwner = effect.target === "friendly" ? side : other(side);
@@ -589,7 +746,73 @@ function applyDatabaseEffects(
       } else if (effect.kind === "elixir") {
         const amount = Math.max(0, Number(effect.amount ?? 0));
         state.elixir[other(side)] = Math.min(ELIXIR_CAP, state.elixir[other(side)] + amount);
+      } else if (effect.kind === "levelUp") {
+        // Royal Chef: periodically level up the strongest eligible friendly troop.
+        const excludeBuildings = effect.excludeBuildings === true;
+        const minHealthRatio = Number(effect.minHealthRatio ?? 0);
+        let best: SimUnit | null = null;
+        for (const unit of state.units) {
+          if (unit.owner !== side || unit.hp <= 0) continue;
+          if (excludeBuildings && unit.isBuilding) continue;
+          if (unit.maxHp > 0 && unit.hp / unit.maxHp < minHealthRatio) continue;
+          if (best === null || unit.maxHp > best.maxHp) best = unit;
+        }
+        if (best !== null) {
+          const growth = Number(effect.levelPerCycle ?? 0.12);
+          best.maxHp = Math.round(best.maxHp * (1 + growth));
+          best.hp = Math.min(best.maxHp, best.hp + Math.round(best.maxHp * growth));
+          best.damage = Math.round(best.damage * (1 + growth));
+        }
       }
+      // `teleport` and `dash` are unit-scoped: they need the entity being moved,
+      // so they resolve in `applyUnitScopedEffects` / `tryDash`, not here.
+    }
+  }
+}
+
+/**
+ * Phase 13 — unit-scoped `teleport` (Miner burrow, Goblin Drill, Fisherman
+ * hook). Runs once, immediately after the unit is created for deploy effects.
+ */
+function applyUnitScopedEffects(
+  state: EngineState,
+  side: PlayerSide,
+  unit: SimUnit,
+  lists: Array<EffectSpec[] | undefined>,
+): void {
+  for (const list of lists) {
+    if (list === undefined) continue;
+    for (const effect of list) {
+      if (effect.kind !== "teleport") continue;
+      const foe = other(side);
+      if (effect.mode === "hook") {
+        // Fisherman: pull the nearest enemy troop inside hook range toward it.
+        const hookRange = Number(effect.range ?? 7) + RANGE_EPS;
+        let best: SimUnit | null = null;
+        let bestD2 = Infinity;
+        for (const other of state.units) {
+          if (other.owner !== foe || other.hp <= 0) continue;
+          const d2 = dist2(unit.x, unit.y, other.x, other.y);
+          if (d2 <= hookRange * hookRange && d2 < bestD2) {
+            bestD2 = d2;
+            best = other;
+          }
+        }
+        if (best !== null) {
+          const dx = unit.x - best.x;
+          const dy = unit.y - best.y;
+          const length = Math.max(0.001, Math.hypot(dx, dy));
+          const pull = Math.max(0, length - unit.range);
+          best.x = Math.min(Math.max(0, best.x + (dx / length) * pull), 18);
+          best.y = Math.min(Math.max(0, best.y + (dy / length) * pull), 32);
+        }
+        continue;
+      }
+      // Burrow: the unit emerges at the drop point (already its position), so
+      // the mechanic is that it is *allowed* to be dropped anywhere and takes
+      // no bridge pathing on the way in. No-op beyond an explicit clamp.
+      unit.x = Math.min(Math.max(unit.x, 0), 18);
+      unit.y = Math.min(Math.max(unit.y, 0), 32);
     }
   }
 }
@@ -723,13 +946,24 @@ export function playCard(
     if (!isInArena(x, y)) return fail("BAD_POSITION", "spell outside arena");
   } else {
     const pocket = pocketFor(state, side);
-    if (!isInDeployZone(side, x, y, pocket)) {
+    // Phase 13: siege buildings (X-Bow, Mortar) may be placed forward on the
+    // enemy half. They never move, so the own-half-only rule made them unable
+    // to ever reach a tower from the river (10.5 tiles > their range).
+    const siege = isSiegePlacement(card);
+    const burrower = isBurrowPlacement(card);
+    const anywhere = siege || burrower;
+    if (!anywhere && !isInDeployZone(side, x, y, pocket)) {
       return fail("BAD_POSITION", "outside legal deploy zone");
     }
-    // PERF: pass live towers by ref — SimTower {x,y,destroyed} matches the
-    // footprint structural type, so no .map() alloc (was 6 objects/play).
-    if (isOnTowerFootprint(x, y, state.towers)) {
-      return fail("BAD_POSITION", "inside tower footprint");
+    if (anywhere && isOnRiver(y)) {
+      return fail("BAD_POSITION", "cannot deploy on the river");
+    }
+    if (!anywhere) {
+      // PERF: pass live towers by ref — SimTower {x,y,destroyed} matches the
+      // footprint structural type, so no .map() alloc (was 6 objects/play).
+      if (isOnTowerFootprint(x, y, state.towers)) {
+        return fail("BAD_POSITION", "inside tower footprint");
+      }
     }
   }
 
@@ -794,10 +1028,19 @@ export function playCard(
       deathBurstRadius: card.deathBurstRadius,
       mechanics: card.mechanics,
       shieldHp: initialShield(card),
+      minRange: Number(
+        card.mechanics?.onAttack?.find((effect) => effect.minimumRange !== undefined)
+          ?.minimumRange ?? 0,
+      ),
+      dashReady: true,
+      rampStage: 0,
       periodicNextAt: card.mechanics?.periodic?.map(
         (effect) => state.timeSec + Number(effect.intervalMs ?? 0) / 1000,
       ),
     });
+    applyUnitScopedEffects(state, side, state.units[state.units.length - 1], [
+      card.mechanics?.onDeploy,
+    ]);
   }
   if (card.mechanics?.onDeploy !== undefined) {
     applyDatabaseEffects(
@@ -986,6 +1229,10 @@ function moveUnit(state: EngineState, u: SimUnit, dt: number): void {
   if (isFrozen(u, state.timeSec)) return;
   const target = acquireUnitTarget(state, u);
   if (!target) return;
+  // Phase 13: a dash must resolve while the target is still out of contact
+  // range, so it is attempted before ordinary walking rather than in the
+  // attack phase (by then `moveUnit` has already closed the gap).
+  if (tryDash(state, u, target)) return;
   const tx = target.kind === "tower" ? target.tower.x : target.unit.x;
   const ty = target.kind === "tower" ? target.tower.y : target.unit.y;
   // O(u+t) acquire (see acquireUnitTarget) + O(1) steering.
@@ -1028,6 +1275,8 @@ function moveUnit(state: EngineState, u: SimUnit, dt: number): void {
   u.y += ((wy - u.y) / dd) * travel;
   u.x = Math.min(Math.max(u.x, 0), 18);
   u.y = Math.min(Math.max(u.y, 0), 32);
+  // Phase 13: a dash re-arms once the unit has actually travelled again.
+  u.dashReady = true;
   // Ground units never rest inside the river off-bridge: nudge to lane.
   if (!u.flying && isOnRiver(u.y) && !isOnBridge(u.x, u.y)) {
     u.x += (nearestBridgeX(u.x) - u.x) * 0.2;
@@ -1134,6 +1383,100 @@ function sortedUnits(state: EngineState): SimUnit[] {
   return _orderedScratch;
 }
 
+/**
+ * Phase 13 — declared minimum attack range (Mortar cannot hit units that walk
+ * inside its dead zone). Returns 0 when the card does not declare one.
+ */
+function minimumRangeOf(u: SimUnit): number {
+  if (u.minRange !== undefined) return u.minRange;
+  const effect = u.mechanics?.onAttack?.find((item) => item.minimumRange !== undefined);
+  return effect === undefined ? 0 : Math.max(0, Number(effect.minimumRange));
+}
+
+function targetInRange(
+  u: SimUnit,
+  tx: number,
+  ty: number,
+): boolean {
+  const max = u.range + RANGE_EPS;
+  const dx = u.x - tx;
+  const dy = u.y - ty;
+  if (dx * dx + dy * dy > max * max) return false;
+  const min = minimumRangeOf(u) - RANGE_EPS;
+  if (min <= 0) return true;
+  return dx * dx + dy * dy >= min * min;
+}
+
+/**
+ * Phase 13 — dash / charge (Bandit, Prince, Dark Prince, Mega Knight, Battle
+ * Ram, Ram Rider, Golden Knight, Boss Bandit).
+ *
+ * When the unit has closed to at least `minimumDistance` from its target it
+ * blinks into contact range and lands one hit at `multiplier` damage instead of
+ * its normal attack. The dash re-arms only after the unit travels again, so a
+ * unit cannot chain-dash from a standing start.
+ */
+function tryDash(
+  state: EngineState,
+  u: SimUnit,
+  target: { kind: "tower"; tower: SimTower } | { kind: "unit"; unit: SimUnit },
+): boolean {
+  const effect = u.mechanics?.onAttack?.find((item) => item.kind === "dash");
+  if (effect === undefined) return false;
+  if (u.dashReady === false) return false;
+  if (u.isBuilding) return false;
+
+  const tx = target.kind === "tower" ? target.tower.x : target.unit.x;
+  const ty = target.kind === "tower" ? target.tower.y : target.unit.y;
+  const minimumDistance = Math.max(0, Number(effect.minimumDistance ?? 0));
+  const distance = dist(u.x, u.y, tx, ty);
+  if (distance < minimumDistance + RANGE_EPS) return false;
+
+  // Blink into contact range, clamped into the arena.
+  const dx = tx - u.x;
+  const dy = ty - u.y;
+  const length = Math.max(0.001, Math.hypot(dx, dy));
+  const contact = Math.max(0, u.range);
+  const travel = Math.max(0, length - contact);
+  u.x = Math.min(Math.max(0, u.x + (dx / length) * travel), 18);
+  u.y = Math.min(Math.max(0, u.y + (dy / length) * travel), 32);
+  u.dashReady = false;
+
+  const multiplier = Number(effect.multiplier ?? 2);
+  const dashDamage = u.damage * multiplier;
+  if (target.kind === "tower") damageTower(state, target.tower, dashDamage, u.owner);
+  else damageUnit(target.unit, dashDamage);
+
+  // Remaining onAttack effects (Dark Prince splash, Mega Knight landing) still
+  // resolve at the impact point.
+  applyDatabaseEffects(state, u.owner, tx, ty, dashDamage, undefined, u.mechanics?.onAttack);
+  u.cooldown = u.hitSpeed > 0 ? u.hitSpeed / speedMultiplier(u, state.timeSec) : 0;
+  return true;
+}
+
+/**
+ * Phase 13 — ramping beam (Inferno Dragon, Inferno Tower, Mighty Miner).
+ * Damage escalates while the same target stays locked and resets the moment the
+ * beam is interrupted, retargeted, or the target dies.
+ */
+function tryRamp(
+  state: EngineState,
+  u: SimUnit,
+  target: { kind: "tower"; tower: SimTower } | { kind: "unit"; unit: SimUnit },
+): number {
+  const effect = u.mechanics?.onAttack?.find((item) => item.kind === "ramp");
+  if (effect === undefined) return 1;
+  const targetId = target.kind === "tower" ? target.tower.id : target.unit.id;
+  if (u.rampTargetId !== targetId) {
+    u.rampTargetId = targetId;
+    u.rampStage = 0;
+  }
+  const stage = Math.min(5, (u.rampStage ?? 0) + 1);
+  u.rampStage = stage;
+  // 30% -> 240% of base damage across six ticks, matching Inferno's ramp.
+  return Number(effect.multiplierPerStage ?? 0.4) * stage + 0.3;
+}
+
 function unitPhase(state: EngineState, dt: number): void {
   // O(u*(u+t)) worst-case single target-selection pass per unit (§6.4 order
   // preserved: towers already fired + swept above). O(1) extra space via scratch.
@@ -1151,20 +1494,17 @@ function unitPhase(state: EngineState, dt: number): void {
     if (!target) continue;
     const tx = target.kind === "tower" ? target.tower.x : target.unit.x;
     const ty = target.kind === "tower" ? target.tower.y : target.unit.y;
-    const ux = u.x;
-    const uy = u.y;
-    const r = u.range + RANGE_EPS;
-    {
-      const dx = ux - tx;
-      const dy = uy - ty;
-      if (dx * dx + dy * dy > r * r) continue;
-    }
+    // Phase 13: a declared minimum range creates a dead zone (Mortar).
+    if (!targetInRange(u, tx, ty)) continue;
     if (u.cooldown > 0) continue;
+    const rampMultiplier = tryRamp(state, u, target);
+    // A normal (non-dash) hit re-arms the dash for the next engagement.
+    u.dashReady = true;
     if (target.kind === "tower") {
-      damageTower(state, target.tower, u.damage, u.owner);
+      damageTower(state, target.tower, u.damage * rampMultiplier, u.owner);
       if (state.over) return;
     } else {
-      damageUnit(target.unit, u.damage);
+      damageUnit(target.unit, u.damage * rampMultiplier);
       if (u.splash > 0) {
         const sr = u.splash + RANGE_EPS;
         const sr2 = sr * sr;
