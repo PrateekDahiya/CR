@@ -75,6 +75,16 @@ def test_bot_move_handindex_substitution():
     assert isinstance(body["substituted"], bool)
 
 
+def test_bot_move_supports_full_catalog_cards():
+    # Cards beyond the original 12 must be playable, not silently dropped.
+    hand = [{"card": "mega-knight", "handIndex": 0, "cost": 7}]
+    res = client.post("/bot/move", json={"difficulty": "easy", "hand": hand, "elixir": 10, "side": "red"})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["card"] == "mega-knight"
+    assert body["handIndex"] == 0
+
+
 def test_balance_cards_shape():
     res = client.get("/balance/cards")
     assert res.status_code == 200

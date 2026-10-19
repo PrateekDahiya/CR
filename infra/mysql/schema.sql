@@ -242,7 +242,8 @@ CREATE TABLE IF NOT EXISTS player_profiles (
   tower_levels JSON NOT NULL,
   king_level TINYINT NOT NULL DEFAULT 1,
   active_deck_id VARCHAR(64) NULL,
-  created_at_ms BIGINT NOT NULL DEFAULT 0
+  created_at_ms BIGINT NOT NULL DEFAULT 0,
+  last_seen_ms BIGINT NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS player_decks (

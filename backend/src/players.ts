@@ -53,6 +53,7 @@ export interface Player {
   decks: Deck[];
   activeDeckId: string | null;
   createdAtMs: number;
+  lastSeenMs: number;
 }
 
 export interface Deck {
@@ -115,7 +116,14 @@ const STARTER_COLLECTION: string[] = [
 /** Creates on first sight. O(1). */
 export function ensurePlayer(playerId: string): Player {
   const existing = players.get(playerId);
-  if (existing !== undefined) return existing;
+  if (existing !== undefined) {
+    const now = Date.now();
+    if (now - existing.lastSeenMs > 60_000) {
+      existing.lastSeenMs = now;
+      markDirty(playerId);
+    }
+    return existing;
+  }
   const deck = starterDeck();
   const player: Player = {
     playerId,
@@ -141,6 +149,7 @@ export function ensurePlayer(playerId: string): Player {
     decks: [deck],
     activeDeckId: deck.id,
     createdAtMs: Date.now(),
+    lastSeenMs: Date.now(),
   };
   players.set(playerId, player);
   markDirty(playerId);
@@ -186,6 +195,7 @@ export function hydratePlayers(profiles: StoredPlayer[], decks: StoredDeck[]): n
           ? row.activeDeckId
           : restoredDecks[0]?.id ?? null,
       createdAtMs: row.createdAtMs || Date.now(),
+      lastSeenMs: row.lastSeenMs || Date.now(),
     };
     players.set(row.playerId, player);
   }
@@ -207,6 +217,7 @@ function toStoredPlayer(player: Player): StoredPlayer {
     kingLevel: player.kingLevel,
     activeDeckId: player.activeDeckId,
     createdAtMs: player.createdAtMs,
+    lastSeenMs: player.lastSeenMs,
   };
 }
 
@@ -526,6 +537,116 @@ export function playerTable(limit = 50): Array<
         winRate: games === 0 ? 0 : Math.round((p.wins / games) * 100),
       };
     });
+}
+
+export interface AdminPlayerRow {
+  playerId: string;
+  name: string;
+  trophies: number;
+  coins: number;
+  gems: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  cardsOwned: number;
+  decks: number;
+  kingLevel: number;
+  createdAtMs: number;
+  lastSeenMs: number;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  activeToday: number;
+  newToday: number;
+  totalCoins: number;
+  totalGems: number;
+  totalCards: number;
+  totalDecks: number;
+  totalGames: number;
+  topPlayers: AdminPlayerRow[];
+}
+
+function adminRow(player: Player): AdminPlayerRow {
+  return {
+    playerId: player.playerId,
+    name: player.name,
+    trophies: player.trophies,
+    coins: player.coins,
+    gems: player.gems,
+    wins: player.wins,
+    losses: player.losses,
+    draws: player.draws,
+    cardsOwned: Object.keys(player.cards).length,
+    decks: player.decks.length,
+    kingLevel: player.kingLevel,
+    createdAtMs: player.createdAtMs,
+    lastSeenMs: player.lastSeenMs,
+  };
+}
+
+/** Admin dashboard rows, sorted by trophies then name. O(n log n). */
+export function listAdminPlayers(limit = 100): AdminPlayerRow[] {
+  return [...players.values()]
+    .sort((a, b) => b.trophies - a.trophies || a.name.localeCompare(b.name))
+    .slice(0, limit)
+    .map(adminRow);
+}
+
+export function getAdminStats(): AdminStats {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const dayStart = startOfDay.getTime();
+  let activeToday = 0;
+  let newToday = 0;
+  let totalCoins = 0;
+  let totalGems = 0;
+  let totalCards = 0;
+  let totalDecks = 0;
+  let totalGames = 0;
+  for (const player of players.values()) {
+    if (player.lastSeenMs >= dayStart) activeToday += 1;
+    if (player.createdAtMs >= dayStart) newToday += 1;
+    totalCoins += player.coins;
+    totalGems += player.gems;
+    totalCards += Object.keys(player.cards).length;
+    totalDecks += player.decks.length;
+    totalGames += player.wins + player.losses + player.draws;
+  }
+  return {
+    totalUsers: players.size,
+    activeToday,
+    newToday,
+    totalCoins,
+    totalGems,
+    totalCards,
+    totalDecks,
+    totalGames,
+    topPlayers: listAdminPlayers(10),
+  };
+}
+
+/** Set absolute wallet/trophy values from the admin panel. O(1). */
+export function adminUpdatePlayer(
+  playerId: string,
+  patch: { coins?: number; gems?: number; trophies?: number; name?: string },
+): Player | null {
+  const player = players.get(playerId);
+  if (player === undefined) return null;
+  if (patch.coins !== undefined && Number.isFinite(patch.coins)) {
+    player.coins = Math.max(0, Math.trunc(patch.coins));
+  }
+  if (patch.gems !== undefined && Number.isFinite(patch.gems)) {
+    player.gems = Math.max(0, Math.trunc(patch.gems));
+  }
+  if (patch.trophies !== undefined && Number.isFinite(patch.trophies)) {
+    player.trophies = Math.max(0, Math.trunc(patch.trophies));
+  }
+  if (typeof patch.name === "string" && patch.name.trim().length > 0) {
+    player.name = patch.name.trim().slice(0, 16);
+  }
+  markDirty(playerId);
+  return player;
 }
 
 /** Convenience for shop cards: every engine card id. O(1) array copy. */

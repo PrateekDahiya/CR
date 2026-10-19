@@ -78,9 +78,18 @@ export default function TopBar({ cards, coins, gems }: TopBarCurrencies) {
         )}
       </div>
       <div className="flex flex-1 items-center justify-end gap-2">
-        <Pill icon="?" value={cardsValue} tone="blue" testid="topbar-cards" href="/collection" />
-        <Pill icon="?" value={coinsValue} tone="gold" testid="topbar-coins" href="/shop" />
-        <Pill icon="?" value={gemsValue} tone="emerald" testid="topbar-gems" href="/shop" />
+        {profile?.admin === true && (
+          <Link
+            href="/admin"
+            data-testid="topbar-admin"
+            className="rounded-md border border-rose-700 bg-rose-500/20 px-2 py-1 text-[10px] font-extrabold uppercase text-rose-100"
+          >
+            Admin
+          </Link>
+        )}
+        <Pill icon="🃏" value={cardsValue} tone="blue" testid="topbar-cards" href="/collection" />
+        <Pill icon="🪙" value={coinsValue} tone="gold" testid="topbar-coins" href="/shop" />
+        <Pill icon="💎" value={gemsValue} tone="emerald" testid="topbar-gems" href="/shop" />
       </div>
     </div>
   );

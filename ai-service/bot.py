@@ -25,8 +25,10 @@ sensible default push. ``hand`` is a list of card-id strings (aliases such as
 
 from __future__ import annotations
 
+import json
 import random
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 __all__ = ["CARDS", "DIFFICULTIES", "choose_move"]
@@ -79,6 +81,34 @@ CARDS: dict[str, dict[str, Any]] = {
                     "range": 5.5, "targets": "ground", "count": 1,
                     "type": "building", "lifetimeMs": 30000},
 }
+
+# Full catalog snapshot (108 cards). The 12 tuned entries above win, and every
+# other card gets its real cost/HP/DPS/range/targets so the bot can play the whole
+# roster instead of dropping unknown hand cards.
+try:
+    _CATALOG_PATH = Path(__file__).with_name("cards_data.json")
+    with _CATALOG_PATH.open(encoding="utf-8") as _fh:
+        _CATALOG: dict[str, dict[str, Any]] = json.load(_fh)
+    for _cid, _row in _CATALOG.items():
+        if _cid in CARDS:
+            continue
+        CARDS[_cid] = {
+            "cost": int(_row.get("cost") or 0),
+            "hp": float(_row.get("hp") or 0),
+            "dps": float(_row.get("dps") or 0),
+            "speed": float(_row.get("speed") or 0),
+            "range": float(_row.get("range") or 0),
+            "targets": str(_row.get("targets") or "ground"),
+            "count": int(_row.get("count") or 1),
+            "type": str(_row.get("type") or "troop"),
+            "damage": float(_row.get("damage") or 0),
+            "radius": float(_row.get("radius") or 0),
+            "towerDamage": float(_row.get("towerDamage") or 0),
+            "splash": float(_row.get("radius") or 0) > 0,
+        }
+except (OSError, ValueError):
+    # Missing/broken snapshot: keep the tuned baseline and fall back gracefully.
+    pass
 
 # Common id aliases -> canonical ids (O(1) dict lookup).
 _ALIASES = {

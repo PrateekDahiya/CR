@@ -302,12 +302,27 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(row).toContainText("%");
   });
 
-  test("social /social has Leaderboard + Clan tabs", async ({ page }) => {
+  test("social /social shows Clan without a duplicate leaderboard", async ({ page }) => {
     await page.goto(`${BASE}/social`);
-    await expect(page.getByTestId("social-tabs")).toBeVisible();
-    await expect(page.getByTestId("social-leaderboard")).toBeVisible();
-    await page.getByTestId("social-tab-clan").click();
     await expect(page.getByTestId("social-clan")).toBeVisible();
+    await expect(page.getByTestId("social-tabs")).toHaveCount(0);
+    await expect(page.getByTestId("social-leaderboard")).toHaveCount(0);
+    await expect(page.getByTestId("social-leaderboard-redirect")).toHaveCount(0);
+  });
+
+  test("content cache survives reloads (no duplicate content fetches)", async ({ page }) => {
+    const contentRequests: string[] = [];
+    page.on("request", (request) => {
+      if (/\/content\/(cards|catalog|levels)/.test(request.url())) contentRequests.push(request.url());
+    });
+    await page.goto(`${BASE}/collection`);
+    await expect(page.getByTestId("collection-grid")).toBeVisible({ timeout: 15000 });
+    const firstLoad = contentRequests.length;
+    expect(firstLoad).toBeGreaterThan(0);
+
+    await page.reload();
+    await expect(page.getByTestId("collection-grid")).toBeVisible({ timeout: 15000 });
+    expect(contentRequests.length).toBe(firstLoad);
   });
 
   test("lobby /lobby still has player input", async ({ page }) => {

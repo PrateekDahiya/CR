@@ -4,7 +4,7 @@
 
 import type { Express, Request, Response } from "express";
 import { authPlayerId, mintGuestToken } from "./auth.js";
-import { login, register } from "./accounts.js";
+import { isAdminUsername, login, register } from "./accounts.js";
 import { getActiveMatchForPlayer, getRoom } from "./net/rooms.js";
 import { getUser, leaderboard, recordMatch, saveDeck, upsertUser, isDbLive } from "./db.js";
 import {
@@ -104,6 +104,7 @@ export function mountMeta(app: Express): void {
       cards: p.cards,
       towerLevels: p.towerLevels,
       kingLevel: p.kingLevel,
+      admin: isAdminUsername(p.playerId),
       season: SEASON,
       db: isDbLive(),
     });

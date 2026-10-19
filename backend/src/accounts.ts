@@ -101,6 +101,47 @@ export function login(username: string, password: string): { ok: true; player: P
   return { ok: true, player };
 }
 
+export function adminUsernames(): string[] {
+  return (process.env.ADMIN_USERNAMES ?? "dahiya27")
+    .split(",")
+    .map((name) => name.trim().toLowerCase())
+    .filter((name) => name.length > 0);
+}
+
+export function isAdminUsername(username: string): boolean {
+  return adminUsernames().includes(username.trim().toLowerCase());
+}
+
+/**
+ * Ensure allowlisted admin accounts exist and match ADMIN_PASSWORD on boot.
+ * Override ADMIN_USERNAMES / ADMIN_PASSWORD in the environment for real use.
+ */
+export function ensureAdminAccount(): string | null {
+  const password = process.env.ADMIN_PASSWORD ?? "admin12345";
+  for (const username of adminUsernames()) {
+    const existing = accounts.get(username);
+    if (existing === undefined) {
+      const result = register(username, password);
+      if (result.ok) return username;
+      continue;
+    }
+    // Keep the admin password in sync with ADMIN_PASSWORD on boot so a fresh
+    // clone always has a usable admin login. Override the env for real use.
+    const salt = randomBytes(16).toString("hex");
+    existing.salt = salt;
+    existing.hash = hash(password, salt).toString("hex");
+    saveAccount({
+      username,
+      playerId: existing.playerId,
+      salt: existing.salt,
+      hash: existing.hash,
+      createdAtMs: existing.createdAtMs,
+    });
+    return username;
+  }
+  return null;
+}
+
 export function accountCount(): number {
   return accounts.size;
 }

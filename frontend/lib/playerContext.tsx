@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   backendUrl,
   getPlayerProfile,
+  peekPlayerProfile,
   type PlayerProfile,
 } from "./api";
 
@@ -54,7 +55,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
-      const p = await getPlayerProfile(playerId, backendUrl());
+      const p = await getPlayerProfile(playerId, backendUrl(), true);
       setProfile(p);
       setError(null);
     } catch (e) {
@@ -84,6 +85,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (!hasAccount) {
       setLoading(false);
       return;
+    }
+    // Render the cached profile immediately, then revalidate in the background.
+    const cached = peekPlayerProfile(playerId);
+    if (cached !== null) {
+      setProfile(cached);
+      setLoading(false);
     }
     void refresh();
   }, [playerId, refresh]);

@@ -71,6 +71,29 @@ if (await join.count()) {
   console.log("captured 11-battle-live.png");
 }
 
+const adminContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+const adminPage = await adminContext.newPage();
+await adminPage.goto(`${BASE}/admin`, { waitUntil: "networkidle", timeout: 45000 });
+await adminPage.waitForTimeout(500);
+await adminPage.screenshot({ path: path.join(outDir, "13-admin-login.png") });
+console.log("captured 13-admin-login.png");
+await adminPage.getByTestId("admin-username").fill(process.env.ADMIN_USERNAME ?? "dahiya27");
+await adminPage.getByTestId("admin-password").fill(process.env.ADMIN_PASSWORD ?? "admin12345");
+await adminPage.getByTestId("admin-login-submit").click();
+const dashboard = adminPage.getByTestId("admin-dashboard");
+const dashboardReady = await dashboard
+  .waitFor({ state: "visible", timeout: 30000 })
+  .then(() => true)
+  .catch(() => false);
+if (dashboardReady) {
+  await adminPage.waitForTimeout(700);
+  await adminPage.screenshot({ path: path.join(outDir, "14-admin-dashboard.png") });
+  console.log("captured 14-admin-dashboard.png");
+} else {
+  console.log("admin dashboard capture failed:", (await adminPage.locator("body").innerText()).slice(0, 200));
+}
+await adminContext.close();
+
 const loginContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const loginPage = await loginContext.newPage();
 await loginPage.goto(`${BASE}/login`, { waitUntil: "networkidle", timeout: 45000 });

@@ -31,6 +31,7 @@ export interface StoredPlayer {
   kingLevel: number;
   activeDeckId: string | null;
   createdAtMs: number;
+  lastSeenMs: number;
 }
 
 export interface StoredDeck {
@@ -67,7 +68,7 @@ export async function loadPlayerState(): Promise<{
       "SELECT username,player_id,salt,password_hash,created_at_ms FROM player_accounts",
     );
     const [playerRows] = await pool.query(
-      "SELECT player_id,name,trophies,coins,gems,wins,losses,draws,cards,tower_levels,king_level,active_deck_id,created_at_ms FROM player_profiles",
+      "SELECT player_id,name,trophies,coins,gems,wins,losses,draws,cards,tower_levels,king_level,active_deck_id,created_at_ms,last_seen_ms FROM player_profiles",
     );
     const [deckRows] = await pool.query(
       "SELECT id,player_id,name,cards,levels,tower_troop_id,created_at_ms FROM player_decks",
@@ -94,6 +95,7 @@ export async function loadPlayerState(): Promise<{
         kingLevel: Number(row.king_level ?? 1),
         activeDeckId: row.active_deck_id === null ? null : String(row.active_deck_id),
         createdAtMs: Number(row.created_at_ms ?? 0),
+        lastSeenMs: Number(row.last_seen_ms ?? row.created_at_ms ?? 0),
       })),
       decks: (deckRows as Record<string, unknown>[]).map((row) => ({
         id: String(row.id),
@@ -129,7 +131,7 @@ export function savePlayerProfile(player: StoredPlayer): void {
   if (pool === null) return;
   void pool
     .query(
-      "INSERT INTO player_profiles (player_id,name,trophies,coins,gems,wins,losses,draws,cards,tower_levels,king_level,active_deck_id,created_at_ms) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name=VALUES(name),trophies=VALUES(trophies),coins=VALUES(coins),gems=VALUES(gems),wins=VALUES(wins),losses=VALUES(losses),draws=VALUES(draws),cards=VALUES(cards),tower_levels=VALUES(tower_levels),king_level=VALUES(king_level),active_deck_id=VALUES(active_deck_id)",
+      "INSERT INTO player_profiles (player_id,name,trophies,coins,gems,wins,losses,draws,cards,tower_levels,king_level,active_deck_id,created_at_ms,last_seen_ms) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name=VALUES(name),trophies=VALUES(trophies),coins=VALUES(coins),gems=VALUES(gems),wins=VALUES(wins),losses=VALUES(losses),draws=VALUES(draws),cards=VALUES(cards),tower_levels=VALUES(tower_levels),king_level=VALUES(king_level),active_deck_id=VALUES(active_deck_id),last_seen_ms=VALUES(last_seen_ms)",
       [
         player.playerId,
         player.name,
@@ -144,6 +146,7 @@ export function savePlayerProfile(player: StoredPlayer): void {
         player.kingLevel,
         player.activeDeckId,
         player.createdAtMs,
+        player.lastSeenMs,
       ],
     )
     .catch(() => undefined);
