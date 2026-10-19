@@ -14,7 +14,7 @@ describe("database-defined card mechanics", () => {
     const princess = state.towers.find((tower) => tower.owner === "red" && tower.kind === "princess");
     assert.ok(princess);
     state.elixir.blue = 10;
-    const result = playCard(state, "blue", { handIndex: bringToHand(state, "blue", "fireball"), x: princess.x, y: princess.y });
+    const result = playCard(state, "blue", { handIndex: forceInHand(state, "blue", "fireball"), x: princess.x, y: princess.y });
     assert.equal(result.ok, true);
     assert.equal(princess.hp, princess.maxHp - 276);
   });
@@ -26,7 +26,7 @@ describe("database-defined card mechanics", () => {
     const spawned = playCard(state, "blue", { handIndex: bringToHand(state, "blue", "knight"), x: 9, y: 5 });
     assert.equal(spawned.ok, true);
     state.elixir.red = 10;
-    const result = playCard(state, "red", { handIndex: bringToHand(state, "red", "zap"), x: 9, y: 5 });
+    const result = playCard(state, "red", { handIndex: forceInHand(state, "red", "zap"), x: 9, y: 5 });
     assert.equal(result.ok, true);
     assert.ok(state.units.some((u) => u.owner === "blue" && u.stunUntil > state.timeSec));
   });

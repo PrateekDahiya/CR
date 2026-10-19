@@ -92,6 +92,8 @@ export interface SimUnit {
   rageMultiplier: number;
   readyAt: number; // spawn + deploy delay (Cannon 1.0s)
   expiresAt?: number; // Cannon lifetime 30s
+  /** Phase 14: lifetime in seconds, used for HP wear-down. */
+  lifetimeSec?: number;
   damage: number;
   hitSpeed: number;
   range: number;
@@ -682,9 +684,9 @@ function applyLineDamage(
       hitAny = true;
     }
   }
-  // A rolled projectile that reaches the far edge resolves its terminal payload
-  // (Barbarian Barrel releases its Barbarian when the barrel is destroyed).
-  if (hitAny && typeof effect.spawnOnExpire === "string") {
+  // A rolled projectile breaks when it connects or when it reaches the far edge,
+// releasing exactly one unit (Barbarian Barrel -> one Barbarian).
+  if (typeof effect.spawnOnExpire === "string") {
     spawnChildUnits(state, side, effect.spawnOnExpire, x, y, 1);
   }
 }
@@ -966,6 +968,11 @@ export function playCard(
   if (card.type === "spell" && card.mechanics === undefined) {
     return fail("CARD_REJECTED", "card mechanics are not loaded");
   }
+  // Phase 15: tower troops are profiles for the crown tower, never hand cards.
+  // They are selected before a match; they can never be deployed from the hand.
+  if (card.type === "tower" || card.mechanics?.towerTroop === true) {
+    return fail("CARD_REJECTED", "tower troops are selected before a match, not played from the hand");
+  }
 
   // 4. elixir (§11.1) — server table only, client cost ignored
   if (state.elixir[side] + 1e-9 < card.cost) {
@@ -1017,7 +1024,16 @@ export function playCard(
   state.hands[side][req.handIndex] = nextId;
 
   if (card.type === "spell") {
-    applyDatabaseEffects(state, side, x, y, card.damage, card.towerDamage, card.mechanics?.onDeploy, card.mechanics?.onAttack);
+    applyDatabaseEffects(
+      state,
+      side,
+      x,
+      y,
+      card.damage,
+      card.towerDamage,
+      withTerminalRelease(card.mechanics?.onDeploy, card.mechanics?.onDeath),
+      card.mechanics?.onAttack,
+    );
     return { ok: true, cardId: card.id, unitIds: [] };
   }
 
@@ -1053,6 +1069,7 @@ export function playCard(
         card.durationMs !== undefined
           ? state.timeSec + card.durationMs / 1000
           : undefined,
+      lifetimeSec: card.durationMs !== undefined ? card.durationMs / 1000 : undefined,
       damage: card.damage,
       hitSpeed: card.hitSpeed,
       range: card.range,
@@ -1501,6 +1518,95 @@ function tryDash(
 }
 
 /**
+ * Phase 15 — give a rolling projectile its terminal payload.
+ *
+ * A rolled card (Barbarian Barrel) declares what it releases in `onDeath`, but
+ * `onDeath` can never fire for a spell because no entity is created. This copies
+ * that spawn onto the roll effect as `spawnOnExpire`, so the barrel breaks and
+ * releases exactly one Barbarian when it connects or reaches the far edge.
+ */
+function withTerminalRelease(
+  onDeploy: EffectSpec[] | undefined,
+  onDeath: EffectSpec[] | undefined,
+): EffectSpec[] | undefined {
+  if (onDeploy === undefined || onDeath === undefined) return onDeploy;
+  const release = onDeath.find(
+    (effect) => effect.kind === "spawn" && typeof effect.childId === "string",
+  );
+  if (release === undefined) return onDeploy;
+  let touched = false;
+  const patched = onDeploy.map((effect) => {
+    if (effect.kind !== "damage" || typeof effect.projectile !== "string") return effect;
+    if (effect.spawnOnExpire !== undefined) return effect;
+    touched = true;
+    return { ...effect, spawnOnExpire: release.childId as string };
+  });
+  return touched ? patched : onDeploy;
+}
+
+/**
+ * Phase 15 — suicide attack (Fire Spirit, Ice Spirit).
+ *
+ * The spirit leaps onto its target from anywhere in sight, resolves its
+ * `onAttack` effects at the impact point (area damage, plus the Ice Spirit's
+ * freeze), and dies. It is a single-hit, single-use unit — never a repeated
+ * attacker.
+ *
+ * Returns true when the unit consumed its life (so the caller skips the normal
+ * attack), false when it is not a suicide unit.
+ */
+function trySuicide(
+  state: EngineState,
+  u: SimUnit,
+  target: { kind: "tower"; tower: SimTower } | { kind: "unit"; unit: SimUnit },
+): boolean {
+  if (u.mechanics?.attack !== "suicide") return false;
+  if (u.hp <= 0) return false;
+
+  const tx = target.kind === "tower" ? target.tower.x : target.unit.x;
+  const ty = target.kind === "tower" ? target.tower.y : target.unit.y;
+
+  // Leap onto the target (a short hop, not a map-wide blink).
+  u.x = Math.min(Math.max(tx, 0), 18);
+  u.y = Math.min(Math.max(ty, 0), 32);
+
+  // Detonate: its own damage plus whatever the data declares (area + freeze).
+  if (target.kind === "tower") damageTower(state, target.tower, u.damage, u.owner);
+  else damageUnit(target.unit, u.damage);
+  if (u.mechanics?.onAttack !== undefined) {
+    applyDatabaseEffects(state, u.owner, tx, ty, u.damage, undefined, u.mechanics.onAttack);
+  }
+
+  // Self-destruct: the spirit is spent.
+  u.hp = 0;
+  return true;
+}
+
+/**
+ * Phase 14 — building wear-down.
+ *
+ * A timed building (Cannon, Barbarian Hut, Tesla, Mortar, ...) loses HP over
+ * its lifetime and expires when the timer runs out. The rate is derived from
+ * `maxHp / lifetime` so HP lands on exactly 0 at expiry, which means the unit
+ * dies through the normal death path and still resolves `onDeath` payloads
+ * (a Goblin Cage releases its goblin when its timer ends, as in the real game).
+ * Shields are NOT consumed by wear-down.
+ *
+ * O(u) single pass, no allocation.
+ */
+function lifetimeDecayPhase(state: EngineState, dt: number): void {
+  const now = state.timeSec;
+  for (const u of state.units) {
+    if (u.hp <= 0 || u.expiresAt === undefined || u.maxHp <= 0) continue;
+    const lifetime = u.lifetimeSec;
+    if (lifetime === undefined || lifetime <= 0) continue;
+    u.hp = Math.max(0, u.hp - (u.maxHp / lifetime) * dt);
+    // Never outlive the timer, even under a large dt.
+    if (u.hp <= 0 && now < u.expiresAt) u.hp = 0;
+  }
+}
+
+/**
  * Phase 13 — ramping beam (Inferno Dragon, Inferno Tower, Mighty Miner).
  * Damage escalates while the same target stays locked and resets the moment the
  * beam is interrupted, retargeted, or the target dies.
@@ -1541,6 +1647,14 @@ function unitPhase(state: EngineState, dt: number): void {
     const tx = target.kind === "tower" ? target.tower.x : target.unit.x;
     const ty = target.kind === "tower" ? target.tower.y : target.unit.y;
     // Phase 13: a declared minimum range creates a dead zone (Mortar).
+    // Phase 15: suicide units (Fire Spirit, Ice Spirit) leap onto the target,
+// detonate once and die. This runs BEFORE the range check because a spirit
+// jumps from wherever it is, and without it they behaved like ordinary troops
+// that walked and hit repeatedly.
+if (trySuicide(state, u, target)) {
+      if (state.over) return;
+      continue;
+    }
     if (!targetInRange(u, tx, ty)) continue;
     if (u.cooldown > 0) continue;
     const rampMultiplier = tryRamp(state, u, target);
@@ -1677,6 +1791,12 @@ export function tickGame(state: EngineState, dt: number = TICK_DT): EngineState 
   // resolve before movement and combat on the authoritative clock.
   fieldPhase(state, step);
   periodicPhase(state);
+
+  // (2b) building wear-down: every timed building bleeds HP across its
+  // lifetime and dies when the timer runs out (Clash Royale behaviour). Rate
+  // is maxHp/lifetime so HP reaches exactly 0 at expiry, which also runs the
+  // normal death path (spawner death payloads such as Goblin Cage's goblin).
+  lifetimeDecayPhase(state, step);
 
   // (3) movement — deterministic id order via shared scratch (no spread/sort alloc).
   const ordered = sortedUnits(state);

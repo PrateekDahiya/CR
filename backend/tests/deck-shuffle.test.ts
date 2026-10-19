@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createGame, matchDeckOrder, playCard } from "../src/game/engine.js";
+import { forceInHand } from "./deckHelpers.js";
 
 const DECK = ["knight", "archers", "musketeer", "fireball", "zap", "giant", "skeletons", "cannon"];
 
@@ -61,9 +62,8 @@ describe("match-start deck randomization", () => {
 
   it("keeps the cycle consistent: playing draws from the shuffled queue", () => {
     const state = createGame("shuffle-cycle", DECK, DECK);
-    const slot = state.hands.blue.indexOf("skeletons");
-    assert.notEqual(slot, -1, "skeletons must start in the opening hand for this check");
-
+    // The opening hand is shuffled, so make sure the card under test is in it.
+    const slot = forceInHand(state, "blue", "skeletons");
     const queuedBefore = state.queue.blue.slice();
     const handBefore = state.hands.blue.slice();
     state.elixir.blue = 10;
@@ -73,8 +73,13 @@ describe("match-start deck randomization", () => {
 
     // Queue head fills the played slot; the played card goes to the back; every
     // other hand slot is untouched.
-    assert.equal(state.hands.blue[slot], queuedBefore[0]);
-    assert.deepEqual(state.queue.blue, [...queuedBefore.slice(1), handBefore[slot]]);
+    const expectedQueue = [...queuedBefore.slice(1), handBefore[slot]];
+    if (queuedBefore.length > 0) {
+      assert.equal(state.hands.blue[slot], queuedBefore[0]);
+      assert.deepEqual(state.queue.blue, expectedQueue);
+    } else {
+      assert.equal(state.hands.blue[slot], handBefore[slot]);
+    }
     for (let i = 0; i < state.hands.blue.length; i++) {
       if (i !== slot) assert.equal(state.hands.blue[i], handBefore[i]);
     }

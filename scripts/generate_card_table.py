@@ -68,6 +68,28 @@ FLYING = {"baby-dragon", "bats", "minions", "minion-horde", "balloon", "lava-hou
           "inferno-dragon", "electro-dragon", "electro-giant", "flying-machine", "three-musketeers",
           "giant-wasp", "night-witch", "bat", "drone", "golemite"}
 
+# Building lifetimes (Clash Royale tournament-standard seconds).
+# Every building is temporary: it wears its HP down over the lifetime and is
+# removed when it expires. Previously only the Cannon had one, so every other
+# building (all the spawners, Tesla, Mortar, X-Bow, ...) lasted forever.
+BUILDING_LIFETIME_MS = {
+    # spawners
+    "barbarian-hut": 30000,
+    "goblin-hut": 30000,
+    "furnace": 30000,
+    "tombstone": 30000,
+    "goblin-drill": 30000,
+    "elixir-collector": 30000,
+    "goblin-cage": 30000,
+    # defensive / siege
+    "cannon": 30000,
+    "mortar": 30000,
+    "x-bow": 30000,
+    "bomb-tower": 30000,
+    "tesla": 40000,
+    "inferno-tower": 40000,
+}
+
 
 def role_for(name: str, card_type: str) -> str:
     if card_type == "spell":
@@ -164,7 +186,7 @@ def build(catalog: list[dict]) -> list[dict]:
             "radius": st["radius"],
             "flying": name in FLYING,
             "towerDamage": round(st["damage"] * 0.4, 2) if card_type == "spell" else None,
-            "durationMs": 30000 if name == "cannon" else None,
+            "durationMs": BUILDING_LIFETIME_MS.get(name),
             "stunSec": 0.5 if name == "zap" else None,
         })
     return rows
@@ -242,7 +264,7 @@ def main() -> int:
     backend = (
         HEADER.format(source=source)
         + "\nexport interface GeneratedCard {\n"
-        + "  id: string;\n  name: string;\n  type: \"troop\" | \"spell\" | \"building\";\n"
+        + "  id: string;\n  name: string;\n  type: \"troop\" | \"spell\" | \"building\" | \"tower\";\n"
         + "  cost: number;\n  rarity: string;\n  hp: number;\n  damage: number;\n"
         + "  hitSpeed: number;\n  dps: number;\n  speed: number;\n  range: number;\n"
         + "  sightRange: number;\n  targets: string;\n  count: number;\n  radius: number;\n"

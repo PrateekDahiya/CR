@@ -22,6 +22,7 @@
 
 import { useEffect, useRef } from "react";
 import type { Tower, Unit, Vec2 } from "../../../shared/types";
+import { resolveCardArtId, unitGlyph } from "../../lib/cardAliases";
 import { drawTowerHpBar } from "./TowerView";
 
 export type PlayerSide = "blue" | "red";
@@ -89,21 +90,6 @@ const RIVER_BANK = "#2f7fd0";
 const BRIDGE_WOOD = "#a9744f";
 const BRIDGE_EDGE = "#7a4f2c";
 
-const UNIT_EMOJI: Record<string, string> = {
-  knight: "⚔️",
-  archers: "🏹",
-  giant: "🗿",
-  skeletons: "💀",
-  musketeer: "🔫",
-  "baby-dragon": "🐲",
-  "mini-pekka": "🔪",
-  golem: "🪨",
-  cannon: "🏯",
-  fireball: "🔥",
-  arrows: "➶",
-  zap: "⚡",
-};
-
 const W = 360;
 const H = 640;
 const TW = W / COLS; // 20
@@ -142,7 +128,9 @@ interface FloatText {
 }
 
 function emojiFor(cardId: string): string {
-  return UNIT_EMOJI[cardId] ?? "❓";
+  // Never an unresolved marker: spawned children (Golemite, Lava Pup, ...) and
+  // any unlisted id still get a legible glyph (see lib/cardAliases).
+  return unitGlyph(cardId);
 }
 
 /**
@@ -156,15 +144,19 @@ function emojiFor(cardId: string): string {
 const artCache = new Map<string, HTMLImageElement | "missing">();
 
 function artFor(cardId: string): HTMLImageElement | null {
-  const hit = artCache.get(cardId);
+  // Spawned children use singular ids (`barbarian`) while the art uses the
+  // deck-card slug (`barbarians`); resolve before loading or the child renders
+  // as a fallback glyph instead of its art.
+  const resolved = resolveCardArtId(cardId);
+  const hit = artCache.get(resolved);
   if (hit !== undefined) return hit === "missing" ? null : hit;
-  const slug = cardId.replace(/[^a-z0-9-]/gi, "-").toLowerCase();
+  const slug = resolved.replace(/[^a-z0-9-]/gi, "-").toLowerCase();
   const img = new Image();
   img.decoding = "async";
   img.onload = () => undefined; // decoded -> drawImage works
-  img.onerror = () => artCache.set(cardId, "missing");
+  img.onerror = () => artCache.set(resolved, "missing");
   img.src = `/cards/${slug}.png`;
-  artCache.set(cardId, img);
+  artCache.set(resolved, img);
   return img;
 }
 

@@ -176,6 +176,7 @@ export const GENERATED_CARDS: Record<string, GeneratedCard> = {
     count: 1,
     radius: 0.0,
     flying: false,
+  durationMs: 30000,
   },
   "barbarians": {
     id: "barbarians",
@@ -248,6 +249,7 @@ export const GENERATED_CARDS: Record<string, GeneratedCard> = {
     count: 1,
     radius: 0.0,
     flying: false,
+  durationMs: 30000,
   },
   "bomber": {
     id: "bomber",
@@ -503,6 +505,7 @@ export const GENERATED_CARDS: Record<string, GeneratedCard> = {
     count: 1,
     radius: 0.0,
     flying: false,
+  durationMs: 30000,
   },
   "elixir-golem": {
     id: "elixir-golem",
@@ -667,6 +670,7 @@ export const GENERATED_CARDS: Record<string, GeneratedCard> = {
     count: 1,
     radius: 0.0,
     flying: false,
+  durationMs: 30000,
   },
   "giant": {
     id: "giant",
@@ -759,6 +763,7 @@ export const GENERATED_CARDS: Record<string, GeneratedCard> = {
     count: 1,
     radius: 0.0,
     flying: false,
+  durationMs: 30000,
   },
   "goblin-curse": {
     id: "goblin-curse",
@@ -814,6 +819,7 @@ export const GENERATED_CARDS: Record<string, GeneratedCard> = {
     count: 1,
     radius: 0.0,
     flying: false,
+  durationMs: 30000,
   },
   "goblin-gang": {
     id: "goblin-gang",
@@ -868,6 +874,7 @@ export const GENERATED_CARDS: Record<string, GeneratedCard> = {
     count: 1,
     radius: 0.0,
     flying: false,
+  durationMs: 30000,
   },
   "goblins": {
     id: "goblins",
@@ -1085,6 +1092,7 @@ export const GENERATED_CARDS: Record<string, GeneratedCard> = {
     count: 1,
     radius: 0.0,
     flying: false,
+  durationMs: 40000,
   },
   "knight": {
     id: "knight",
@@ -1338,6 +1346,7 @@ export const GENERATED_CARDS: Record<string, GeneratedCard> = {
     count: 1,
     radius: 0.0,
     flying: false,
+  durationMs: 30000,
   },
   "mother-witch": {
     id: "mother-witch",
@@ -1792,6 +1801,7 @@ export const GENERATED_CARDS: Record<string, GeneratedCard> = {
     count: 1,
     radius: 0.0,
     flying: false,
+  durationMs: 40000,
   },
   "the-log": {
     id: "the-log",
@@ -1829,6 +1839,7 @@ export const GENERATED_CARDS: Record<string, GeneratedCard> = {
     count: 1,
     radius: 0.0,
     flying: false,
+  durationMs: 30000,
   },
   "tornado": {
     id: "tornado",
@@ -1957,6 +1968,7 @@ export const GENERATED_CARDS: Record<string, GeneratedCard> = {
     count: 1,
     radius: 0.0,
     flying: false,
+  durationMs: 30000,
   },
   "zap": {
     id: "zap",
