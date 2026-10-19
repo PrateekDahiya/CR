@@ -268,15 +268,20 @@ function lowestTowerHpPct(state: EngineState, side: PlayerSide): number {
 
 /* ---------------- create ---------------- */
 
-function makeTowers(): SimTower[] {
+function makeTowers(profiles?: Record<PlayerSide, LevelStats | undefined>): SimTower[] {
   return TOWER_SPAWNS.map((s) => {
     const st = towerStatsFor(s.kind);
+    const profile = s.kind === "princess" ? profiles?.[s.owner] : undefined;
+    const hp = profile?.hitPoints ?? st.hp;
+    const damage = profile?.damage ?? st.damage;
+    const hitSpeed = profile !== undefined ? profile.hitSpeedMs / 1000 : st.hitSpeed;
+    const range = profile?.range ?? st.range;
     return {
       id: s.id,
       kind: s.kind,
       owner: s.owner as PlayerSide,
-      hp: st.hp,
-      maxHp: st.hp,
+      hp,
+      maxHp: hp,
       x: s.x,
       y: s.y,
       destroyed: false,
@@ -288,9 +293,9 @@ function makeTowers(): SimTower[] {
       slowMultiplier: 1,
       rageUntil: -1,
       rageMultiplier: 1,
-      damage: st.damage,
-      hitSpeed: st.hitSpeed,
-      range: st.range,
+      damage,
+      hitSpeed,
+      range,
     } as SimTower;
   });
 }
@@ -371,13 +376,19 @@ export function createGame(
       if (card !== undefined) cardStats[side][id] = getLevelStats(card, cardLevels[side][id] ?? 1, "ladder", statVersion);
     }
   }
+  const towerProfiles: Record<PlayerSide, LevelStats | undefined> = { blue: undefined, red: undefined };
+  for (const side of ["blue", "red"] as const) {
+    const towerId = side === "blue" ? opts?.blueTowerTroopId : opts?.redTowerTroopId;
+    const tower = towerId === undefined ? undefined : getCard(towerId);
+    if (tower !== undefined && towerId !== undefined) towerProfiles[side] = getLevelStats(tower, cardLevels[side][towerId] ?? 1, "ladder", statVersion);
+  }
   return {
     matchId,
     tick: 0,
     timeSec: 0,
     serverTimeMs: opts?.startTimeMs ?? 0,
     elixir: { blue: ELIXIR_START, red: ELIXIR_START },
-    towers: makeTowers(),
+    towers: makeTowers(towerProfiles),
     units: [],
     crowns: { blue: 0, red: 0 },
     // Randomized per match: the opening four are not always deck[0..3].
@@ -443,6 +454,7 @@ function spawnChildUnits(
 ): string[] {
   const card = getSpawnTemplate(childId);
   if (card === undefined) return [];
+  const stats = getLevelStats(card, state.cardLevels[side][childId] ?? 1, "ladder", state.statVersion);
   const positions = spawnPositions(count, x, y);
   const ids: string[] = [];
   for (const position of positions) {
@@ -452,11 +464,11 @@ function spawnChildUnits(
       id,
       cardId: childId,
       owner: side,
-      hp: card.hp,
-      maxHp: card.hp,
+       hp: stats.hitPoints,
+       maxHp: stats.hitPoints,
       x: Math.min(Math.max(position.x, 0), 18),
       y: Math.min(Math.max(position.y, 0), 32),
-      flying: card.flying === true,
+       flying: stats.flying,
       isBuilding: card.type === "building",
       cooldown: 0,
       stunUntil: -1,
@@ -465,12 +477,12 @@ function spawnChildUnits(
       slowMultiplier: 1,
       rageUntil: -1,
       rageMultiplier: 1,
-      readyAt: state.timeSec,
-      damage: card.damage,
-      hitSpeed: card.hitSpeed,
-      range: card.range,
-      sightRange: card.sightRange,
-      speed: card.speed,
+       readyAt: state.timeSec + stats.deployDelayMs / 1000,
+       damage: stats.damage,
+       hitSpeed: stats.hitSpeedMs / 1000,
+       range: stats.range,
+       sightRange: stats.sightRange,
+       speed: stats.moveSpeed,
       targets: runtimeTargetMask(card),
       splash: runtimeSplashRadius(card),
       mechanics: card.mechanics,

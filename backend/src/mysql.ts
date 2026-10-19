@@ -4,7 +4,7 @@
 // `npm test` pass without install; memory/local fallback mirrors GAME_DESIGN §1.
 // All ops O(1) pool + O(c) roster reads (c=108). Big-O per function (MEMORY#20).
 
-import { CARDS, hydrateCardMechanics, hydrateSpawnTemplates, type CardDef } from "./game/cards.js";
+import { CARDS, SPAWN_TEMPLATES, hydrateCardMechanics, hydrateSpawnTemplates, type CardDef } from "./game/cards.js";
 import { parseCardMechanicSpec, type CardMechanicSpec } from "./game/cardMechanics.js";
 import { fallbackLevelStats, hydrateLevelStats, type LevelStats } from "./game/levelStats.js";
 import { existsSync, readFileSync } from "node:fs";
@@ -306,9 +306,9 @@ export async function ensureMysqlDatabase(): Promise<{ tables: boolean; cards: n
   return { tables: true, cards: cardRows.length, mechanics: Object.keys(mechanics).length, spawns: Object.keys(spawns).length, cardStats: cardRows.length * 16, spawnStats: Object.keys(spawns).length * 16 };
 }
 
-function levelStatsFromRow(row: Record<string, unknown>): CardLevelStats {
+function levelStatsFromRow(row: Record<string, unknown>, idColumn = "card_id"): CardLevelStats {
   return {
-    cardId: String(row.card_id),
+    cardId: String(row[idColumn]),
     level: Number(row.level),
     mode: String(row.mode),
     statVersion: Number(row.stat_version),
@@ -341,13 +341,20 @@ export async function hydrateLevelStatsFromMysql(): Promise<{ loaded: number; so
     const [rows] = await p.query(
       "SELECT card_id,level,mode,stat_version,hit_points,damage,hit_speed_ms,dps,move_speed,range_tiles,sight_range,radius_tiles,unit_count,duration_ms,deploy_delay_ms,tower_damage,death_burst,death_burst_radius,flying,targets,attack_pattern,source,is_approximation FROM card_level_stats",
     );
-    const list = (rows as Record<string, unknown>[]).map(levelStatsFromRow);
-    hydrateLevelStats(list);
-    return { loaded: list.length, source: "mysql" };
+    const cardRows = (rows as Record<string, unknown>[]).map((row) => levelStatsFromRow(row));
+    const [spawnRows] = await p.query(
+      "SELECT template_id,level,mode,stat_version,hit_points,damage,hit_speed_ms,dps,move_speed,range_tiles,sight_range,radius_tiles,unit_count,duration_ms,deploy_delay_ms,tower_damage,death_burst,death_burst_radius,flying,targets,attack_pattern,source,is_approximation FROM spawn_template_level_stats",
+    );
+    const childRows = (spawnRows as Record<string, unknown>[]).map((row) => levelStatsFromRow(row, "template_id"));
+    hydrateLevelStats([...cardRows, ...childRows]);
+    return { loaded: cardRows.length + childRows.length, source: "mysql" };
   }
   const rows: LevelStats[] = [];
   for (const card of Object.values(CARDS)) {
     for (let level = 1; level <= 16; level += 1) rows.push(fallbackLevelStats(card, level));
+  }
+  for (const template of Object.values(SPAWN_TEMPLATES)) {
+    for (let level = 1; level <= 16; level += 1) rows.push(fallbackLevelStats(template, level));
   }
   hydrateLevelStats(rows);
   return { loaded: rows.length, source: "fallback" };
@@ -379,7 +386,7 @@ export async function getCardLevelSeries(cardId: string, mode = "ladder", statVe
       [cardId, mode, statVersion],
     );
     const list = rows as Record<string, unknown>[];
-    if (list.length > 0) return list.map(levelStatsFromRow);
+    if (list.length > 0) return list.map((row) => levelStatsFromRow(row));
   }
   return Array.from({ length: 16 }, (_, index) => fallbackLevelStats(card, index + 1, mode, statVersion));
 }
