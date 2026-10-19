@@ -165,6 +165,47 @@ test.describe("CR Clone battle /battle (chromium)", () => {
     await expectFourHands(page);
   });
 
+  test("the edited deck (not the starter) is used in the next battle", async ({ page }) => {
+    // Only the player id is seeded: the deck must survive navigation so the edit
+    // made on /decks is what the battle screen loads.
+    await page.addInitScript(() => {
+      window.localStorage.setItem("cr-player-id", `deck-edit-${Date.now().toString(36)}`);
+      // Simulate the stale legacy key: written when a deck was selected, never
+      // updated on card edits. The battle screen must NOT prefer it.
+      window.localStorage.setItem(
+        "cr-clone-active-deck",
+        JSON.stringify(["knight", "archers", "giant", "skeletons", "musketeer", "baby-dragon", "fireball", "arrows"]),
+      );
+    });
+    await page.goto(`${BASE}/decks`);
+    await expect(page.locator('[data-testid^="deck-card-"]')).toHaveCount(8, { timeout: 15000 });
+
+    // Swap the first deck slot for a card that is NOT in the starter deck.
+    const NEW_CARD = "mega-knight";
+    await page.getByTestId("deck-card-0").click();
+    await expect(page.getByTestId("card-info-overlay")).toBeVisible();
+    await page.getByTestId("card-info-remove").click();
+    await page.getByTestId("deck-tab-collection").click();
+    const fresh = page.locator(`[data-testid="collection-card-${NEW_CARD}"]`);
+    await expect(fresh).toBeVisible();
+    await fresh.click();
+    await page.getByTestId("card-info-use").click();
+    await expect(page.getByTestId("deck-card-0")).toHaveAttribute("aria-label", /mega-knight/i, {
+      timeout: 10000,
+    });
+    await page.waitForTimeout(700); // let the debounced server save settle
+
+    // Start a battle: the hand must be built from the EDITED deck.
+    await page.goto(`${BASE}/battle`);
+    await expect(page.getByTestId("battle-join")).toBeVisible();
+    await waitHydrated(page);
+    await expect(page.locator('[data-testid="card-hand-0"] .card-art')).toHaveAttribute(
+      "data-testid",
+      `card-art-${NEW_CARD}`,
+      { timeout: 15000 },
+    );
+  });
+
   test("live AI match: bot opponent, player can deploy, no BAD_DECK", async ({ page }) => {
     await seedAndGoto(page, `${BASE}/battle`);
     await expect(page.getByTestId("battle-join")).toBeVisible();
