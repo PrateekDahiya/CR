@@ -231,6 +231,14 @@ export async function ensureMysqlDatabase(): Promise<{ tables: boolean; cards: n
       if (dbError.code !== "ER_DUP_FIELDNAME" && dbError.errno !== 1060) throw error;
     }
   }
+  for (const column of ["levels JSON NULL", "tower_troop_id VARCHAR(40) NULL"]) {
+    try {
+      await p.query(`ALTER TABLE decks ADD COLUMN ${column}`);
+    } catch (error) {
+      const dbError = error as { code?: string; errno?: number };
+      if (dbError.code !== "ER_DUP_FIELDNAME" && dbError.errno !== 1060) throw error;
+    }
+  }
 
   const cardRows = Object.values(CARDS);
   const mechanics = jsonFile("card_mechanics.json");

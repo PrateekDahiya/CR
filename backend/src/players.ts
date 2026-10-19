@@ -39,6 +39,8 @@ export interface Deck {
   id: string;
   name: string;
   cards: string[];
+  levels: Record<string, number>;
+  towerTroopId?: string;
 }
 
 /** Trophy/coin payout per result (real-CR-like: win is worth playing). */
@@ -62,7 +64,7 @@ function defaultName(playerId: string): string {
 }
 
 function starterDeck(name = "Battle Deck"): Deck {
-  return { id: nextId("deck"), name, cards: [...DECK_FALLBACK] };
+  return { id: nextId("deck"), name, cards: [...DECK_FALLBACK], levels: Object.fromEntries(DECK_FALLBACK.map((id) => [id, 1])) };
 }
 
 /**
@@ -126,7 +128,7 @@ export function setName(playerId: string, name: string): Player {
 
 /** O(d) deck list for one player. */
 export function listDecks(playerId: string): Deck[] {
-  return ensurePlayer(playerId).decks.map((d) => ({ ...d, cards: [...d.cards] }));
+  return ensurePlayer(playerId).decks.map((d) => ({ ...d, cards: [...d.cards], levels: { ...d.levels } }));
 }
 
 export function getDeck(playerId: string, deckId: string): Deck | undefined {
@@ -143,21 +145,23 @@ export function activeDeck(playerId: string): Deck {
 export function createDeck(playerId: string, name?: string, cards?: string[]): Deck {
   const p = ensurePlayer(playerId);
   const clean = normalizeCards(cards);
+  const selected = clean ?? [...DECK_FALLBACK];
   const deck: Deck = {
     id: nextId("deck"),
     name: (name ?? `Deck ${p.decks.length + 1}`).trim().slice(0, 20) || `Deck ${p.decks.length + 1}`,
-    cards: clean ?? [...DECK_FALLBACK],
+    cards: selected,
+    levels: Object.fromEntries(selected.map((id) => [id, ensurePlayer(playerId).cards[id] ?? 1])),
   };
   p.decks.push(deck);
   if (p.activeDeckId === null) p.activeDeckId = deck.id;
-  return { ...deck, cards: [...deck.cards] };
+  return { ...deck, cards: [...deck.cards], levels: { ...deck.levels } };
 }
 
 /** Updates name/cards. O(d). Unknown ids or an invalid 8-card set are rejected. */
 export function updateDeck(
   playerId: string,
   deckId: string,
-  patch: { name?: string; cards?: string[] },
+  patch: { name?: string; cards?: string[]; levels?: Record<string, number>; towerTroopId?: string },
 ): Deck | null {
   const p = ensurePlayer(playerId);
   const deck = p.decks.find((d) => d.id === deckId);
@@ -170,8 +174,11 @@ export function updateDeck(
     const clean = normalizeCards(patch.cards);
     if (clean === null) return null;
     deck.cards = clean;
+    deck.levels = Object.fromEntries(clean.map((id) => [id, deck.levels[id] ?? p.cards[id] ?? 1]));
   }
-  return { ...deck, cards: [...deck.cards] };
+  if (patch.levels !== undefined) deck.levels = { ...deck.levels, ...patch.levels };
+  if (patch.towerTroopId !== undefined) deck.towerTroopId = patch.towerTroopId;
+  return { ...deck, cards: [...deck.cards], levels: { ...deck.levels } };
 }
 
 /** Picks the deck used for the next match. O(d). */

@@ -135,7 +135,7 @@ export function mountMeta(app: Express): void {
   });
 
   app.post("/decks/:playerId", (req: Request, res: Response) => {
-    const body = (req.body ?? {}) as { name?: unknown; cards?: unknown };
+    const body = (req.body ?? {}) as { name?: unknown; cards?: unknown; levels?: unknown; towerTroopId?: unknown };
     const deck = createDeck(
       req.params.playerId,
       typeof body.name === "string" ? body.name : undefined,
@@ -145,10 +145,12 @@ export function mountMeta(app: Express): void {
   });
 
   app.put("/decks/:playerId/:deckId", (req: Request, res: Response) => {
-    const body = (req.body ?? {}) as { name?: unknown; cards?: unknown };
+    const body = (req.body ?? {}) as { name?: unknown; cards?: unknown; levels?: unknown; towerTroopId?: unknown };
     const deck = updateDeck(req.params.playerId, req.params.deckId, {
       ...(typeof body.name === "string" ? { name: body.name } : {}),
       ...(Array.isArray(body.cards) ? { cards: body.cards.map((c) => String(c)) } : {}),
+      ...(body.levels !== null && typeof body.levels === "object" && !Array.isArray(body.levels) ? { levels: body.levels as Record<string, number> } : {}),
+      ...(typeof body.towerTroopId === "string" ? { towerTroopId: body.towerTroopId } : {}),
     });
     if (deck === null) {
       res.status(400).json({ code: "BAD_DECK", message: "unknown deck or invalid 8-card list" });
