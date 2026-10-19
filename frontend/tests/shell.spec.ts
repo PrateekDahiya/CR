@@ -58,6 +58,13 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await firstCard.click();
     await expect(page.getByTestId("card-info-overlay")).toBeVisible();
     await expect(page.getByTestId("card-info-name")).toBeVisible();
+    await expect(page.getByTestId("card-info-tabs")).toBeVisible();
+    await expect(page.getByTestId("card-info-stats")).toBeVisible();
+    await page.getByTestId("card-info-tab-description").click();
+    await expect(page.getByTestId("card-info-description")).toBeVisible();
+    await expect(page.getByTestId("card-info-description")).not.toHaveText(/No description available/);
+    await page.getByTestId("card-info-tab-stats").click();
+    await expect(page.getByTestId("card-info-stats")).toBeVisible();
     await page.getByTestId("card-info-close").click();
     await expect(page.getByTestId("card-info-overlay")).toHaveCount(0);
     // Switch to Collection tab.

@@ -281,6 +281,8 @@ const idA = new URL(a.url()).searchParams.get("matchId");
       })
       .toBeGreaterThanOrEqual(10);
     await page.getByTestId("card-hand-1").click();
+    // Let React commit the selected card before the arena tap is dispatched.
+    await page.waitForTimeout(150);
     await page.locator('[data-testid="arena-canvas"]').evaluate((el) => {
       const r = el.getBoundingClientRect();
       el.dispatchEvent(

@@ -95,7 +95,7 @@ export default function CollectionPage() {
     const level = profile?.cards?.[cardId] ?? 1;
     loadCardLevels(cardId, backendUrl())
       .then((levels) => {
-        if (!cancelled) setInfoStats(overlayStatsFor(levels, level));
+        if (!cancelled) setInfoStats(overlayStatsFor(levels, level, CARDS[cardId]));
       })
       .catch(() => {
         if (!cancelled) setInfoStats(undefined);
@@ -338,6 +338,7 @@ export default function CollectionPage() {
               upgradeCost={upgradeCost(f.name)}
               maxLevel={levelOf(f.name) >= 16}
               stats={infoStats}
+              description={CARDS[f.name]?.description}
               onClose={() => setInfo(null)}
               onUse={isOwned ? () => requestUse(info.name) : undefined}
               onRemove={isOwned && inDeck ? () => doRemove(info.name) : undefined}

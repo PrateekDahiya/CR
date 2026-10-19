@@ -601,10 +601,12 @@ function applyAreaDamage(
   const r = radius + RANGE_EPS;
   const r2 = r * r;
   let amount = Number(effect.amount ?? damage);
-  const towerAmount = Number(
-    effect.towerDamage ?? (effect.towerMultiplier !== undefined
-      ? amount * Number(effect.towerMultiplier)
-      : towerDamage),
+  const towerAmount = Math.round(
+    Number(
+      effect.towerDamage ?? (effect.towerMultiplier !== undefined
+        ? amount * Number(effect.towerMultiplier)
+        : towerDamage),
+    ),
   );
 
   // Earthquake: buildings in the epicenter take a multiple of troop damage.
@@ -1675,7 +1677,11 @@ function tryRamp(
   }
   const stage = Math.min(5, (u.rampStage ?? 0) + 1);
   u.rampStage = stage;
-  // 30% -> 240% of base damage across six ticks, matching Inferno's ramp.
+  const multipliers = effect.multipliers;
+  if (Array.isArray(multipliers) && multipliers.length > 0) {
+    return Number(multipliers[Math.min(stage - 1, multipliers.length - 1)] ?? 1);
+  }
+  // Legacy fallback: 30% -> 240% of base damage across six ticks.
   return Number(effect.multiplierPerStage ?? 0.4) * stage + 0.3;
 }
 
@@ -1872,7 +1878,13 @@ export function tickGame(state: EngineState, dt: number = TICK_DT): EngineState 
     for (let i = 0; i < arr.length; i++) {
       const u = arr[i];
       if (u.hp <= 0) continue;
-      if (u.expiresAt !== undefined && !(now < u.expiresAt)) continue;
+      if (u.expiresAt !== undefined && !(now < u.expiresAt)) {
+        // Lifetime expiry still resolves spawn-on-death payloads (Goblin Cage).
+        if (u.mechanics?.onDeath !== undefined) {
+          applyDatabaseEffects(state, u.owner, u.x, u.y, u.damage, undefined, u.mechanics.onDeath);
+        }
+        continue;
+      }
       arr[w++] = u;
     }
     arr.length = w;

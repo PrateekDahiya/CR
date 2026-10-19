@@ -43,7 +43,7 @@ DIFFICULTIES = ("easy", "medium", "hard")
 ARENA_W = 18.0
 ARENA_H = 32.0
 LEFT_LANE_X = 3.5
-RIGHT_LANE_X = 13.5
+RIGHT_LANE_X = 14.5
 RIVER_TOP = 14.0      # last deployable row for blue (own half y <= 14)
 RIVER_BOTTOM = 17.0   # first deployable row for red (own half y >= 17)
 
@@ -90,8 +90,6 @@ try:
     with _CATALOG_PATH.open(encoding="utf-8") as _fh:
         _CATALOG: dict[str, dict[str, Any]] = json.load(_fh)
     for _cid, _row in _CATALOG.items():
-        if _cid in CARDS:
-            continue
         CARDS[_cid] = {
             "cost": int(_row.get("cost") or 0),
             "hp": float(_row.get("hp") or 0),

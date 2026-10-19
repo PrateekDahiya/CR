@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { RARITY_BG, RARITY_BORDER, RARITY_RUNE } from "../../lib/crTheme";
 import CardArt from "./CardArt";
 
@@ -15,6 +15,14 @@ export interface CardStats {
   unitCount?: number;
   radiusTiles?: number;
   towerDamage?: number;
+  description?: string;
+  splashRadius?: number;
+  dashDamage?: number;
+  dashRadius?: number;
+  chargeDamage?: number;
+  deathDamage?: number;
+  spawnDamage?: number;
+  shieldHp?: number;
 }
 
 export interface CardInfoOverlayProps {
@@ -24,6 +32,7 @@ export interface CardInfoOverlayProps {
   elixir: number;
   level?: number;
   stats?: CardStats;
+  description?: string;
   onClose: () => void;
   onUse?: () => void;
   onRemove?: () => void;
@@ -47,6 +56,7 @@ export default function CardInfoOverlay({
   elixir,
   level = 0,
   stats,
+  description,
   onClose,
   onUse,
   onRemove,
@@ -62,6 +72,12 @@ export default function CardInfoOverlay({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  const [tab, setTab] = useState<"stats" | "description">("stats");
+
+  useEffect(() => {
+    setTab("stats");
+  }, [name]);
 
   const bg = RARITY_BG[rarity] ?? RARITY_BG.common;
   const border = RARITY_BORDER[rarity] ?? RARITY_BORDER.common;
@@ -81,7 +97,14 @@ export default function CardInfoOverlay({
   if (stats?.speedLabel) rows.push({ label: "Speed", value: stats.speedLabel });
   if (stats?.rangeTiles) rows.push({ label: "Range", value: `${stats.rangeTiles} tiles` });
   if (stats?.radiusTiles) rows.push({ label: "Radius", value: `${stats.radiusTiles} tiles` });
+  if (stats?.splashRadius) rows.push({ label: "Splash Radius", value: `${stats.splashRadius} tiles` });
   if (stats?.towerDamage) rows.push({ label: "Tower Damage", value: String(stats.towerDamage) });
+  if (stats?.dashDamage) rows.push({ label: "Dash Damage", value: String(stats.dashDamage) });
+  if (stats?.dashRadius) rows.push({ label: "Dash Radius", value: `${stats.dashRadius} tiles` });
+  if (stats?.chargeDamage) rows.push({ label: "Charge Damage", value: String(stats.chargeDamage) });
+  if (stats?.deathDamage) rows.push({ label: "Death Damage", value: String(stats.deathDamage) });
+  if (stats?.spawnDamage) rows.push({ label: "Spawn Damage", value: String(stats.spawnDamage) });
+  if (stats?.shieldHp) rows.push({ label: "Shield HP", value: String(stats.shieldHp) });
   if (stats?.unitCount && stats.unitCount > 1) {
     rows.push({ label: "Count", value: `x${stats.unitCount}` });
   }
@@ -162,19 +185,53 @@ export default function CardInfoOverlay({
           </div>
         </div>
 
-        {/* Stats */}
-        {rows.length > 0 && (
-          <ul
-            data-testid="card-info-stats"
-            className="mx-3 mt-3 grid grid-cols-2 gap-x-3 gap-y-1 rounded-lg border border-slate-600/60 bg-[#0d1a38]/80 px-2 py-1.5"
+        {/* Stats / Description tabs */}
+        <div className="mx-3 mt-3 grid grid-cols-2 gap-1 rounded-lg border border-slate-600/60 bg-[#0d1a38]/80 p-1" data-testid="card-info-tabs">
+          <button
+            type="button"
+            data-testid="card-info-tab-stats"
+            onClick={() => setTab("stats")}
+            className={`rounded-md px-2 py-1 text-[10px] font-extrabold uppercase tracking-wide ${
+              tab === "stats" ? "bg-amber-400 text-amber-950" : "text-slate-300"
+            }`}
           >
-            {rows.map((r) => (
-              <li key={r.label} className="flex items-center justify-between gap-1 text-[11px]">
-                <span className="text-slate-400">{r.label}</span>
-                <span className="font-bold text-slate-100">{r.value}</span>
-              </li>
-            ))}
-          </ul>
+            Stats
+          </button>
+          <button
+            type="button"
+            data-testid="card-info-tab-description"
+            onClick={() => setTab("description")}
+            className={`rounded-md px-2 py-1 text-[10px] font-extrabold uppercase tracking-wide ${
+              tab === "description" ? "bg-amber-400 text-amber-950" : "text-slate-300"
+            }`}
+          >
+            Description
+          </button>
+        </div>
+
+        {tab === "stats" ? (
+          rows.length > 0 ? (
+            <ul
+              data-testid="card-info-stats"
+              className="mx-3 mt-2 grid grid-cols-2 gap-x-3 gap-y-1 rounded-lg border border-slate-600/60 bg-[#0d1a38]/80 px-2 py-1.5"
+            >
+              {rows.map((r) => (
+                <li key={r.label} className="flex items-center justify-between gap-1 text-[11px]">
+                  <span className="text-slate-400">{r.label}</span>
+                  <span className="font-bold text-slate-100">{r.value}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null
+        ) : (
+          <p
+            data-testid="card-info-description"
+            className="mx-3 mt-2 min-h-[72px] rounded-lg border border-slate-600/60 bg-[#0d1a38]/80 px-3 py-2 text-[12px] leading-relaxed text-slate-200"
+          >
+            {(description ?? stats?.description) && (description ?? stats?.description)!.length > 0
+              ? (description ?? stats?.description)
+              : "No description available for this card."}
+          </p>
         )}
 
         {/* Actions */}

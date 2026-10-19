@@ -244,10 +244,10 @@ describe("phase 13 — minimum range", () => {
     const deck = deckWith("mortar");
     const state = createGame("minrange-mortar", deck, RED_DECK);
     state.elixir.blue = 10;
-    playCard(state, "blue", { handIndex: forceInHand(state, "blue", "mortar"), x: 13.5, y: 4 });
+    playCard(state, "blue", { handIndex: forceInHand(state, "blue", "mortar"), x: 9, y: 12 });
     const mortar = state.units.find((u) => u.cardId === "mortar");
     assert.ok(mortar);
-    assert.equal(mortar.minRange, 3, "mortar declares minimumRange 3");
+    assert.equal(mortar.minRange, 3.5, "mortar declares minimumRange 3.5");
 
     // Plant a red troop right beside the mortar, well out of the towers' reach
     // so the only thing that could damage it is the mortar itself.
@@ -306,13 +306,13 @@ describe("phase 13 — ramping beam", () => {
     state.elixir.blue = 10;
     playCard(state, "blue", {
       handIndex: forceInHand(state, "blue", "inferno-tower"),
-      x: 13.5,
+      x: 14.5,
       y: 4,
     });
     const inferno = state.units.find((u) => u.cardId === "inferno-tower");
     assert.ok(inferno);
 
-    pinTarget(state, { cardId: "giant", hp: 1_000_000 }, 13.5, 7);
+    pinTarget(state, { cardId: "giant", hp: 1_000_000 }, 14.5, 7);
     const target = state.units[state.units.length - 1];
 
     // Sample one hit per tick, forcing the beam to fire each time.
@@ -337,13 +337,13 @@ describe("phase 13 — ramping beam", () => {
     state.elixir.blue = 10;
     playCard(state, "blue", {
       handIndex: forceInHand(state, "blue", "inferno-tower"),
-      x: 13.5,
+      x: 14.5,
       y: 4,
     });
     const inferno = state.units.find((u) => u.cardId === "inferno-tower");
     assert.ok(inferno);
 
-    const first = pinTarget(state, { cardId: "giant", hp: 1_000_000 }, 13.5, 7);
+    const first = pinTarget(state, { cardId: "giant", hp: 1_000_000 }, 14.5, 7);
     for (let i = 0; i < 5; i++) {
       inferno.cooldown = 0;
       tickGame(state);
@@ -379,7 +379,7 @@ describe("phase 13 — burrowers", () => {
     state.elixir.blue = 10;
     const result = playCard(state, "blue", {
       handIndex: forceInHand(state, "blue", "miner"),
-      x: 13.5,
+      x: 14.5,
       y: 26,
     });
     assert.equal(result.ok, true, "miner must be deployable anywhere");
@@ -397,9 +397,9 @@ describe("phase 13 — spell primitives", () => {
     const state = createGame("chain-lightning", deck, RED_DECK);
 
     state.elixir.red = 10;
-    playCard(state, "red", { handIndex: RED_GIANT, x: 3.5, y: 21 });
+    playCard(state, "red", { handIndex: forceInHand(state, "red", "giant"), x: 3.5, y: 21 });
     state.elixir.red = 10;
-    playCard(state, "red", { handIndex: RED_KNIGHT, x: 3.5, y: 23 });
+    playCard(state, "red", { handIndex: forceInHand(state, "red", "knight"), x: 3.5, y: 23 });
     const targets = state.units.filter((u) => u.owner === "red");
     assert.equal(targets.length, 2);
     targets.forEach((unit) => { unit.speed = 0; });

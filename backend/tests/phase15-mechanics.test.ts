@@ -103,7 +103,7 @@ describe("15.2 spirits jump and die", () => {
       state.elixir.blue = 10;
       const placed = playCard(state, "blue", {
         handIndex: forceInHand(state, "blue", spiritId),
-        x: 13.5,
+        x: 14.5,
         y: 10,
       });
       assert.equal(placed.ok, true);
@@ -117,7 +117,7 @@ describe("15.2 spirits jump and die", () => {
       // must leap rather than walk.
       // Deploy the spirit close to the target (gap <= 2.5) so it jumps rather than
       // walking.
-      const target = pinRedTroop(state, 13.5, 12);
+      const target = pinRedTroop(state, 14.5, 12);
       const hpBefore = target.hp;
       assert.ok(Math.hypot(target.x - startX, target.y - startY) <= 2.5);
 
@@ -137,10 +137,10 @@ describe("15.2 spirits jump and die", () => {
       state.elixir.blue = 10;
       playCard(state, "blue", {
         handIndex: forceInHand(state, "blue", spiritId),
-        x: 13.5,
+        x: 14.5,
         y: 12,
       });
-      pinRedTroop(state, 13.5, 12);
+      pinRedTroop(state, 14.5, 12);
       let spawns = 0;
       for (let i = 0; i < 10; i++) {
         const before = state.units.length;
@@ -157,10 +157,10 @@ describe("15.2 spirits jump and die", () => {
     state.elixir.blue = 10;
     playCard(state, "blue", {
       handIndex: forceInHand(state, "blue", "ice-spirit"),
-      x: 13.5,
+      x: 14.5,
       y: 12,
     });
-    const target = pinRedTroop(state, 13.5, 12);
+    const target = pinRedTroop(state, 14.5, 12);
     tickGame(state);
     assert.ok(target.stunUntil > state.timeSec, "ice spirit must freeze its victim");
   });
@@ -198,7 +198,7 @@ describe("15.3 barbarian barrel", () => {
     state.elixir.blue = 10;
     const cast = playCard(state, "blue", {
       handIndex: forceInHand(state, "blue", "barbarian-barrel"),
-      x: 8.5,
+      x: 9,
       y: 6,
     });
     assert.equal(cast.ok, true);
@@ -258,7 +258,7 @@ describe("15.5 elixir golem chain", () => {
     state.elixir.blue = 10;
     const placed = playCard(state, "blue", {
       handIndex: forceInHand(state, "blue", "elixir-golem"),
-      x: 13.5,
+      x: 14.5,
       y: 10,
     });
     assert.equal(placed.ok, true);
@@ -288,7 +288,7 @@ describe("15.5 elixir golem chain", () => {
   it("a Blob pays elixir to the OPPONENT when it dies", () => {
     const state = createGame("elixir-payout", deckWith("elixir-golem"), RED_DECK);
     state.elixir.blue = 10;
-    playCard(state, "blue", { handIndex: forceInHand(state, "blue", "elixir-golem"), x: 13.5, y: 10 });
+    playCard(state, "blue", { handIndex: forceInHand(state, "blue", "elixir-golem"), x: 14.5, y: 10 });
     const golem = state.units.find((u) => u.cardId === "elixir-golem");
     assert.ok(golem);
     golem.hp = 0;
@@ -327,13 +327,14 @@ describe("15.5 elixir golem chain", () => {
 
 describe("15.6 targeting audit", () => {
   it("air-capable troops can reach air", () => {
-    for (const id of ["bowler", "valkyrie", "sparky", "little-prince"]) {
-      assert.equal(MECHANICS[id]?.targeting, "air+ground", `${id} must reach air`);
+    assert.equal(MECHANICS["little-prince"]?.targeting, "air+ground");
+    for (const id of ["bowler", "valkyrie", "sparky"]) {
+      assert.equal(MECHANICS[id]?.targeting, "ground", `${id} is ground-only`);
     }
   });
 
-  it("the Miner hits buildings and troops", () => {
-    assert.equal(MECHANICS["miner"]?.targeting, "all");
+  it("the Miner hits buildings and ground troops", () => {
+    assert.equal(MECHANICS["miner"]?.targeting, "ground");
   });
 
   it("building-seekers stay on buildings", () => {

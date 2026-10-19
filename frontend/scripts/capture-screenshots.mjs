@@ -53,6 +53,16 @@ await page.screenshot({ path: path.join(outDir, "04-decks-towers.png") });
 console.log("captured 04-decks-towers.png");
 
 await shot("05-collection", "/collection");
+await page.locator('[data-testid^="collection-card-"]').first().click();
+await page.getByTestId("card-info-panel").waitFor({ state: "visible", timeout: 15000 });
+await page.waitForTimeout(400);
+await page.screenshot({ path: path.join(outDir, "14-card-info-stats.png") });
+console.log("captured 14-card-info-stats.png");
+await page.getByTestId("card-info-tab-description").click();
+await page.waitForTimeout(300);
+await page.screenshot({ path: path.join(outDir, "15-card-info-description.png") });
+console.log("captured 15-card-info-description.png");
+await page.getByTestId("card-info-close").click();
 await shot("06-shop", "/shop");
 await shot("07-leaderboard", "/leaderboard");
 await shot("08-social", "/social");

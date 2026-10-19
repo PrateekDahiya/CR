@@ -21,6 +21,9 @@ export interface CardDef {
   rarity: Rarity;
   hp: number;
   damage: number;
+  /** Exact level-11 wiki anchors (used for per-level tables). */
+  hp11?: number;
+  damage11?: number;
   hitSpeed: number;
   dps: number;
   speed: number;
@@ -36,6 +39,14 @@ export interface CardDef {
   deathBurstRadius?: number;
   towerDamage?: number;
   flying?: boolean;
+  description?: string;
+  splashRadius?: number;
+  dashDamage?: number;
+  dashRadius?: number;
+  chargeDamage?: number;
+  deathDamage?: number;
+  spawnDamage?: number;
+  shieldHp?: number;
   /** Loaded from the database before a match starts. */
   mechanics?: CardMechanicSpec;
 }
@@ -51,6 +62,8 @@ function fromGenerated(card: (typeof GENERATED_CARDS)[string]): CardDef {
     rarity: card.rarity as Rarity,
     hp: card.hp,
     damage: card.damage,
+    ...(card.hp11 !== undefined ? { hp11: card.hp11 } : {}),
+    ...(card.damage11 !== undefined ? { damage11: card.damage11 } : {}),
     hitSpeed: card.hitSpeed,
     dps: card.dps,
     speed: card.speed,
@@ -63,6 +76,14 @@ function fromGenerated(card: (typeof GENERATED_CARDS)[string]): CardDef {
     ...(card.towerDamage !== undefined ? { towerDamage: card.towerDamage } : {}),
     ...(card.durationMs !== undefined ? { durationMs: card.durationMs } : {}),
     ...(card.stunSec !== undefined ? { stunSec: card.stunSec } : {}),
+    ...(card.description !== undefined ? { description: card.description } : {}),
+    ...(card.splashRadius !== undefined ? { splashRadius: card.splashRadius } : {}),
+    ...(card.dashDamage !== undefined ? { dashDamage: card.dashDamage } : {}),
+    ...(card.dashRadius !== undefined ? { dashRadius: card.dashRadius } : {}),
+    ...(card.chargeDamage !== undefined ? { chargeDamage: card.chargeDamage } : {}),
+    ...(card.deathDamage !== undefined ? { deathDamage: card.deathDamage, deathBurst: card.deathDamage, deathBurstRadius: card.splashRadius ?? card.radius ?? 2.5 } : {}),
+    ...(card.spawnDamage !== undefined ? { spawnDamage: card.spawnDamage } : {}),
+    ...(card.shieldHp !== undefined ? { shieldHp: card.shieldHp } : {}),
   };
 }
 

@@ -11,7 +11,7 @@
  * Visual spec: docs/UI_REFERENCE.md §§2-3 + MEMORY#18 (original code only,
  * no ripped Supercell assets — Canvas rects/circles/emoji):
  *  - grass checker #7ec850 / #8fd45a, river y15-16 #4aa3ff + banks,
- *    2 bridges x3-4 / x13-14 brown planks
+ *    2 bridges x3-4 / x14-15 brown planks
  *  - deploy tint blue/red on card select, pocket 4-tile dotted line,
  *    river red X when selectedCell is invalid
  *  - towers: 🏰 Princess 1400 / 👑 King 2400 + HP bars (TowerView helper),
@@ -104,7 +104,7 @@ const RIVER_Y0 = 15;
 const RIVER_Y1 = 16;
 const BRIDGES: Array<[number, number]> = [
   [3, 4],
-  [13, 14],
+  [14, 15],
 ];
 const GRASS_A = "#7ec850";
 const GRASS_B = "#8fd45a";
@@ -278,7 +278,7 @@ function buildStaticBg(dpr: number): HTMLCanvasElement {
     c.lineTo(30 + (i % 2) * 10, yy);
   }
   c.stroke();
-  // --- bridges x3-4 / x13-14 ---
+  // --- bridges x3-4 / x14-15 ---
   for (let bi = 0; bi < BRIDGES.length; bi++) {
     const bx0 = BRIDGES[bi][0];
     const bx1 = BRIDGES[bi][1];

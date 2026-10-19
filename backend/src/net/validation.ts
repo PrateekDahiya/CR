@@ -174,12 +174,12 @@ export interface PocketState {
 
 /** Tower centers (§5.4) for the 1x1 deploy-footprint exclusion. */
 const TOWER_CENTERS: ReadonlyArray<{ x: number; y: number }> = [
-  { x: 8.5, y: 3.5 },
+  { x: 9, y: 3.5 },
   { x: 3.5, y: 6.5 },
-  { x: 13.5, y: 6.5 },
-  { x: 8.5, y: 27.5 },
+  { x: 14.5, y: 6.5 },
+  { x: 9, y: 27.5 },
   { x: 3.5, y: 24.5 },
-  { x: 13.5, y: 24.5 },
+  { x: 14.5, y: 24.5 },
 ];
 
 const FOOTPRINT_RADIUS = 0.75;

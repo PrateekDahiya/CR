@@ -8,7 +8,7 @@ import { GENERATED_CARD_LIST } from "./cards.generated";
 
 export type CardKind = "troop" | "spell" | "building" | "tower";
 export type CardRarity = "common" | "rare" | "epic" | "legendary" | "champion";
-export type CardTargets = "ground" | "air+ground" | "buildings" | "all";
+export type CardTargets = "ground" | "air+ground" | "buildings" | "all" | "none";
 
 export interface CardInfo {
   id: string;
@@ -29,6 +29,14 @@ export interface CardInfo {
   stunSec?: number;
   durationMs?: number;
   deathBurst?: number;
+  description: string;
+  splashRadius?: number;
+  dashDamage?: number;
+  dashRadius?: number;
+  chargeDamage?: number;
+  deathDamage?: number;
+  spawnDamage?: number;
+  shieldHp?: number;
 }
 
 export const DECK_SIZE = 8;

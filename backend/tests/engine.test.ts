@@ -101,7 +101,7 @@ function stageNear(
     (t) => t.owner === target.owner && t.kind === 'princess' && (t.x < 9) === leftSide,
   );
   const pocketOpen = foePrincess?.destroyed === true;
-  const x = leftSide ? 3.5 : 13.5;
+  const x = leftSide ? 3.5 : 14.5;
   // Pocket (§5.3): up to 4 tiles into enemy half once that side's princess falls.
   const y = attacker === 'blue' ? (pocketOpen && target.owner === 'red' ? 18 : 13) : pocketOpen && target.owner === 'blue' ? 14 : 19;
   return { x, y };
@@ -281,7 +281,7 @@ describe('engine — towers + king activation (GAME_DESIGN §6)', () => {
     // Database-defined fireball (spell, cost 4, 276 vs towers).\r
     const r = playCard(s, 'red', { handIndex: forceInHand(s, 'red', 'fireball'), x: king.x, y: king.y });
     assert.equal(r.ok, true);
-    assert.equal(king.hp, 2400 - 276);
+    assert.equal(king.hp, 2400 - 61);
     assert.equal(king.active, true, 'king must activate after taking damage (§6.2)');
     const redKing = towerOf(s, 'king', 'red');
     assert.equal(redKing.active, false, 'undamaged red king stays inactive');
@@ -293,7 +293,7 @@ describe('engine — towers + king activation (GAME_DESIGN §6)', () => {
     s.elixir.blue = 10;
     const r = playCard(s, 'blue', { handIndex: forceInHand(s, 'blue', 'fireball'), x: princess.x, y: princess.y });
     assert.equal(r.ok, true);
-    assert.equal(princess.hp, 1400 - 276);
+    assert.equal(princess.hp, 1400 - 61);
     assert.equal(princess.destroyed, false);
     assert.equal(s.crowns.blue, 0);
     assert.equal(s.crowns.red, 0);
