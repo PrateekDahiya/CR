@@ -14,6 +14,7 @@ import {
 import { backendUrl, getCatalog, getContentCards, upgradePlayerCard, type CatalogEntry, type ContentCard } from "../../lib/api";
 import { useDeckState } from "../../lib/useDeck";
 import { usePlayer } from "../../lib/playerContext";
+import { loadCardLevels, overlayStatsFor, type OverlayLevelStats } from "../../lib/cardLevels";
 import { CARDS } from "../../lib/cards";
 
 // Collection: full catalog (108), rarity + elixir filters, grid of the shared
@@ -29,6 +30,7 @@ export default function CollectionPage() {
   const [sortKey, setSortKey] = useState<"name" | "elixir" | "level">("name");
   const [loading, setLoading] = useState(true);
   const [info, setInfo] = useState<{ name: string } | null>(null);
+  const [infoStats, setInfoStats] = useState<OverlayLevelStats | undefined>(undefined);
   const [replace, setReplace] = useState<{ name: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -75,12 +77,6 @@ export default function CollectionPage() {
     return out;
   }, [catalog, roster]);
 
-  const statsByName = useMemo(() => {
-    const out: Record<string, ContentCard> = {};
-    for (const c of roster) out[c.name] = c;
-    return out;
-  }, [roster]);
-
   const slotFacts = useMemo(() => {
     const out: Record<string, DeckSlotFact> = {};
     for (const [name, f] of Object.entries(factsByName)) {
@@ -88,6 +84,26 @@ export default function CollectionPage() {
     }
     return out;
   }, [factsByName]);
+
+  useEffect(() => {
+    const cardId = info?.name;
+    if (!cardId) {
+      setInfoStats(undefined);
+      return undefined;
+    }
+    let cancelled = false;
+    const level = profile?.cards?.[cardId] ?? 1;
+    loadCardLevels(cardId, backendUrl())
+      .then((levels) => {
+        if (!cancelled) setInfoStats(overlayStatsFor(levels, level));
+      })
+      .catch(() => {
+        if (!cancelled) setInfoStats(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [info, profile]);
 
   const ownedNames = useMemo(() => new Set(Object.keys(profile?.cards ?? {})), [profile]);
   const unlocked = catalog.filter((c) => ownedNames.has(c.name));
@@ -312,7 +328,6 @@ export default function CollectionPage() {
           const f = factsByName[info.name];
           const inDeck = deck.includes(info.name);
           const isOwned = ownedNames.has(info.name);
-          const stats = statsByName[info.name];
           return (
             <CardInfoOverlay
               name={f.name}
@@ -322,18 +337,7 @@ export default function CollectionPage() {
               level={levelOf(f.name)}
               upgradeCost={upgradeCost(f.name)}
               maxLevel={levelOf(f.name) >= 16}
-              stats={
-                stats
-                  ? {
-                      hitPoints: stats.hp,
-                      dps: stats.dps,
-                      speedLabel: stats.speedLabel,
-                      rangeTiles: stats.rangeTiles,
-                      targets: stats.targets,
-                      unitCount: stats.unitCount,
-                    }
-                  : undefined
-              }
+              stats={infoStats}
               onClose={() => setInfo(null)}
               onUse={isOwned ? () => requestUse(info.name) : undefined}
               onRemove={isOwned && inDeck ? () => doRemove(info.name) : undefined}

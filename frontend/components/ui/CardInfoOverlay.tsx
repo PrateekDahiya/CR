@@ -6,11 +6,15 @@ import CardArt from "./CardArt";
 
 export interface CardStats {
   hitPoints?: number;
+  damage?: number;
   dps?: number;
+  hitSpeedSec?: number;
   speedLabel?: string;
   rangeTiles?: number;
   targets?: string;
   unitCount?: number;
+  radiusTiles?: number;
+  towerDamage?: number;
 }
 
 export interface CardInfoOverlayProps {
@@ -71,9 +75,13 @@ export default function CardInfoOverlay({
 
   const rows: { label: string; value: string }[] = [];
   if (stats?.hitPoints) rows.push({ label: "Hitpoints", value: String(stats.hitPoints) });
+  if (stats?.damage) rows.push({ label: "Damage", value: String(stats.damage) });
   if (stats?.dps) rows.push({ label: "DPS", value: String(stats.dps) });
+  if (stats?.hitSpeedSec) rows.push({ label: "Hit Speed", value: `${stats.hitSpeedSec}s` });
   if (stats?.speedLabel) rows.push({ label: "Speed", value: stats.speedLabel });
   if (stats?.rangeTiles) rows.push({ label: "Range", value: `${stats.rangeTiles} tiles` });
+  if (stats?.radiusTiles) rows.push({ label: "Radius", value: `${stats.radiusTiles} tiles` });
+  if (stats?.towerDamage) rows.push({ label: "Tower Damage", value: String(stats.towerDamage) });
   if (stats?.unitCount && stats.unitCount > 1) {
     rows.push({ label: "Count", value: `x${stats.unitCount}` });
   }

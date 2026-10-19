@@ -29,6 +29,7 @@ import { generateRandomDeck } from "../../lib/deckGenerator";
 import { isTowerTroopId } from "../../lib/cardAliases";
 import { useDeckState, DECK_SIZE } from "../../lib/useDeck";
 import { usePlayer } from "../../lib/playerContext";
+import { loadCardLevels, overlayStatsFor, type OverlayLevelStats } from "../../lib/cardLevels";
 import { DEFAULT_TOWER_ID, loadTowerSelection, saveTowerSelection } from "../../lib/towerSelection";
 
 // /decks — My Deck strip on top, full collection grid underneath, two tabs.
@@ -46,6 +47,7 @@ export default function DecksPage() {
   const [costFilter, setCostFilter] = useState<"all" | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>("all");
   const [sortKey, setSortKey] = useState<"name" | "elixir" | "level">("name");
   const [selectedTower, setSelectedTower] = useState(DEFAULT_TOWER_ID);
+  const [infoStats, setInfoStats] = useState<OverlayLevelStats | undefined>(undefined);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { deck, hydrated, placeAt, useCard, removeCard, replace: loadDeckInto, saveDeck } = useDeckState();
   const { playerId, profile, refresh: refreshProfile } = usePlayer();
@@ -111,6 +113,28 @@ export default function DecksPage() {
   useEffect(() => {
     setSelectedTower(loadTowerSelection());
   }, []);
+
+  // Resolve popup stats from the database level rows. Re-runs when the open
+  // card or its owned level changes, so an upgrade shows the new values.
+  useEffect(() => {
+    const cardId = info?.name;
+    if (!cardId) {
+      setInfoStats(undefined);
+      return undefined;
+    }
+    let cancelled = false;
+    const level = profile?.cards?.[cardId] ?? 1;
+    loadCardLevels(cardId, backendUrl())
+      .then((levels) => {
+        if (!cancelled) setInfoStats(overlayStatsFor(levels, level));
+      })
+      .catch(() => {
+        if (!cancelled) setInfoStats(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [info, profile]);
 
   const ownedNames = useMemo(() => new Set(Object.keys(profile?.cards ?? {})), [profile]);
   const unlocked = useMemo(
@@ -193,12 +217,6 @@ export default function DecksPage() {
     }
     return out;
   }, [collection, cards]);
-
-  const statsByName = useMemo(() => {
-    const out: Record<string, ContentCard> = {};
-    for (const c of cards) out[c.name] = c;
-    return out;
-  }, [cards]);
 
   const slotFacts = useMemo(() => {
     const out: Record<string, DeckSlotFact> = {};
@@ -751,7 +769,6 @@ export default function DecksPage() {
             if (!f) return null;
             const inDeck = deck.includes(info.name);
             const isOwned = ownedNames.has(info.name);
-            const stats = statsByName[info.name];
             return (
               <CardInfoOverlay
                 name={f.name}
@@ -761,18 +778,7 @@ export default function DecksPage() {
                 level={levelOf(f.name)}
                 upgradeCost={upgradeCostOf(f.name)}
                 maxLevel={levelOf(f.name) >= 16}
-                stats={
-                  stats
-                    ? {
-                        hitPoints: stats.hp,
-                        dps: stats.dps,
-                        speedLabel: stats.speedLabel,
-                        rangeTiles: stats.rangeTiles,
-                        targets: stats.targets,
-                        unitCount: stats.unitCount,
-                      }
-                    : undefined
-                }
+                stats={infoStats}
                 onClose={() => setInfo(null)}
                 onUse={isOwned ? () => requestUse(info.name) : undefined}
                 onRemove={isOwned && inDeck ? () => doRemove(info.slot, info.name) : undefined}
