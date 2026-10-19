@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { PageShell } from "../../components/ui";
+import { usePlayer } from "../../lib/playerContext";
 import {
-  ApiError,
-  adminLogin,
   adminSetWallet,
   backendUrl,
   getAdminPlayers,
@@ -13,8 +13,6 @@ import {
   type AdminStats,
 } from "../../lib/api";
 
-const TOKEN_KEY = "cr-admin-token";
-
 interface Draft {
   coins: string;
   gems: string;
@@ -22,9 +20,9 @@ interface Draft {
 }
 
 export default function AdminPage() {
-  const [token, setToken] = useState<string | null>(null);
-  const [username, setUsername] = useState("dahiya27");
-  const [password, setPassword] = useState("");
+  const { profile, loading } = usePlayer();
+  const authorized = profile?.admin === true;
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -33,18 +31,13 @@ export default function AdminPage() {
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [notice, setNotice] = useState<string | null>(null);
 
-  useEffect(() => {
-    const saved = typeof window !== "undefined" ? window.sessionStorage.getItem(TOKEN_KEY) : null;
-    if (saved) setToken(saved);
-  }, []);
-
-  const load = useCallback(async (activeToken: string, q = "") => {
+  const load = useCallback(async (q = "") => {
     setBusy(true);
     setError(null);
     try {
       const [s, p] = await Promise.all([
-        getAdminStats(activeToken, backendUrl()),
-        getAdminPlayers(activeToken, q, backendUrl()),
+        getAdminStats(backendUrl()),
+        getAdminPlayers(q, backendUrl()),
       ]);
       setStats(s);
       setPlayers(p.players);
@@ -57,10 +50,6 @@ export default function AdminPage() {
         ),
       );
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) {
-        window.sessionStorage.removeItem(TOKEN_KEY);
-        setToken(null);
-      }
       setError(e instanceof Error ? e.message : "admin load failed");
     } finally {
       setBusy(false);
@@ -68,34 +57,16 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (token) void load(token, query);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
-
-  const login = async (e: FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await adminLogin(username.trim(), password, backendUrl());
-      window.sessionStorage.setItem(TOKEN_KEY, res.token);
-      setToken(res.token);
-      setPassword("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "login failed");
-    } finally {
-      setBusy(false);
-    }
-  };
+    if (authorized) void load("");
+  }, [authorized, load]);
 
   const save = async (row: AdminPlayerRow) => {
-    if (!token) return;
     const draft = drafts[row.playerId];
     if (!draft) return;
     setBusy(true);
+    setError(null);
     try {
       await adminSetWallet(
-        token,
         row.playerId,
         {
           coins: Number(draft.coins),
@@ -105,7 +76,7 @@ export default function AdminPage() {
         backendUrl(),
       );
       setNotice(`Updated ${row.playerId}`);
-      await load(token, query);
+      await load(query);
     } catch (err) {
       setError(err instanceof Error ? err.message : "update failed");
     } finally {
@@ -113,42 +84,33 @@ export default function AdminPage() {
     }
   };
 
-  if (!token) {
+  if (loading) {
     return (
       <PageShell active="ranked" topBarCurrencies={{ cards: 0, coins: 0, gems: 0 }}>
-        <div className="mx-auto max-w-sm px-4 py-10" data-testid="admin-login">
-          <h1 className="mb-1 text-2xl font-extrabold text-white">Admin Login</h1>
-          <p className="mb-4 text-xs text-slate-400">Authorized staff only.</p>
-          <form onSubmit={(e) => void login(e)} className="space-y-2 rounded-xl border border-slate-600 bg-[#12224a]/80 p-3">
-            <label className="block text-[11px] font-bold uppercase text-slate-300">
-              Username
-              <input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                data-testid="admin-username"
-                className="mt-1 w-full rounded-md border border-slate-600 bg-slate-900/80 px-2 py-1.5 text-sm text-white"
-              />
-            </label>
-            <label className="block text-[11px] font-bold uppercase text-slate-300">
-              Password
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                data-testid="admin-password"
-                className="mt-1 w-full rounded-md border border-slate-600 bg-slate-900/80 px-2 py-1.5 text-sm text-white"
-              />
-            </label>
-            {error && <p className="text-xs font-bold text-rose-300">{error}</p>}
-            <button
-              type="submit"
-              disabled={busy}
-              data-testid="admin-login-submit"
-              className="w-full rounded-md border-b-4 border-amber-700 bg-gradient-to-b from-amber-300 to-amber-500 py-2 text-sm font-extrabold uppercase text-amber-950 active:translate-y-0.5 disabled:opacity-60"
-            >
-              {busy ? "Signing in..." : "Sign in"}
-            </button>
-          </form>
+        <div className="px-4 py-10 text-center text-sm text-slate-300" data-testid="admin-checking">
+          Checking admin access...
+        </div>
+      </PageShell>
+    );
+  }
+
+  if (!authorized) {
+    return (
+      <PageShell active="ranked" topBarCurrencies={{ cards: 0, coins: 0, gems: 0 }}>
+        <div
+          className="mx-auto mt-10 max-w-sm rounded-xl border border-rose-700 bg-rose-950/40 p-5 text-center"
+          data-testid="admin-unauthorized"
+        >
+          <h1 className="text-2xl font-extrabold text-white">Not authorized</h1>
+          <p className="mt-2 text-sm text-rose-100/80">
+            {profile?.playerId ? `${profile.playerId} is not an admin.` : "Sign in with the admin account to continue."}
+          </p>
+          <Link
+            href="/"
+            className="mt-4 inline-block rounded-md border-b-4 border-amber-700 bg-gradient-to-b from-amber-300 to-amber-500 px-4 py-2 text-xs font-extrabold uppercase text-amber-950"
+          >
+            Back to game
+          </Link>
         </div>
       </PageShell>
     );
@@ -171,18 +133,14 @@ export default function AdminPage() {
         <header className="mb-2 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-extrabold text-white">Admin Dashboard</h1>
-            <p className="text-[11px] text-slate-400">Signed in as {username || "admin"}</p>
+            <p className="text-[11px] text-slate-400">Signed in as {profile?.playerId}</p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              window.sessionStorage.removeItem(TOKEN_KEY);
-              setToken(null);
-            }}
-            className="rounded-md border border-rose-700 bg-rose-500/20 px-2 py-1 text-[10px] font-extrabold uppercase text-rose-200"
+          <Link
+            href="/"
+            className="rounded-md border border-sky-700 bg-sky-500/20 px-2 py-1 text-[10px] font-extrabold uppercase text-sky-100"
           >
-            Sign out
-          </button>
+            Back to game
+          </Link>
         </header>
 
         {error && <p className="mb-2 rounded-md bg-rose-950/70 p-2 text-xs font-bold text-rose-200">{error}</p>}
@@ -201,13 +159,16 @@ export default function AdminPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void load(query);
+            }}
             placeholder="Search player..."
             data-testid="admin-search"
             className="min-w-0 flex-1 rounded-md border border-slate-600 bg-slate-900/80 px-2 py-1 text-xs text-white"
           />
           <button
             type="button"
-            onClick={() => token && void load(token, query)}
+            onClick={() => void load(query)}
             data-testid="admin-refresh"
             className="rounded-md border border-sky-700 bg-sky-500/20 px-2 py-1 text-[10px] font-extrabold uppercase text-sky-100"
           >

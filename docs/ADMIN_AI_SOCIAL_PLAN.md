@@ -35,10 +35,9 @@ The dedicated `/leaderboard` tab already exists.
   allowlisted account's password to `ADMIN_PASSWORD` (default for this dev
   build: `admin12345`; override in env). This keeps a fresh clone usable; a
   deployment should set a strong `ADMIN_PASSWORD`.
-- Admin login uses the normal username/password verification plus the allowlist.
-- Admin routes require an opaque 12-hour session token (random, in-memory) in
-  `Authorization: Bearer <token>`; guest player tokens are rejected.
-- Admin sessions are cleared on backend restart (the UI returns to login).
+- No separate admin login: `/admin` uses the signed-in player's bearer token
+  and checks the allowlist. Non-admins see a "Not authorized" screen.
+- Admin routes return 403 `NOT_ADMIN` when the current player is not allowlisted.
 
 ### Dashboard
 
@@ -60,10 +59,10 @@ The dedicated `/leaderboard` tab already exists.
 
 ### UI
 
-- `/admin`: login screen, then dashboard.
-- `AuthGuard` allows `/admin` so the admin login can render.
-- Top bar shows an Admin link only for allowlisted accounts.
-- Screenshots for admin login and dashboard.
+- `/admin`: dashboard for allowlisted accounts, otherwise "Not authorized".
+- `AuthGuard` allows `/admin` so the access check can render.
+- Top bar keeps a single menu with Rename, Admin (allowlisted only), and Log out.
+- Screenshot for the admin dashboard.
 
 ## 4. Persistence Additions
 
@@ -88,7 +87,8 @@ The dedicated `/leaderboard` tab already exists.
 - Backend tests for admin authorization/stats/wallet updates and AI card data.
 - Frontend build.
 - AI pytest + self-check.
-- Admin live flow: admin login, stats, wallet edit, persisted after restart.
-- Playwright suite (90 passing, including Clan cleanup and cache reload).
+- Admin live flow: signed-in admin sees stats; non-admin sees Not authorized;
+  wallet edits persist after restart.
+- Playwright suite 93/93 (including admin access, menu logout, Clan cleanup, cache reload).
 - Backend 128 tests passing; AI 13 tests passing; frontend production build.
-- Screenshots for all pages plus admin (`13-admin-login`, `14-admin-dashboard`).
+- Screenshots for all pages plus `13-admin-dashboard`.

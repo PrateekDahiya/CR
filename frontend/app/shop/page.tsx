@@ -287,11 +287,6 @@ export default function ShopPage() {
           </div>
         </section>
 
-        <div className="mt-3 flex justify-center">
-          <CRButton variant="blue" size="sm" href="/collection" testId="shop-open-collection">
-            My Cards ({Object.keys(owned).length})
-          </CRButton>
-        </div>
       </div>
 
       {opened !== null && (

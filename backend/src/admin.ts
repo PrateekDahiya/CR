@@ -1,74 +1,29 @@
 /**
  * Admin dashboard API.
  *
- * Access requires a normal username/password login for an allowlisted admin
- * (ADMIN_USERNAMES, default `dahiya27`) plus the bearer token on every route.
- * Dashboard data reads the authoritative in-memory player store (hydrated from
- * MySQL at startup); wallet edits write through the same persistence path.
+ * Uses the signed-in player's normal bearer token. The player id must be in the
+ * ADMIN_USERNAMES allowlist (default `dahiya27`); there is no separate admin
+ * login. Dashboard data reads the authoritative in-memory player store
+ * (hydrated from MySQL at startup); wallet edits write through the same
+ * persistence path.
  */
 
-import { randomBytes } from "node:crypto";
 import type { Express, Request, Response } from "express";
-import { login, isAdminUsername } from "./accounts.js";
+import { isAdminUsername } from "./accounts.js";
+import { verifyToken } from "./auth.js";
 import { adminUpdatePlayer, getAdminStats, listAdminPlayers } from "./players.js";
 
-const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
-const adminSessions = new Map<string, { playerId: string; expiresMs: number }>();
-
-/** Opaque, random admin session token (not the forgeable guest player token). */
-function issueAdminSession(playerId: string): string {
-  const token = randomBytes(32).toString("base64url");
-  adminSessions.set(token, { playerId, expiresMs: Date.now() + SESSION_TTL_MS });
-  return token;
-}
-
-function sessionPlayerId(req: Request): string | null {
-  const header = req.headers.authorization;
-  if (typeof header !== "string" || !header.startsWith("Bearer ")) return null;
-  const token = header.slice(7);
-  const session = adminSessions.get(token);
-  if (session === undefined) return null;
-  if (session.expiresMs <= Date.now()) {
-    adminSessions.delete(token);
-    return null;
-  }
-  return session.playerId;
-}
-
 function requireAdmin(req: Request, res: Response): string | null {
-  const playerId = sessionPlayerId(req);
+  const header = req.headers.authorization;
+  const playerId = typeof header === "string" && header.startsWith("Bearer ") ? verifyToken(header.slice(7)) : null;
   if (playerId === null || !isAdminUsername(playerId)) {
-    res.status(401).json({ code: "ADMIN_REQUIRED", message: "admin authentication required" });
+    res.status(403).json({ code: "NOT_ADMIN", message: "this account is not an admin" });
     return null;
   }
   return playerId;
 }
 
 export function mountAdmin(app: Express): void {
-  app.post("/admin/login", (req: Request, res: Response) => {
-    const body = (req.body ?? {}) as { username?: unknown; password?: unknown };
-    const username = typeof body.username === "string" ? body.username.trim() : "";
-    const password = typeof body.password === "string" ? body.password : "";
-    if (username.length === 0 || password.length === 0) {
-      res.status(400).json({ code: "BAD_CREDENTIALS", message: "username and password required" });
-      return;
-    }
-    const result = login(username, password);
-    if (!result.ok) {
-      res.status(401).json({ code: result.code, message: result.message });
-      return;
-    }
-    if (!isAdminUsername(result.player.playerId)) {
-      res.status(403).json({ code: "NOT_ADMIN", message: "this account is not an admin" });
-      return;
-    }
-    res.json({
-      ok: true,
-      username: result.player.playerId,
-      token: issueAdminSession(result.player.playerId),
-    });
-  });
-
   app.get("/admin/stats", (req: Request, res: Response) => {
     if (requireAdmin(req, res) === null) return;
     const stats = getAdminStats();

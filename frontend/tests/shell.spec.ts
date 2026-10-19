@@ -257,7 +257,8 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(page.getByTestId("topbar-name")).toHaveText(/\S+/);
     await expect(page.getByTestId("topbar-trophies")).toContainText("🏆");
     // Rename through the top bar.
-    await page.getByTestId("topbar-player").click();
+    await page.getByTestId("topbar-menu").click();
+    await page.getByTestId("topbar-rename").click();
     await page.getByTestId("topbar-name-input").fill("Arena King");
     await page.getByTestId("topbar-name-save").click();
     await expect(page.getByTestId("topbar-name")).toHaveText("Arena King", { timeout: 15000 });

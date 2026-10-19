@@ -1,26 +1,60 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CR_COLORS } from "../../lib/crTheme";
+import { useRouter } from "next/navigation";
+import { invalidateApiCache } from "../../lib/api";
 import { usePlayer } from "../../lib/playerContext";
 
 export type TopBarCurrencies = { cards: number; coins: number; gems: number };
 
 /**
- * Top bar: player name + trophies on the left, owned-cards / coins / gems on the
- * right. Wallet numbers come from the live player profile (PlayerProvider) and
- * fall back to the props so static/Storybook renders still work. Tapping the
- * name opens an inline rename field. O(1) render.
+ * Top bar: player name + trophies on the left, owned-cards / coins / gems and a
+ * single menu button on the right. Wallet numbers come from the live player
+ * profile (PlayerProvider) and fall back to the props for static renders.
+ * Rename, admin, and logout live inside the menu to keep the bar uncluttered.
  */
 export default function TopBar({ cards, coins, gems }: TopBarCurrencies) {
   const { profile, setName } = usePlayer();
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const logout = () => {
+    try {
+      window.localStorage.removeItem("cr-player-id");
+      window.localStorage.removeItem("cr-name");
+      window.sessionStorage.clear();
+    } catch {
+      // storage unavailable
+    }
+    invalidateApiCache();
+    router.replace("/login");
+  };
 
   useEffect(() => {
     if (profile?.name) setDraft(profile.name);
   }, [profile?.name]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (event: MouseEvent) => {
+      if (menuRef.current !== null && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [menuOpen]);
 
   const name = profile?.name ?? "Player";
   const trophies = profile?.trophies ?? 0;
@@ -61,11 +95,8 @@ export default function TopBar({ cards, coins, gems }: TopBarCurrencies) {
             </button>
           </form>
         ) : (
-          <button
-            type="button"
+          <div
             data-testid="topbar-player"
-            onClick={() => setEditing(true)}
-            title="Tap to rename"
             className="flex min-w-0 items-center gap-1 rounded-full border border-amber-500/40 bg-[#0d1a38]/90 px-2 py-1"
           >
             <span data-testid="topbar-name" className="max-w-[90px] truncate text-xs font-extrabold text-white">
@@ -74,22 +105,62 @@ export default function TopBar({ cards, coins, gems }: TopBarCurrencies) {
             <span data-testid="topbar-trophies" className="text-[11px] font-bold text-amber-300">
               🏆 {trophies.toLocaleString()}
             </span>
-          </button>
+          </div>
         )}
       </div>
       <div className="flex flex-1 items-center justify-end gap-2">
-        {profile?.admin === true && (
-          <Link
-            href="/admin"
-            data-testid="topbar-admin"
-            className="rounded-md border border-rose-700 bg-rose-500/20 px-2 py-1 text-[10px] font-extrabold uppercase text-rose-100"
-          >
-            Admin
-          </Link>
-        )}
         <Pill icon="🃏" value={cardsValue} tone="blue" testid="topbar-cards" href="/collection" />
         <Pill icon="🪙" value={coinsValue} tone="gold" testid="topbar-coins" href="/shop" />
         <Pill icon="💎" value={gemsValue} tone="emerald" testid="topbar-gems" href="/shop" />
+        <div ref={menuRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((open) => !open)}
+            data-testid="topbar-menu"
+            title="Menu"
+            aria-label="Menu"
+            aria-expanded={menuOpen}
+            className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-500 bg-slate-800/80 text-sm font-extrabold text-white"
+          >
+            ☰
+          </button>
+          {menuOpen && (
+            <div
+              data-testid="topbar-menu-panel"
+              className="absolute right-0 top-full z-50 mt-2 w-44 overflow-hidden rounded-lg border border-slate-600 bg-[#0d1a38] shadow-xl"
+            >
+              <button
+                type="button"
+                data-testid="topbar-rename"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setEditing(true);
+                }}
+                className="block w-full px-3 py-2 text-left text-xs font-bold text-white hover:bg-slate-700/70"
+              >
+                Rename player
+              </button>
+              {profile?.admin === true && (
+                <Link
+                  href="/admin"
+                  data-testid="topbar-admin"
+                  onClick={() => setMenuOpen(false)}
+                  className="block w-full px-3 py-2 text-left text-xs font-bold text-rose-200 hover:bg-slate-700/70"
+                >
+                  Admin dashboard
+                </Link>
+              )}
+              <button
+                type="button"
+                data-testid="topbar-logout"
+                onClick={logout}
+                className="block w-full border-t border-slate-700 px-3 py-2 text-left text-xs font-bold text-rose-300 hover:bg-slate-700/70"
+              >
+                Log out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

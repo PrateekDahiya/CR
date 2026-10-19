@@ -632,35 +632,23 @@ export interface AdminStats {
   topPlayers: AdminPlayerRow[];
 }
 
-export function adminLogin(username: string, password: string, baseUrl?: string): Promise<{ ok: boolean; username: string; token: string }> {
+export function getAdminStats(baseUrl?: string): Promise<AdminStats> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
-  return postJson(`${base}/admin/login`, { username, password });
+  return fetchJson(`${base}/admin/stats`);
 }
 
-function adminHeaders(token: string): Record<string, string> {
-  return { Authorization: `Bearer ${token}` };
-}
-
-export function getAdminStats(token: string, baseUrl?: string): Promise<AdminStats> {
+export function getAdminPlayers(q = "", baseUrl?: string): Promise<{ players: AdminPlayerRow[]; count: number }> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
-  return fetchJson(`${base}/admin/stats`, { headers: adminHeaders(token) });
-}
-
-export function getAdminPlayers(token: string, q = "", baseUrl?: string): Promise<{ players: AdminPlayerRow[]; count: number }> {
-  const base = backendUrl(baseUrl).replace(/\/$/, "");
-  return fetchJson(`${base}/admin/players?limit=200&q=${encodeURIComponent(q)}`, { headers: adminHeaders(token) });
+  return fetchJson(`${base}/admin/players?limit=200&q=${encodeURIComponent(q)}`);
 }
 
 export function adminSetWallet(
-  token: string,
   playerId: string,
   patch: { coins?: number; gems?: number; trophies?: number; name?: string },
   baseUrl?: string,
 ): Promise<{ ok: boolean; player: { playerId: string; name: string; coins: number; gems: number; trophies: number } }> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
-  return postJson(`${base}/admin/players/${encodeURIComponent(playerId)}/wallet`, patch, {
-    headers: adminHeaders(token),
-  });
+  return postJson(`${base}/admin/players/${encodeURIComponent(playerId)}/wallet`, patch);
 }
 
 // --- Shop -------------------------------------------------------------------
