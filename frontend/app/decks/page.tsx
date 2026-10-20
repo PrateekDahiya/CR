@@ -732,8 +732,15 @@ export default function DecksPage() {
               data-testid="tower-row-king"
               className="mb-2 flex items-center gap-2 rounded-lg border border-amber-500/70 bg-amber-500/10 p-2"
             >
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg border-2 border-amber-400 bg-gradient-to-b from-amber-300 to-amber-600 text-2xl">
-                ♛
+              <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-lg border-2 border-amber-400 bg-gradient-to-b from-amber-300 to-amber-600">
+                {/* Real blue King Tower art (same asset the arena uses). */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/towers/king-blue-active.png"
+                  alt="King Tower"
+                  data-testid="king-tower-art"
+                  className="h-full w-full object-contain"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-extrabold text-white">King Tower</p>
@@ -769,6 +776,7 @@ export default function DecksPage() {
                       rarity={tower.rarity}
                       cost={tower.cost}
                       level={lvl}
+                      showLevel={false}
                       size="sm"
                       testId={`tower-card-${tower.id}`}
                     />

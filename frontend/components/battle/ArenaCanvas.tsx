@@ -23,6 +23,8 @@
 import { useEffect, useRef } from "react";
 import type { Tower, Unit, Vec2 } from "../../../shared/types";
 import { resolveCardArtId, unitGlyph } from "../../lib/cardAliases";
+import { getCard } from "../../lib/cards";
+import { drawCardSprite } from "../../lib/battle/spriteAnim";
 import { drawTowerHpBar } from "./TowerView";
 
 export type PlayerSide = "blue" | "red";
@@ -63,6 +65,8 @@ export interface ArenaCanvasProps {
   units?: Unit[];
   /** Currently tapped arena cell (tile coords) or null. */
   selectedCell?: Vec2 | null;
+  /** Selected card is a spell: any arena tile (including the river) is legal. */
+  selectedAnywhere?: boolean;
   /** Viewer side — controls which half gets the blue deploy tint. Default "blue". */
   mySide?: PlayerSide;
   /** Selected crown tower troop; used to draw the Princess tower icon. */
@@ -150,6 +154,108 @@ interface FloatText {
   color: string;
 }
 
+type ProjectileKind =
+  | "arrow"
+  | "bullet"
+  | "cannonball"
+  | "fireball"
+  | "ice"
+  | "bolt"
+  | "axe"
+  | "boulder"
+  | "energy"
+  | "dagger"
+  | "spear"
+  | "shell";
+
+interface Projectile {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  born: number;
+  duration: number;
+  kind: ProjectileKind;
+  color: string;
+  arc: number;
+}
+
+interface SlashFx {
+  x: number;
+  y: number;
+  angle: number;
+  born: number;
+  color: string;
+}
+
+interface DeathGhost {
+  cardId: string;
+  owner: "blue" | "red";
+  x: number;
+  y: number;
+  born: number;
+}
+
+interface UnitMemory {
+  cardId: string;
+  owner: "blue" | "red";
+  x: number;
+  y: number;
+  hp: number;
+}
+
+const MAX_PROJECTILES = 80;
+const MAX_SLASHES = 40;
+const MAX_GHOSTS = 32;
+const MAX_SPELLS_DRAWN = 8;
+
+/** Cards whose attacks are drawn as a continuous beam instead of a projectile. */
+const BEAM_CARDS: ReadonlySet<string> = new Set([
+  "inferno-tower",
+  "inferno-dragon",
+  "electro-wizard",
+  "electro-dragon",
+  "tesla",
+  "zappies",
+]);
+
+function projectileStyle(cardId: string): ProjectileKind {
+  if (["archers", "princess", "magic-archer", "dart-goblin", "spear-goblins", "royal-recruits", "rascals"].includes(cardId)) return "arrow";
+  if (["cannon", "cannon-cart", "royal-giant", "goblin-demolisher"].includes(cardId)) return "cannonball";
+  if (["mortar", "x-bow"].includes(cardId)) return "shell";
+  if (["wizard", "baby-dragon", "firecracker", "witch", "mother-witch"].includes(cardId)) return "fireball";
+  if (["ice-wizard", "ice-spirit", "giant-snowball"].includes(cardId)) return "ice";
+  if (["electro-wizard", "electro-dragon", "zappies", "tesla"].includes(cardId)) return "bolt";
+  if (["executioner"].includes(cardId)) return "axe";
+  if (["bowler"].includes(cardId)) return "boulder";
+  if (["sparky", "mega-knight"].includes(cardId)) return "energy";
+  if (["dagger-duchess"].includes(cardId)) return "dagger";
+  if (["musketeer", "hunter", "flying-machine"].includes(cardId)) return "bullet";
+  if (["goblin-spear"].includes(cardId)) return "spear";
+  return "bullet";
+}
+
+function projectileColor(kind: ProjectileKind): string {
+  switch (kind) {
+    case "fireball": return "#fb923c";
+    case "ice": return "#a5f3fc";
+    case "bolt": return "#fde047";
+    case "cannonball":
+    case "boulder": return "#78716c";
+    case "shell": return "#44403c";
+    case "energy": return "#c084fc";
+    case "dagger": return "#e2e8f0";
+    case "axe": return "#cbd5e1";
+    case "spear": return "#d6d3d1";
+    case "arrow": return "#f8fafc";
+    default: return "#fbbf24";
+  }
+}
+
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
 function emojiFor(cardId: string): string {
   // Never an unresolved marker: spawned children (Golemite, Lava Pup, ...) and
   // any unlisted id still get a legible glyph (see lib/cardAliases).
@@ -165,6 +271,59 @@ function emojiFor(cardId: string): string {
  * Missing art falls back to the emoji glyph (onError marks the entry).
  */
 const artCache = new Map<string, HTMLImageElement | "missing">();
+
+/** Blue/red King Tower art fetched from the Clash Royale wiki. */
+const kingTowerCache = new Map<"blue" | "red", HTMLImageElement | "missing">();
+
+function kingTowerArt(owner: "blue" | "red"): HTMLImageElement | null {
+  const hit = kingTowerCache.get(owner);
+  if (hit !== undefined) return hit === "missing" ? null : hit;
+  if (typeof window === "undefined") return null;
+  const img = new Image();
+  img.decoding = "async";
+  img.onerror = () => kingTowerCache.set(owner, "missing");
+  img.src = owner === "blue" ? "/towers/king-blue-active.png" : "/towers/king-red-active.png";
+  kingTowerCache.set(owner, img);
+  return img;
+}
+
+/** Blue/red Princess (side) Tower art, same source set as the king towers. */
+const princessTowerCache = new Map<string, HTMLImageElement | "missing">();
+
+/**
+ * Side-tower art per crown-tower troop: every tower type has its own picture
+ * (princess, cannoneer, dagger duchess, royal chef) instead of one picture
+ * plus a small icon badge.
+ */
+function sideTowerAsset(troopId: string | undefined, owner: "blue" | "red"): string {
+  const team = owner === "blue" ? "blue" : "red";
+  switch (troopId) {
+    case "cannoneer":
+      return `/towers/princess-cannoneer-${team}.png`;
+    case "dagger-duchess":
+      return `/towers/princess-duchess-${team}.png`;
+    case "royal-chef":
+      return `/towers/princess-chef-${team}.png`;
+    default:
+      return `/towers/princess-${team}.png`;
+  }
+}
+
+function princessTowerArt(
+  troopId: string | undefined,
+  owner: "blue" | "red",
+): HTMLImageElement | null {
+  const key = `${troopId ?? "tower-princess"}:${owner}`;
+  const hit = princessTowerCache.get(key);
+  if (hit !== undefined) return hit === "missing" ? null : hit;
+  if (typeof window === "undefined") return null;
+  const img = new Image();
+  img.decoding = "async";
+  img.onerror = () => princessTowerCache.set(key, "missing");
+  img.src = sideTowerAsset(troopId, owner);
+  princessTowerCache.set(key, img);
+  return img;
+}
 
 function artFor(cardId: string): HTMLImageElement | null {
   // Spawned children use singular ids (`barbarian`) while the art uses the
@@ -305,6 +464,7 @@ export default function ArenaCanvas({
   entities,
   units,
   selectedCell = null,
+  selectedAnywhere = false,
   mySide = "blue",
   towerTroopId,
   spells = [],
@@ -329,6 +489,7 @@ export default function ArenaCanvas({
   const towersRef = useRef<Tower[]>(towers);
   const liveRef = useRef<Unit[]>(live);
   const selRef = useRef<Vec2 | null>(selectedCell);
+  const selectedAnywhereRef = useRef(false);
   const selectedRadiusRef = useRef<number | null>(selectedRadius);
   const inspectRangeRef = useRef<{ x: number; y: number; radius: number } | null>(inspectRange);
   const inspectEnabledRef = useRef<boolean>(inspectEnabled);
@@ -342,12 +503,23 @@ export default function ArenaCanvas({
   const hitFlashRef = useRef<Map<string, number>>(new Map());
   const lastFlashAtRef = useRef<number>(-1e9); // O(1) any-flash-active probe
   const deadTowersRef = useRef<Set<string>>(new Set());
+  const projectilesRef = useRef<Projectile[]>([]);
+  const slashesRef = useRef<SlashFx[]>([]);
+  const deathGhostsRef = useRef<DeathGhost[]>([]);
+  const spawnAtRef = useRef<Map<string, number>>(new Map());
+  const lastShotRef = useRef<Map<string, number>>(new Map());
+  const lastTowerShotRef = useRef<Map<string, number>>(new Map());
+  const lastBeamSparkRef = useRef<Map<string, number>>(new Map());
+  const targetScratchRef = useRef<Map<string, Vec2>>(new Map());
+  const knownUnitsRef = useRef<Map<string, UnitMemory>>(new Map());
+  const reduceMotionRef = useRef(false);
   void serverTimeMs; // clock anchor documented; lerp uses arrival delta (100ms buffer per §9)
 
   // Snapshot incoming props each render (render assigns refs; effects consume).
   towersRef.current = towers;
   liveRef.current = live;
   selRef.current = selectedCell;
+  selectedAnywhereRef.current = selectedAnywhere;
   selectedRadiusRef.current = selectedRadius;
   inspectRangeRef.current = inspectRange;
   inspectEnabledRef.current = inspectEnabled;
@@ -356,6 +528,9 @@ export default function ArenaCanvas({
   towerTroopRef.current = towerTroopId;
   spellsRef.current = spells;
   extDmgRef.current = damageNumbers;
+  if (typeof window !== "undefined") {
+    reduceMotionRef.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
 
   // On new snapshot: shift curr->prev, detect HP drops (damage numbers + flash
   // + explosion particles), detect tower kills (crown burst).
@@ -378,8 +553,14 @@ export default function ArenaCanvas({
     lastSnapRef.current = now;
 
     const floats = floatsRef.current;
+    const known = knownUnitsRef.current;
     for (let i = 0; i < live.length; i++) {
       const u = live[i];
+      if (!known.has(u.id)) {
+        spawnAtRef.current.set(u.id, now);
+        lastShotRef.current.set(u.id, now + 260);
+        burst(u.position.x, u.position.y, u.owner === "blue" ? "#bfdbfe" : "#fecaca", 7);
+      }
       const oldHp = hpRef.current.get(u.id);
       // Building lifetime wear-down reduces HP every tick, but that is not a
       // hit: keep the HP bar accurate without spamming floating damage numbers.
@@ -404,6 +585,24 @@ export default function ArenaCanvas({
         burst(u.position.x, u.position.y, u.owner === "blue" ? "#bfdbfe" : "#fecaca", 8);
         hpRef.current.delete(u.id);
       }
+    }
+    // Turn units that vanished from the snapshot into short death animations.
+    known.forEach((mem, id) => {
+      if (next.has(id)) return;
+      if (mem.hp > 0) {
+        const ghosts = deathGhostsRef.current;
+        ghosts.push({ cardId: mem.cardId, owner: mem.owner, x: mem.x, y: mem.y, born: now });
+        if (ghosts.length > MAX_GHOSTS) ghosts.splice(0, ghosts.length - MAX_GHOSTS);
+        burst(mem.x, mem.y, mem.owner === "blue" ? "#bfdbfe" : "#fecaca", 6);
+      }
+      spawnAtRef.current.delete(id);
+      lastShotRef.current.delete(id);
+      lastBeamSparkRef.current.delete(id);
+    });
+    known.clear();
+    for (let i = 0; i < live.length; i++) {
+      const u = live[i];
+      known.set(u.id, { cardId: u.cardId, owner: u.owner, x: u.position.x, y: u.position.y, hp: u.hitPoints });
     }
     // GC hp entries for removed units
     for (const id of Array.from(hpRef.current.keys())) {
@@ -447,6 +646,36 @@ export default function ArenaCanvas({
       });
     }
     if (arr.length > MAX_PARTICLES) arr.splice(0, arr.length - MAX_PARTICLES);
+  }
+
+  function spawnProjectile(
+    kind: ProjectileKind,
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+    now: number,
+  ): void {
+    const arr = projectilesRef.current;
+    const dist = Math.hypot(x1 - x0, y1 - y0);
+    arr.push({
+      x0,
+      y0,
+      x1,
+      y1,
+      born: now,
+      duration: clamp(dist * 44, 150, 560),
+      kind,
+      color: projectileColor(kind),
+      arc: kind === "shell" || kind === "boulder" || kind === "cannonball" ? 0.8 : kind === "arrow" ? 0.15 : 0.32,
+    });
+    if (arr.length > MAX_PROJECTILES) arr.splice(0, arr.length - MAX_PROJECTILES);
+  }
+
+  function spawnSlash(x: number, y: number, angle: number, now: number, color: string): void {
+    const arr = slashesRef.current;
+    arr.push({ x, y, angle, born: now, color });
+    if (arr.length > MAX_SLASHES) arr.splice(0, arr.length - MAX_SLASHES);
   }
 
   // 60fps rAF loop with 100ms interp buffer (§9: 10Hz snapshots -> lerp).
@@ -506,6 +735,10 @@ export default function ArenaCanvas({
         preview0 === drawnPreview &&
         inspect0 === drawnInspect &&
         spells0.length === drawnSpellsLen &&
+        lv0.length === 0 &&
+        projectilesRef.current.length === 0 &&
+        slashesRef.current.length === 0 &&
+        deathGhostsRef.current.length === 0 &&
         particlesRef.current.length === 0 &&
         floatsRef.current.length === 0 &&
         spells0.length === 0 &&
@@ -531,6 +764,17 @@ export default function ArenaCanvas({
       const sel = selRef.current;
       const prev = prevRef.current;
       const curr = currRef.current;
+      let attackingCount = 0;
+      const targets = targetScratchRef.current;
+      targets.clear();
+      for (let i = 0; i < tw.length; i++) {
+        const t = tw[i];
+        targets.set(t.id, t.position);
+      }
+      for (let i = 0; i < lv.length; i++) {
+        const u = lv[i];
+        targets.set(u.id, u.position);
+      }
 
       // Player's half is always at the BOTTOM (like real CR). The server keeps
       // blue = server-y 0..14; when the player is blue the board is drawn
@@ -625,7 +869,7 @@ export default function ArenaCanvas({
         const sy = clamp(Math.floor(sel.y), 0, ROWS - 1);
         const onRiver = sy === RIVER_Y0 || sy === RIVER_Y1;
         const inOwn = sy >= ownY[0] && sy <= ownY[1];
-        const valid = !onRiver && inOwn;
+        const valid = selectedAnywhereRef.current || (!onRiver && inOwn);
         c.save();
         if (valid) {
           c.fillStyle = "rgba(250,204,21,0.35)";
@@ -695,58 +939,103 @@ export default function ArenaCanvas({
         c.ellipse(cx, cy + half * 0.85, half * 0.85, half * 0.26, 0, 0, Math.PI * 2);
         c.fill();
         if (!t.destroyed) {
-          // Square stone base: strong team plate + inset lighter face.
-          const plate = t.owner === "blue" ? "#1d4ed8" : "#b91c1c";
-          const face = t.owner === "blue" ? "#93c5fd" : "#fca5a5";
-          const ring = t.owner === "blue" ? "#bfdbfe" : "#fecaca";
-          c.save();
-          c.lineWidth = 3;
-          c.strokeStyle = "#3f2a14";
-          roundedRect(c, cx - half, cy - half, size, size, 6);
-          c.fillStyle = plate;
-          c.fill();
-          c.stroke();
-          c.lineWidth = 3;
-          c.strokeStyle = ring;
-          roundedRect(c, cx - half + 5, cy - half + 5, size - 10, size - 10, 4);
-          c.fillStyle = face;
-          c.fill();
-          c.stroke();
-          // inner shadow line for depth
-          c.strokeStyle = "rgba(0,0,0,0.18)";
-          c.lineWidth = 1;
-          roundedRect(c, cx - half + 2, cy - half + 2, size - 4, size - 4, 5);
-          c.stroke();
-          c.restore();
-          // Roof / emblem, upright in both views.
-          upright(cx, cy, () => {
-            c.font = `${t.kind === "king" ? 34 : 26}px serif`;
-            c.textAlign = "center";
-            c.textBaseline = "middle";
-            c.fillText(t.kind === "king" ? "👑" : "🏰", 0, 1);
-          });
-          // Tower troop icon: Princess towers show the selected troop art; the
-          // King tower always keeps the standard crown glyph.
-          if (t.kind === "princess" && towerTroopRef.current !== undefined) {
-            const troopArt = artFor(towerTroopRef.current);
-            if (troopArt !== null && troopArt.complete && troopArt.naturalWidth > 0) {
+          if (t.kind === "king") {
+            // Dedicated blue/red King Tower art. Fit inside the 4x4 footprint
+            // while preserving the source aspect ratio, bottom-aligned.
+            const king = kingTowerArt(t.owner);
+            if (king !== null && king.complete && king.naturalWidth > 0) {
               upright(cx, cy, () => {
-                const d = size * 0.68;
-                c.save();
-                c.beginPath();
-                c.arc(0, 0, d / 2, 0, Math.PI * 2);
-                c.clip();
-                c.drawImage(troopArt, -d / 2, -d / 2, d, d);
-                c.restore();
+                const maxW = size * 0.98;
+                const maxH = size * 1.3;
+                const scale = Math.min(maxW / king.naturalWidth, maxH / king.naturalHeight);
+                const dw = king.naturalWidth * scale;
+                const dh = king.naturalHeight * scale;
+                c.drawImage(king, -dw / 2, half * 0.92 - dh, dw, dh);
               });
+            } else {
+              // Pre-load fallback: keep a team plate until the PNG decodes.
+              c.save();
+              c.fillStyle = t.owner === "blue" ? "#1d4ed8" : "#b91c1c";
+              c.strokeStyle = "#3f2a14";
+              c.lineWidth = 3;
+              roundedRect(c, cx - half, cy - half, size, size, 6);
+              c.fill();
+              c.stroke();
+              c.restore();
+            }
+          } else {
+            // Princess (side) towers use the real tower art, same treatment as
+            // the king towers: bottom-aligned inside the 3x3 footprint with the
+            // source aspect ratio preserved. Every crown-tower troop has its
+            // own picture, so no icon badge is drawn on top.
+            const side = princessTowerArt(towerTroopRef.current, t.owner);
+            if (side !== null && side.complete && side.naturalWidth > 0) {
+              upright(cx, cy, () => {
+                const maxW = size * 0.98;
+                const maxH = size * 1.25;
+                const scale = Math.min(maxW / side.naturalWidth, maxH / side.naturalHeight);
+                const dw = side.naturalWidth * scale;
+                const dh = side.naturalHeight * scale;
+                c.drawImage(side, -dw / 2, half * 0.95 - dh, dw, dh);
+              });
+            } else {
+              // Pre-load fallback: keep the team plate until the PNG decodes.
+              const plate = t.owner === "blue" ? "#1d4ed8" : "#b91c1c";
+              c.save();
+              c.fillStyle = plate;
+              c.strokeStyle = "#3f2a14";
+              c.lineWidth = 3;
+              roundedRect(c, cx - half, cy - half, size, size, 6);
+              c.fill();
+              c.stroke();
+              c.restore();
             }
           }
           // HP bar + level badge, always visually ABOVE the tower. The blue view
           // is mirrored, so "up on screen" is +y in board space there.
-          const barOffset = sideRef.current === "blue" ? half + 8 : -(half + 8);
+          const barGap = t.kind === "king" ? half + 24 : half + 8;
+          const barOffset = sideRef.current === "blue" ? barGap : -barGap;
           upright(cx, cy + barOffset, () => {
             drawTowerHpBar(c, t, 0, 0, barW);
           });
+
+          // Crown towers fight too: pick the nearest enemy in range and send a
+          // visible arrow/cannonball on a fixed cadence (cosmetic; damage is
+          // still authoritative on the server).
+          const towerRange = t.kind === "king" ? 7 : 7.5;
+          let towerTarget: Unit | null = null;
+          let towerD2 = towerRange * towerRange;
+          for (let ti2 = 0; ti2 < lv.length; ti2++) {
+            const e = lv[ti2];
+            if (e.owner === t.owner || e.hitPoints <= 0) continue;
+            const dx = e.position.x - t.position.x;
+            const dy = e.position.y - t.position.y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 <= towerD2) {
+              towerD2 = d2;
+              towerTarget = e;
+            }
+          }
+          if (towerTarget !== null) {
+            const interval = t.kind === "king" ? 1400 : 1000;
+            const last = lastTowerShotRef.current.get(t.id) ?? now - interval;
+            if (now - last >= interval) {
+              lastTowerShotRef.current.set(t.id, now);
+              const troop = t.owner === "blue" ? towerTroopRef.current : "tower-princess";
+              const kind: ProjectileKind =
+                t.kind === "king"
+                  ? "energy"
+                  : troop === "cannoneer"
+                    ? "cannonball"
+                    : troop === "dagger-duchess"
+                      ? "dagger"
+                      : troop === "royal-chef"
+                        ? "axe"
+                        : "arrow";
+              spawnProjectile(kind, t.position.x, t.position.y, towerTarget.position.x, towerTarget.position.y, now);
+              burst(t.position.x, t.position.y, t.owner === "blue" ? "#93c5fd" : "#fca5a5", 3);
+            }
+          }
         } else {
           // Rubble: collapsed square.
           c.save();
@@ -773,7 +1062,8 @@ export default function ArenaCanvas({
         }
       }
 
-      // --- units (interpolated): O(v), v<=40 visible ---
+      // --- units (interpolated, strip-animated): O(v), v<=40 visible ---
+      const reduced = reduceMotionRef.current;
       for (let ui = 0; ui < lv.length; ui++) {
         const u = lv[ui];
         const p = prev.get(u.id);
@@ -781,114 +1071,541 @@ export default function ArenaCanvas({
         const sx = p ? lerp(p.x, q.x, alpha) : q.x;
         const sy = p ? lerp(p.y, q.y, alpha) : q.y;
         const cx = (sx + 0.5) * TW;
-        const bob = Math.sin(timeS * 8 + sx * 2 + sy) * 1.5;
-        const cy = (sy + 0.5) * TH + bob * 0.4;
-        const r = TW * 0.62;
+        const cy = (sy + 0.5) * TH;
+        const card = getCard(u.cardId);
+        const target = u.targetId !== undefined ? targets.get(u.targetId) : undefined;
+        const attackRange = (card?.range ?? 1.1) + 0.8;
+        const targetDist = target === undefined
+          ? Number.POSITIVE_INFINITY
+          : Math.hypot(target.x - sx, target.y - sy);
+        const attacking = target !== undefined && targetDist <= attackRange && u.hitPoints > 0;
+        if (attacking) attackingCount++;
+        const moving = p !== undefined && Math.hypot(q.x - p.x, q.y - p.y) > 0.012;
+        const spawnAt = spawnAtRef.current.get(u.id) ?? now;
+        const spawnT = clamp((now - spawnAt) / 360, 0, 1);
+        const pop = 0.62 + 0.38 * easeOutCubic(spawnT);
+        const state: "idle" | "walk" | "attack" | "death" = reduced
+          ? "idle"
+          : attacking
+            ? "attack"
+            : moving
+              ? "walk"
+              : "idle";
+        const facing: 1 | -1 = target !== undefined && target.x < sx ? -1 : 1;
+        const interval = Math.max(250, (card?.hitSpeed ?? 1) * 1000);
+        const cycle = ((now - spawnAt) % interval) / interval;
+        const strike = attacking && !reduced ? Math.sin(Math.PI * Math.min(1, cycle * 1.55)) : 0;
+        const dirX = target === undefined ? 0 : Math.sign(target.x - sx) || 0;
+        const dirY = target === undefined ? 0 : Math.sign(target.y - sy) || 0;
+        const lunge = attacking ? strike * 2.6 : 0;
+        const bob = moving && !reduced
+          ? Math.sin((now / 1000) * 10 + sx * 2 + sy) * 1.3
+          : Math.sin((now / 1000) * 2.2 + sx + sy) * 0.55;
+        const drawCx = cx + dirX * lunge;
+        const drawCy = cy + dirY * lunge * 0.35 + bob;
+        const drawScale = pop * (1 + strike * 0.055);
+        const baseR = card?.type === "building" ? TW * 0.74 : TW * 0.64;
+        const r = baseR * drawScale;
+        const isBeam = BEAM_CARDS.has(u.cardId);
 
         // shadow
         c.fillStyle = "rgba(0,0,0,0.25)";
         c.beginPath();
-        c.ellipse(cx, cy + r * 0.8, r * 0.8, r * 0.3, 0, 0, Math.PI * 2);
+        c.ellipse(drawCx, drawCy + r * 0.8, r * 0.85, r * 0.3, 0, 0, Math.PI * 2);
         c.fill();
-        // body + team ring
+
+        // Team identity without a hard ring: a soft ground glow under the feet,
+        // a drop shadow, and the team-coloured HP bar. The sprite itself is not
+        // enclosed by a red/blue circle any more.
         const flash = now - (flashMap.get(u.id) ?? -1e9) < 120;
-        c.fillStyle = flash ? "#ffffff" : u.owner === "blue" ? "#eff6ff" : "#fef2f2";
+        c.save();
+        c.globalAlpha = 0.34;
+        c.fillStyle = u.owner === "blue" ? "#3b82f6" : "#ef4444";
         c.beginPath();
-        c.arc(cx, cy, r, 0, Math.PI * 2);
+        c.ellipse(drawCx, drawCy + r * 0.74, r * 0.9, r * 0.3, 0, 0, Math.PI * 2);
         c.fill();
-        c.lineWidth = 3;
-        c.strokeStyle = u.owner === "blue" ? "#2563eb" : "#dc2626";
-        c.stroke();
-        // Real card art (same PNG as deck/collection); emoji only until decoded
-        // or when the card has no art file.
-        const art = artFor(u.cardId);
-        if (art !== null && art.complete && art.naturalWidth > 0) {
-          const d = r * 1.8;
+        c.restore();
+
+        // Real 2D strip art (soft feathered edges baked into the strip). The
+        // static-art fallback keeps a circular clip so it never shows a square.
+        let spriteDrawn = false;
+        upright(drawCx, drawCy, () => {
+          spriteDrawn = drawCardSprite(c, u.cardId, state, now, r * 2.08, facing);
+        });
+        if (!spriteDrawn) {
+          const art = artFor(u.cardId);
           c.save();
           c.beginPath();
-          c.arc(cx, cy, r - 1, 0, Math.PI * 2);
+          c.arc(drawCx, drawCy, Math.max(1, r - 1), 0, Math.PI * 2);
           c.clip();
-          // Draw centred on the unit, un-flipping the board mirror so the art is
-          // never upside down for the blue player.
-          c.translate(cx, cy);
-          if (sideRef.current === "blue") c.scale(1, -1);
-          c.drawImage(art, -d / 2, -d / 2, d, d);
+          upright(drawCx, drawCy, () => {
+            if (art !== null && art.complete && art.naturalWidth > 0) {
+              const d = r * 1.8;
+              c.drawImage(art, -d / 2, -d / 2, d, d);
+            } else {
+              c.font = "13px serif";
+              c.textAlign = "center";
+              c.textBaseline = "middle";
+              c.fillText(emojiFor(u.cardId), 0, 0.5);
+            }
+          });
           c.restore();
-        } else {
-          c.font = "13px serif";
-          c.textAlign = "center";
-          c.textBaseline = "middle";
-          upright(cx, cy + 0.5, () => c.fillText(emojiFor(u.cardId), 0, 0));
         }
-        // HP bar
+
+        if (flash) {
+          c.save();
+          c.globalAlpha = 0.5;
+          c.fillStyle = "#ffffff";
+          c.beginPath();
+          c.arc(drawCx, drawCy, Math.max(1, r - 1), 0, Math.PI * 2);
+          c.fill();
+          c.restore();
+        }
+
+        // Deploy ring.
+        if (spawnT < 1) {
+          c.save();
+          c.globalAlpha = 1 - spawnT;
+          c.strokeStyle = u.owner === "blue" ? "#93c5fd" : "#fca5a5";
+          c.lineWidth = 2;
+          c.beginPath();
+          c.arc(cx, cy, r * (1 + spawnT * 0.7), 0, Math.PI * 2);
+          c.stroke();
+          c.restore();
+        }
+
+        // Attack cadence: spawn one visible projectile/slash per hitSpeed.
+        const lastShot = lastShotRef.current.get(u.id) ?? now;
+        if (attacking && target !== undefined && now - spawnAt > 260 && now - lastShot >= interval) {
+          lastShotRef.current.set(u.id, now);
+          if (isBeam) {
+            // Beam cards draw a continuous beam below; just spark on the target.
+            burst(target.x, target.y, u.cardId === "electro-wizard" || u.cardId === "electro-dragon" ? "#fde047" : "#fb923c", 3);
+          } else if ((card?.range ?? 0) > 1.5) {
+            spawnProjectile(
+              projectileStyle(u.cardId),
+              sx,
+              sy,
+              target.x,
+              target.y,
+              now,
+            );
+          } else {
+            spawnSlash(
+              target.x,
+              target.y,
+              Math.atan2(target.y - sy, target.x - sx),
+              now,
+              u.owner === "blue" ? "#dbeafe" : "#fee2e2",
+            );
+          }
+        }
+
+        // Inferno / electro continuous beam.
+        if (isBeam && attacking && target !== undefined) {
+          const electro = u.cardId === "electro-wizard" || u.cardId === "electro-dragon" || u.cardId === "tesla" || u.cardId === "zappies";
+          const beamColor = electro ? "#fde047" : "#fb923c";
+          c.save();
+          c.globalAlpha = 0.65 + Math.sin(now / 55) * 0.2;
+          c.strokeStyle = beamColor;
+          c.lineWidth = electro ? 2 : 3;
+          c.shadowColor = beamColor;
+          c.shadowBlur = 10;
+          c.beginPath();
+          c.moveTo(cx, cy);
+          if (electro) {
+            const segs = 6;
+            for (let k = 1; k <= segs; k++) {
+              const t = k / segs;
+              const jitter = k === segs ? 0 : Math.sin(now / 40 + k * 2.4) * 0.22;
+              c.lineTo(
+                lerp(cx, (target.x + 0.5) * TW, t) + jitter * TW,
+                lerp(cy, (target.y + 0.5) * TH, t) + jitter * TW,
+              );
+            }
+          } else {
+            c.lineTo((target.x + 0.5) * TW, (target.y + 0.5) * TH);
+          }
+          c.stroke();
+          c.restore();
+          const lastSpark = lastBeamSparkRef.current.get(u.id) ?? 0;
+          if (now - lastSpark > 150) {
+            lastBeamSparkRef.current.set(u.id, now);
+            burst(target.x, target.y, beamColor, 2);
+          }
+        }
+
+        // HP bar + level badge.
         const max = Math.max(1, u.maxHitPoints);
         const pct = clamp(u.hitPoints / max, 0, 1);
         const bw = TW * 1.5;
-        const barY = cy - r - 7;
-        // Troop level badge immediately left of the HP bar. Draw it upright
-        // because the blue view mirrors the canvas vertically.
-        upright(cx - bw / 2 - 6.5, barY + 2.5, () => {
-          drawUnitLevelBadge(c, u.level ?? 1, u.owner, -5.5, -5.5, 11);
+        upright(drawCx, drawCy, () => {
+          const barY = -r - 8;
+          drawUnitLevelBadge(c, u.level ?? 1, u.owner, -bw / 2 - 6.5, barY + 2.5, 11);
+          c.fillStyle = "rgba(0,0,0,0.65)";
+          c.fillRect(-bw / 2, barY, bw, 5);
+          c.fillStyle = u.owner === "blue" ? "#3b82f6" : "#ef4444";
+          c.fillRect(-bw / 2 + 0.5, barY + 0.5, (bw - 1) * pct, 4);
         });
-        c.fillStyle = "rgba(0,0,0,0.65)";
-        c.fillRect(cx - bw / 2, barY, bw, 5);
-        c.fillStyle = u.owner === "blue" ? "#3b82f6" : "#ef4444";
-        c.fillRect(cx - bw / 2 + 0.5, barY + 0.5, (bw - 1) * pct, 4);
       }
 
-      // --- spells: expanding rings / flash: O(s), s small ---
+      // --- projectiles: O(p), p<=80; cosmetic only (server owns damage) ---
+      {
+        const proj = projectilesRef.current;
+        let w = 0;
+        const arcSign = sideRef.current === "blue" ? 1 : -1;
+        for (let i = 0; i < proj.length; i++) {
+          const pr = proj[i];
+          const age = (now - pr.born) / pr.duration;
+          if (age >= 1) {
+            burst(pr.x1, pr.y1, pr.color, pr.kind === "fireball" || pr.kind === "shell" ? 8 : 3);
+            continue;
+          }
+          proj[w++] = pr;
+          const t = clamp(age, 0, 1);
+          const x = lerp(pr.x0, pr.x1, t) * TW;
+          const y = lerp(pr.y0, pr.y1, t) * TH - arcSign * pr.arc * TW * Math.sin(Math.PI * t);
+          const px = lerp(pr.x0, pr.x1, Math.max(0, t - 0.18)) * TW;
+          const py = lerp(pr.y0, pr.y1, Math.max(0, t - 0.18)) * TH - arcSign * pr.arc * TW * Math.sin(Math.PI * Math.max(0, t - 0.18));
+          c.save();
+          c.globalAlpha = 0.9;
+          c.strokeStyle = pr.color;
+          c.fillStyle = pr.color;
+          c.lineCap = "round";
+          if (pr.kind === "arrow" || pr.kind === "spear" || pr.kind === "dagger" || pr.kind === "bullet") {
+            c.lineWidth = pr.kind === "bullet" ? 2 : 1.6;
+            c.beginPath();
+            c.moveTo(px, py);
+            c.lineTo(x, y);
+            c.stroke();
+            const a = Math.atan2(y - py, x - px);
+            c.beginPath();
+            c.moveTo(x, y);
+            c.lineTo(x - Math.cos(a - 0.45) * 4, y - Math.sin(a - 0.45) * 4);
+            c.lineTo(x - Math.cos(a + 0.45) * 4, y - Math.sin(a + 0.45) * 4);
+            c.closePath();
+            c.fill();
+          } else if (pr.kind === "bolt") {
+            c.lineWidth = 2.2;
+            c.beginPath();
+            c.moveTo(px, py);
+            c.lineTo((px + x) / 2 + 4, (py + y) / 2 - 4);
+            c.lineTo((px + x) / 2 - 4, (py + y) / 2 + 4);
+            c.lineTo(x, y);
+            c.stroke();
+          } else if (pr.kind === "axe") {
+            c.translate(x, y);
+            c.rotate(t * Math.PI * 3);
+            c.fillRect(-4, -1.5, 8, 3);
+            c.fillStyle = "#94a3b8";
+            c.fillRect(-1, -5, 3, 10);
+          } else {
+            const radius = pr.kind === "fireball" ? 4.5 : pr.kind === "energy" ? 4 : pr.kind === "cannonball" || pr.kind === "boulder" ? 3.6 : 3;
+            c.shadowColor = pr.color;
+            c.shadowBlur = pr.kind === "fireball" || pr.kind === "energy" ? 10 : 4;
+            c.beginPath();
+            c.arc(x, y, radius, 0, Math.PI * 2);
+            c.fill();
+            c.globalAlpha = 0.35;
+            c.lineWidth = 2;
+            c.beginPath();
+            c.moveTo(px, py);
+            c.lineTo(x, y);
+            c.stroke();
+          }
+          c.restore();
+        }
+        proj.length = w;
+      }
+
+      // --- melee slashes / impact arcs ---
+      {
+        const slashes = slashesRef.current;
+        let w = 0;
+        for (let i = 0; i < slashes.length; i++) {
+          const sl = slashes[i];
+          const age = (now - sl.born) / 180;
+          if (age >= 1) continue;
+          slashes[w++] = sl;
+          const x = (sl.x + 0.5) * TW;
+          const y = (sl.y + 0.5) * TH;
+          const rad = TW * (0.3 + age * 0.55);
+          c.save();
+          c.globalAlpha = 1 - age;
+          c.strokeStyle = sl.color;
+          c.lineWidth = 3;
+          c.beginPath();
+          c.arc(x, y, rad, sl.angle - 0.85, sl.angle + 0.85);
+          c.stroke();
+          c.restore();
+        }
+        slashes.length = w;
+      }
+
+      // --- death ghosts: last strip frame fading out ---
+      {
+        const ghosts = deathGhostsRef.current;
+        let w = 0;
+        for (let i = 0; i < ghosts.length; i++) {
+          const g = ghosts[i];
+          const age = (now - g.born) / 540;
+          if (age >= 1) continue;
+          ghosts[w++] = g;
+          const gx = (g.x + 0.5) * TW;
+          const gy = (g.y + 0.5) * TH;
+          const size = TW * 1.35;
+          upright(gx, gy, () => {
+            if (!drawCardSprite(c, g.cardId, "death", g.born, size, 1, 1 - age)) {
+              c.globalAlpha = 1 - age;
+              c.fillStyle = g.owner === "blue" ? "#93c5fd" : "#fca5a5";
+              c.beginPath();
+              c.arc(0, 0, TW * 0.5 * (1 - age * 0.4), 0, Math.PI * 2);
+              c.fill();
+            }
+          });
+        }
+        ghosts.length = w;
+      }
+
+      // --- spells: card-specific cast + impact VFX: O(s), s<=8 drawn ---
       const spellsArr = spellsRef.current;
-      for (let si = 0; si < spellsArr.length; si++) {
+      let spellsDrawn = 0;
+      for (let si = 0; si < spellsArr.length && spellsDrawn < MAX_SPELLS_DRAWN; si++) {
         const s = spellsArr[si];
-        const dur = s.durationMs ?? 600;
+        const dur = s.durationMs ?? 1100;
         const age = (now - s.startedAt) / dur;
-        if (age < 0 || age > 1.4) continue;
+        if (age < 0 || age > 1.35) continue;
+        spellsDrawn++;
         const t = clamp(age, 0, 1);
-        const rad = (s.radius ?? 2.5) * TW * (0.3 + 0.7 * t);
         const cx = (s.x + 0.5) * TW;
         const cy = (s.y + 0.5) * TH;
-        const alphaS = 1 - t;
+        const maxR = (s.radius ?? 2.5) * TW;
+        const rad = maxR * (0.22 + 0.78 * easeOutCubic(t));
+        const alpha = clamp(1 - t, 0, 1);
+        const kind = s.kind;
         c.save();
-        c.globalAlpha = clamp(alphaS, 0, 1);
-        if (s.kind === "zap") {
-          c.fillStyle = "#fef08a";
+        c.globalAlpha = alpha;
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        const ring = (r: number, color: string, width = 3) => {
+          c.strokeStyle = color;
+          c.lineWidth = width;
+          c.beginPath();
+          c.arc(cx, cy, Math.max(1, r), 0, Math.PI * 2);
+          c.stroke();
+        };
+        const bolt = (x0: number, y0: number, x1: number, y1: number, color: string, width = 2) => {
+          c.strokeStyle = color;
+          c.lineWidth = width;
+          c.beginPath();
+          c.moveTo(x0, y0);
+          const segs = 5;
+          for (let k = 1; k <= segs; k++) {
+            const q = k / segs;
+            const jitter = k === segs ? 0 : (k % 2 === 0 ? -1 : 1) * maxR * 0.12;
+            c.lineTo(lerp(x0, x1, q) + jitter, lerp(y0, y1, q));
+          }
+          c.stroke();
+        };
+
+        if (kind === "arrows") {
+          ring(rad, "#f8fafc", 2);
+          ring(rad * 0.72, "#e2e8f0", 1.5);
+          ring(rad * 0.44, "#cbd5e1", 1);
+          for (let k = 0; k < 8; k++) {
+            const a = (k / 8) * Math.PI * 2 + t * 1.6;
+            const rr = rad * (0.55 + (k % 3) * 0.16);
+            const ax = cx + Math.cos(a) * rr;
+            const ay = cy + Math.sin(a) * rr;
+            c.strokeStyle = "#f8fafc";
+            c.lineWidth = 1.4;
+            c.beginPath();
+            c.moveTo(ax, ay);
+            c.lineTo(ax - Math.cos(a) * 6, ay - Math.sin(a) * 6);
+            c.stroke();
+          }
+        } else if (kind === "zap" || kind === "lightning") {
+          c.fillStyle = kind === "zap" ? "#fef08a" : "#f8fafc";
+          c.beginPath();
+          c.arc(cx, cy, rad * (kind === "zap" ? 0.75 : 0.35), 0, Math.PI * 2);
+          c.fill();
+          const bolts = kind === "lightning" ? 3 : 1;
+          for (let k = 0; k < bolts; k++) {
+            const bx = cx + (k - (bolts - 1) / 2) * maxR * 0.5;
+            bolt(bx, cy - maxR * (1.3 + k * 0.15), bx, cy + rad * 0.4, "#fde047", 3);
+            bolt(bx, cy - maxR * 1.1, bx, cy + rad * 0.2, "#fffbeb", 1.5);
+          }
+          ring(rad, "#facc15", 2);
+        } else if (kind === "fireball" || kind === "rocket") {
+          const big = kind === "rocket";
+          const g = c.createRadialGradient(cx, cy, 2, cx, cy, rad);
+          g.addColorStop(0, "#fffbeb");
+          g.addColorStop(0.35, "#fbbf24");
+          g.addColorStop(0.7, "#f97316");
+          g.addColorStop(1, "rgba(185,28,28,0)");
+          c.fillStyle = g;
           c.beginPath();
           c.arc(cx, cy, rad, 0, Math.PI * 2);
           c.fill();
-          c.strokeStyle = "#eab308";
-          c.lineWidth = 3;
-          c.stroke();
-          c.font = "18px serif";
-          c.textAlign = "center";
-          c.textBaseline = "middle";
-          upright(cx, cy, () => c.fillText("⚡", 0, 0));
-        } else if (s.kind === "arrows") {
-          c.strokeStyle = "#f8fafc";
-          c.lineWidth = 2;
-          for (let k = 0; k < 3; k++) {
-            c.beginPath();
-            c.arc(cx, cy, rad * (0.4 + k * 0.3), 0, Math.PI * 2);
-            c.stroke();
+          ring(rad * 0.9, "#f97316", big ? 5 : 3);
+          ring(rad * 0.55, "#facc15", 2);
+          if (big) {
+            for (let k = 0; k < 5; k++) {
+              const a = (k / 5) * Math.PI * 2 + 0.4;
+              bolt(cx, cy, cx + Math.cos(a) * rad * 1.4, cy + Math.sin(a) * rad * 1.4, "#fbbf24", 2);
+            }
           }
-          c.font = "14px serif";
-          c.textAlign = "center";
-          upright(cx, cy, () => c.fillText("➶", 0, 0));
-        } else {
-          // fireball default
-          c.strokeStyle = "#f97316";
-          c.lineWidth = 4;
+        } else if (kind === "poison" || kind === "goblin-curse" || kind === "void") {
+          const color = kind === "poison" ? "#84cc16" : kind === "void" ? "#a855f7" : "#22c55e";
+          c.fillStyle = kind === "void" ? "rgba(88,28,135,0.3)" : "rgba(74,222,128,0.16)";
           c.beginPath();
           c.arc(cx, cy, rad, 0, Math.PI * 2);
-          c.stroke();
-          c.strokeStyle = "#facc15";
-          c.lineWidth = 2;
+          c.fill();
+          ring(rad, color, 2);
+          for (let k = 0; k < 9; k++) {
+            const a = (k / 9) * Math.PI * 2 + t * 2.2;
+            const rr = rad * (0.2 + ((k * 37) % 10) / 14);
+            const bx = cx + Math.cos(a) * rr;
+            const by = cy + Math.sin(a) * rr - t * 14;
+            c.fillStyle = color;
+            c.globalAlpha = alpha * 0.7;
+            c.beginPath();
+            c.arc(bx, by, 2 + (k % 3), 0, Math.PI * 2);
+            c.fill();
+          }
+        } else if (kind === "freeze" || kind === "giant-snowball") {
+          c.fillStyle = "rgba(165,243,252,0.3)";
           c.beginPath();
-          c.arc(cx, cy, rad * 0.7, 0, Math.PI * 2);
+          c.arc(cx, cy, rad, 0, Math.PI * 2);
+          c.fill();
+          ring(rad, "#a5f3fc", 2.5);
+          for (let k = 0; k < 8; k++) {
+            const a = (k / 8) * Math.PI * 2;
+            const r0 = rad * 0.25;
+            const r1 = rad * (0.75 + (k % 2) * 0.18);
+            c.strokeStyle = "#e0f2fe";
+            c.lineWidth = 1.6;
+            c.beginPath();
+            c.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
+            c.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
+            c.stroke();
+          }
+          c.fillStyle = "#f0f9ff";
+          c.beginPath();
+          c.arc(cx, cy, rad * (kind === "giant-snowball" ? 0.35 : 0.18), 0, Math.PI * 2);
+          c.fill();
+        } else if (kind === "rage") {
+          const g = c.createRadialGradient(cx, cy, 2, cx, cy, rad);
+          g.addColorStop(0, "rgba(244,114,182,0.45)");
+          g.addColorStop(1, "rgba(190,24,93,0)");
+          c.fillStyle = g;
+          c.beginPath();
+          c.arc(cx, cy, rad, 0, Math.PI * 2);
+          c.fill();
+          ring(rad, "#f472b6", 2);
+          for (let k = 0; k < 6; k++) {
+            const a = (k / 6) * Math.PI * 2 - t * 2;
+            c.strokeStyle = "#f9a8d4";
+            c.lineWidth = 2;
+            c.beginPath();
+            c.arc(cx, cy, rad * (0.35 + (k % 3) * 0.18), a, a + 1.1);
+            c.stroke();
+          }
+        } else if (kind === "tornado") {
+          ring(rad, "#67e8f9", 1.5);
+          for (let k = 0; k < 3; k++) {
+            c.strokeStyle = k === 0 ? "#a5f3fc" : "#22d3ee";
+            c.lineWidth = 2;
+            c.beginPath();
+            const rr = rad * (0.3 + k * 0.22);
+            const a0 = t * 7 + k * 1.2;
+            c.arc(cx, cy, rr, a0, a0 + Math.PI * 1.25);
+            c.stroke();
+          }
+        } else if (kind === "earthquake") {
+          for (let k = 0; k < 3; k++) {
+            const ageK = clamp((t - k * 0.12) / 0.64, 0, 1);
+            c.globalAlpha = alpha * (1 - ageK * 0.5);
+            c.strokeStyle = k === 0 ? "#f59e0b" : "#a16207";
+            c.lineWidth = 3 - k * 0.6;
+            c.beginPath();
+            c.arc(cx, cy, maxR * (0.18 + ageK * 0.82), 0, Math.PI * 2);
+            c.stroke();
+          }
+          for (let k = 0; k < 7; k++) {
+            const a = (k / 7) * Math.PI * 2;
+            c.strokeStyle = "#d97706";
+            c.lineWidth = 1.5;
+            c.beginPath();
+            c.moveTo(cx + Math.cos(a) * rad * 0.35, cy + Math.sin(a) * rad * 0.35);
+            c.lineTo(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad);
+            c.stroke();
+          }
+        } else if (kind === "the-log") {
+          c.save();
+          c.translate(cx, cy);
+          c.rotate(-0.08);
+          c.fillStyle = "#7c4a21";
+          c.strokeStyle = "#451a03";
+          c.lineWidth = 2;
+          const logW = maxR * 1.3;
+          const logH = maxR * 0.38;
+          c.fillRect(-logW / 2, -logH / 2, logW, logH);
+          c.strokeRect(-logW / 2, -logH / 2, logW, logH);
+          for (let k = -2; k <= 2; k++) {
+            c.beginPath();
+            c.moveTo(k * logW * 0.14, -logH / 2);
+            c.lineTo(k * logW * 0.18, logH / 2);
+            c.stroke();
+          }
+          c.restore();
+          c.globalAlpha = alpha * 0.5;
+          ring(rad, "#a16207", 2);
+        } else if (kind === "goblin-barrel" || kind === "barbarian-barrel" || kind === "royal-delivery") {
+          const color = kind === "goblin-barrel" ? "#65a30d" : kind === "barbarian-barrel" ? "#f59e0b" : "#f8fafc";
+          ring(rad, color, 3);
+          c.strokeStyle = color;
+          c.lineWidth = 3;
+          c.strokeRect(cx - TW * 0.5, cy - TW * 0.6, TW, TW * 1.2);
+          c.beginPath();
+          c.moveTo(cx - TW * 0.5, cy - TW * 0.15);
+          c.lineTo(cx + TW * 0.5, cy - TW * 0.15);
+          c.moveTo(cx - TW * 0.5, cy + TW * 0.25);
+          c.lineTo(cx + TW * 0.5, cy + TW * 0.25);
           c.stroke();
-          c.font = "16px serif";
-          c.textAlign = "center";
-          c.textBaseline = "middle";
-          upright(cx, cy, () => c.fillText("🔥", 0, 0));
+          for (let k = 0; k < 6; k++) {
+            const a = (k / 6) * Math.PI * 2 + t * 3;
+            c.fillStyle = color;
+            c.beginPath();
+            c.arc(cx + Math.cos(a) * rad * 0.8, cy + Math.sin(a) * rad * 0.8, 2, 0, Math.PI * 2);
+            c.fill();
+          }
+        } else if (kind === "graveyard") {
+          c.fillStyle = "rgba(126,34,206,0.18)";
+          c.beginPath();
+          c.arc(cx, cy, rad, 0, Math.PI * 2);
+          c.fill();
+          ring(rad, "#a855f7", 2.5);
+          for (let k = 0; k < 7; k++) {
+            const a = (k / 7) * Math.PI * 2 + 0.6;
+            const rr = rad * (0.2 + ((k * 29) % 9) / 14);
+            const bx = cx + Math.cos(a) * rr;
+            const by = cy + Math.sin(a) * rr;
+            c.fillStyle = "#e9d5ff";
+            c.beginPath();
+            c.arc(bx, by, 2.2, 0, Math.PI * 2);
+            c.fill();
+            c.fillRect(bx - 1, by + 1, 2, 3);
+          }
+        } else if (kind === "clone") {
+          ring(rad, "#38bdf8", 2);
+          c.fillStyle = "rgba(56,189,248,0.22)";
+          c.beginPath();
+          c.arc(cx, cy, rad, 0, Math.PI * 2);
+          c.fill();
+        } else {
+          ring(rad, "#f97316", 4);
+          ring(rad * 0.7, "#facc15", 2);
         }
         c.restore();
       }
@@ -982,6 +1699,14 @@ export default function ArenaCanvas({
       c.lineWidth = 1.5;
       c.strokeRect(7, 7, W - 14, H - 14);
       c.restore();
+
+      // Lightweight debug counters for visual verification/tests.
+      const attachProj = String(projectilesRef.current.length);
+      if (canvas.dataset.projectiles !== attachProj) canvas.dataset.projectiles = attachProj;
+      const attachAtk = String(attackingCount);
+      if (canvas.dataset.attacking !== attachAtk) canvas.dataset.attacking = attachAtk;
+      const attachSpells = String(spellsDrawn);
+      if (canvas.dataset.spells !== attachSpells) canvas.dataset.spells = attachSpells;
     };
 
     raf = requestAnimationFrame(frame);
