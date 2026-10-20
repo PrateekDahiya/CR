@@ -304,6 +304,7 @@ export default function BattlePage() {
         y: Number(u.position?.y ?? u.y ?? 0),
       },
       ...(u.targetId !== undefined ? { targetId: String(u.targetId) } : {}),
+      ...(u.decayOnly === true ? { decayOnly: true } : {}),
     }));
   }, [renderState]);
 

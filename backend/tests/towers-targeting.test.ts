@@ -47,6 +47,17 @@ describe("level-scaled crown towers", () => {
     assert.equal(princess.hitSpeed, 2.2);
   });
 
+  it("marks lifetime wear-down as decay, not an attack hit", () => {
+    const state = createGame("tower-decay-flag", ["inferno-tower", ...DECK.slice(0, 7)], DECK);
+    state.elixir.blue = 10;
+    playCard(state, "blue", { handIndex: forceInHand(state, "blue", "inferno-tower"), x: 9, y: 10 });
+    const tower = state.units.find((u) => u.cardId === "inferno-tower");
+    assert.ok(tower);
+    tickGame(state);
+    assert.equal(tower.decayedThisTick, true);
+    assert.notEqual(tower.hitByAttackThisTick, true);
+  });
+
   it("keeps level-1 defaults for legacy callers", () => {
     const state = createGame("towers-1", DECK, DECK);
     const king = state.towers.find((t) => t.owner === "blue" && t.kind === "king");
