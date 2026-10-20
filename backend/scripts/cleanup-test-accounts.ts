@@ -58,6 +58,7 @@ async function main(): Promise<void> {
     await pool.query("DELETE FROM player_decks WHERE player_id=?", [id]);
     await pool.query("DELETE FROM player_profiles WHERE player_id=?", [id]);
     await pool.query("DELETE FROM player_accounts WHERE player_id=?", [id]);
+    await pool.query("DELETE FROM battle_log WHERE player_id=?", [id]);
   }
   // Accounts whose username is not a keeper but whose player id is a keeper.
   const [accRows] = await pool.query("SELECT username, player_id FROM player_accounts");
@@ -66,6 +67,8 @@ async function main(): Promise<void> {
       await pool.query("DELETE FROM player_accounts WHERE username=?", [row.username]);
     }
   }
+  // Battle-log rows of players that no longer exist (orphans from test runs).
+  await pool.query("DELETE FROM battle_log WHERE player_id NOT IN (?)", [KEEP]);
   const [after] = await pool.query("SELECT player_id FROM player_profiles");
   console.log(`remaining: ${(after as unknown[]).map((r) => (r as { player_id: string }).player_id).join(", ")}`);
   await pool.end();
