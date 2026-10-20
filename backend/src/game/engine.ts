@@ -268,9 +268,15 @@ function lowestTowerHpPct(state: EngineState, side: PlayerSide): number {
 
 /* ---------------- create ---------------- */
 
-function makeTowers(profiles?: Record<PlayerSide, LevelStats | undefined>): SimTower[] {
+function makeTowers(
+  profiles?: Record<PlayerSide, LevelStats | undefined>,
+  kingLevels?: Record<PlayerSide, number>,
+  princessLevels?: Record<PlayerSide, number>,
+): SimTower[] {
   return TOWER_SPAWNS.map((s) => {
-    const st = towerStatsFor(s.kind);
+    const towerLevel =
+      s.kind === "king" ? (kingLevels?.[s.owner] ?? 1) : (princessLevels?.[s.owner] ?? kingLevels?.[s.owner] ?? 1);
+    const st = towerStatsFor(s.kind, towerLevel);
     const profile = s.kind === "princess" ? profiles?.[s.owner] : undefined;
     const hp = profile?.hitPoints ?? st.hp;
     const damage = profile?.damage ?? st.damage;
@@ -377,10 +383,18 @@ export function createGame(
     }
   }
   const towerProfiles: Record<PlayerSide, LevelStats | undefined> = { blue: undefined, red: undefined };
+  const kingLevels: Record<PlayerSide, number> = { blue: 1, red: 1 };
+  const princessLevels: Record<PlayerSide, number> = { blue: 1, red: 1 };
   for (const side of ["blue", "red"] as const) {
+    const kingLevel = Math.min(16, Math.max(1, Math.trunc(cardLevels[side]["king-tower"] ?? 1)));
+    kingLevels[side] = kingLevel;
     const towerId = side === "blue" ? opts?.blueTowerTroopId : opts?.redTowerTroopId;
     const tower = towerId === undefined ? undefined : getCard(towerId);
-    if (tower !== undefined && towerId !== undefined) towerProfiles[side] = getLevelStats(tower, cardLevels[side][towerId] ?? 1, "ladder", statVersion);
+    const towerLevel = Math.min(16, Math.max(kingLevel, Math.trunc(cardLevels[side][towerId ?? ""] ?? 1)));
+    princessLevels[side] = towerLevel;
+    if (tower !== undefined && towerId !== undefined) {
+      towerProfiles[side] = getLevelStats(tower, towerLevel, "ladder", statVersion);
+    }
   }
   return {
     matchId,
@@ -388,7 +402,7 @@ export function createGame(
     timeSec: 0,
     serverTimeMs: opts?.startTimeMs ?? 0,
     elixir: { blue: ELIXIR_START, red: ELIXIR_START },
-    towers: makeTowers(towerProfiles),
+    towers: makeTowers(towerProfiles, kingLevels, princessLevels),
     units: [],
     crowns: { blue: 0, red: 0 },
     // Randomized per match: the opening four are not always deck[0..3].

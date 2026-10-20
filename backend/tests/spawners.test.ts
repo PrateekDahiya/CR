@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { hydrateMechanicsFromMysql, hydrateSpawnTemplatesFromMysql } from "../src/mysql.js";
 import { createGame, playCard, tickGame } from "../src/game/engine.js";
 import { CARDS, getSpawnTemplate } from "../src/game/cards.js";
+import { getLevelStats } from "../src/game/levelStats.js";
 import { forceInHand } from "./deckHelpers.js";
 
 /**
@@ -104,7 +105,8 @@ describe("spawners", () => {
     assert.ok(spawned.length > 0, "the hut must have spawned barbarians");
     // Spawned children use the child-template stats, not derived deck stats.
     const template = getSpawnTemplate("barbarian");
-    assert.equal(spawned[0]?.maxHp, template?.hp);
+    assert.ok(template);
+    assert.equal(spawned[0]?.maxHp, getLevelStats(template, 1).hitPoints);
     assert.equal(spawned[0]?.owner, "blue");
   });
 

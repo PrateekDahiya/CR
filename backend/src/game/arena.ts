@@ -33,14 +33,18 @@ export const RED_POCKET_MIN_Y = 11; // Red pocket: y 11–14 (taken side)
 
 /** Towers — §6.1. Princess 1400 HP / 112.5 DPS, King 2400 HP / 100 DPS. */
 export const PRINCESS_HP = 1400;
-export const PRINCESS_DAMAGE = 90;
+export const PRINCESS_DAMAGE = 50;
 export const PRINCESS_HIT_SPEED = 0.8;
 export const PRINCESS_RANGE = 7.5;
 
 export const KING_HP = 2400;
-export const KING_DAMAGE = 100;
+export const KING_DAMAGE = 50;
 export const KING_HIT_SPEED = 1.0;
 export const KING_RANGE = 7.0;
+
+const TOWER_DAMAGE_BY_LEVEL = [50, 54, 58, 62, 67, 72, 78, 84, 90, 99, 109, 119, 131, 144, 158, 173];
+const PRINCESS_HP_BY_LEVEL = [1400, 1512, 1624, 1750, 1890, 2030, 2184, 2352, 2534, 2786, 3052, 3346, 3668, 4032, 4424, 4858];
+const KING_HP_BY_LEVEL = [2400, 2568, 2736, 2904, 3096, 3312, 3528, 3768, 4008, 4392, 4824, 5304, 5832, 6408, 7032, 7704];
 
 export type TowerKind = "king" | "princess";
 export type PlayerSide = "blue" | "red";
@@ -141,23 +145,25 @@ export function isOnTowerFootprint(
   return false;
 }
 
-export function towerStatsFor(kind: TowerKind): {
+export function towerStatsFor(kind: TowerKind, level = 1): {
   hp: number;
   damage: number;
   hitSpeed: number;
   range: number;
 } {
-  return kind === "king"
-    ? {
-        hp: KING_HP,
-        damage: KING_DAMAGE,
-        hitSpeed: KING_HIT_SPEED,
-        range: KING_RANGE,
-      }
-    : {
-        hp: PRINCESS_HP,
-        damage: PRINCESS_DAMAGE,
-        hitSpeed: PRINCESS_HIT_SPEED,
-        range: PRINCESS_RANGE,
-      };
+  const index = Math.min(15, Math.max(0, Math.trunc(level) - 1));
+  if (kind === "king") {
+    return {
+      hp: KING_HP_BY_LEVEL[index] ?? KING_HP,
+      damage: TOWER_DAMAGE_BY_LEVEL[index] ?? KING_DAMAGE,
+      hitSpeed: KING_HIT_SPEED,
+      range: KING_RANGE,
+    };
+  }
+  return {
+    hp: PRINCESS_HP_BY_LEVEL[index] ?? PRINCESS_HP,
+    damage: TOWER_DAMAGE_BY_LEVEL[index] ?? PRINCESS_DAMAGE,
+    hitSpeed: PRINCESS_HIT_SPEED,
+    range: PRINCESS_RANGE,
+  };
 }

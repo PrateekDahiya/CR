@@ -100,7 +100,7 @@ export function validateCardLevels(
   }
   const input = (levels ?? {}) as Record<string, unknown>;
   for (const [cardId, value] of Object.entries(input)) {
-    if (!deck.includes(cardId) && cardId !== towerTroopId) {
+    if (!deck.includes(cardId) && cardId !== towerTroopId && cardId !== "king-tower") {
       return { ok: false, code: "BAD_DECK", message: `level provided for card outside deck: ${cardId}` };
     }
     if (!Number.isInteger(value) || Number(value) < 1 || Number(value) > 16) {

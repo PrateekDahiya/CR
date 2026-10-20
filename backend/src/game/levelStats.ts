@@ -34,9 +34,11 @@ function key(cardId: string, level: number, mode: string, statVersion: number): 
 
 export function fallbackLevelStats(card: CardDef, level: number, mode = "ladder", statVersion = 1): LevelStats {
   const boundedLevel = Math.max(1, Math.min(16, Math.trunc(level)));
-  const multiplier = Math.pow(1.1, boundedLevel - 1);
-  const hitPoints = Math.round(card.hp * multiplier);
-  const damage = Math.round(card.damage * multiplier);
+  // Prefer the exact level-11 wiki anchors; deriving from the rounded level-1
+  // value accumulates enough drift to miss exact live-game values (e.g. 3053).
+  const multiplier = Math.pow(1.1, boundedLevel - 11);
+  const hitPoints = Math.round((card.hp11 ?? card.hp) * multiplier);
+  const damage = Math.round((card.damage11 ?? card.damage) * multiplier);
   const hitSpeedMs = Math.round(card.hitSpeed * 1000);
   return {
     cardId: card.id,
@@ -54,7 +56,7 @@ export function fallbackLevelStats(card: CardDef, level: number, mode = "ladder"
     count: card.count,
     durationMs: card.durationMs ?? 0,
     deployDelayMs: Math.round((card.deployDelaySec ?? 0) * 1000),
-    ...(card.towerDamage !== undefined ? { towerDamage: card.towerDamage * multiplier } : {}),
+    ...(card.towerDamage !== undefined ? { towerDamage: Math.round(card.towerDamage * multiplier) } : {}),
     deathBurst: Math.round((card.deathBurst ?? 0) * multiplier),
     deathBurstRadius: card.deathBurstRadius ?? 0,
     flying: card.flying === true,

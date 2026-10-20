@@ -185,6 +185,7 @@ export default function BattlePage() {
     }
     const towerLevel = profile?.towerLevels?.[towerTroopId];
     if (towerLevel !== undefined) out[towerTroopId] = towerLevel;
+    if (profile?.kingLevel !== undefined) out["king-tower"] = profile.kingLevel;
     return out;
   }, [deck, profile, towerTroopId]);
   const battle = useBattle({

@@ -274,6 +274,7 @@ describe("15.5 elixir golem chain", () => {
     // Put a red troop right next to it. Blue's own princess towers can chip it, so
     // assert on a damage ceiling rather than "no damage at all": one Golemite
     // hit is its (single-target) damage.
+    state.towers.forEach((tower) => { tower.damage = 0; });
     const troop = pinRedTroop(state, golemite.x, golemite.y + 1);
     const before = troop.hp;
     const golemiteHit = golemite.damage;
