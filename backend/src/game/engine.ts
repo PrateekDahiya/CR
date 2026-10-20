@@ -55,6 +55,7 @@ export interface SimTower {
   id: string;
   kind: "king" | "princess";
   owner: PlayerSide;
+  level: number;
   hp: number;
   maxHp: number;
   x: number;
@@ -78,6 +79,7 @@ export interface SimUnit {
   id: string;
   cardId: string;
   owner: PlayerSide;
+  level: number;
   hp: number;
   maxHp: number;
   x: number;
@@ -289,6 +291,7 @@ function makeTowers(
       id: s.id,
       kind: s.kind,
       owner: s.owner as PlayerSide,
+      level: towerLevel,
       hp,
       maxHp: hp,
       x: s.x,
@@ -395,7 +398,9 @@ export function createGame(
     const tower = towerId === undefined ? undefined : getCard(towerId);
     const towerLevel = Math.min(16, Math.max(kingLevel, Math.trunc(cardLevels[side][towerId ?? ""] ?? 1)));
     princessLevels[side] = towerLevel;
-    if (tower !== undefined && towerId !== undefined) {
+    // Tower Princess uses the dedicated Crown Tower level table (level 1 is
+    // 1,400 HP, not the 1.1x card scaling derived from level 11).
+    if (tower !== undefined && towerId !== undefined && towerId !== "tower-princess") {
       towerProfiles[side] = getLevelStats(tower, towerLevel, "ladder", statVersion);
     }
   }
@@ -481,6 +486,7 @@ function spawnChildUnits(
       id,
       cardId: childId,
       owner: side,
+      level: state.cardLevels[side][childId] ?? 1,
        hp: stats.hitPoints,
        maxHp: stats.hitPoints,
       x: Math.min(Math.max(position.x, 0), 18),
@@ -1112,6 +1118,7 @@ export function playCard(
       id,
       cardId: card.id,
       owner: side,
+      level: state.cardLevels[side][card.id] ?? 1,
       hp: stats.hitPoints,
       maxHp: stats.hitPoints,
       x: Math.min(Math.max(p.x, 0), 18),

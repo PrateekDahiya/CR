@@ -32,6 +32,7 @@ export interface Tower {
   id: string;
   kind: "king" | "princess";
   owner: PlayerSide;
+  level?: number;
   hitPoints: number;
   maxHitPoints: number;
   position: Vec2;
@@ -42,6 +43,7 @@ export interface Unit {
   id: string;
   cardId: string;
   owner: PlayerSide;
+  level?: number;
   hitPoints: number;
   maxHitPoints: number;
   position: Vec2;
@@ -121,6 +123,7 @@ export interface SimState {
     id: string;
     kind: "king" | "princess";
     owner: PlayerSide;
+    level?: number;
     hp: number;
     maxHp: number;
     x: number;
@@ -131,6 +134,7 @@ export interface SimState {
     id: string;
     cardId: string;
     owner: PlayerSide;
+    level?: number;
     hp: number;
     maxHp: number;
     x: number;
@@ -294,6 +298,7 @@ function syncWire(room: Room): void {
         id: st.id,
         kind: st.kind,
         owner: st.owner,
+        level: st.level,
         hitPoints: st.hp,
         maxHitPoints: st.maxHp,
         position: { x: st.x, y: st.y },
@@ -304,6 +309,7 @@ function syncWire(room: Room): void {
       wt.id = st.id;
       wt.kind = st.kind;
       wt.owner = st.owner;
+      wt.level = st.level;
       wt.hitPoints = st.hp;
       wt.maxHitPoints = st.maxHp;
       wt.position.x = st.x;
@@ -329,6 +335,7 @@ function syncWire(room: Room): void {
         id: su.id,
         cardId: su.cardId,
         owner: su.owner,
+        level: su.level,
         hitPoints: su.hp,
         maxHitPoints: su.maxHp,
         position: { x: su.x, y: su.y },
@@ -338,6 +345,7 @@ function syncWire(room: Room): void {
       wu.id = su.id;
       wu.cardId = su.cardId;
       wu.owner = su.owner;
+      wu.level = su.level;
       wu.hitPoints = su.hp;
       wu.maxHitPoints = su.maxHp;
       wu.position.x = su.x;

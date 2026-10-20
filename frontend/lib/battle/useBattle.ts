@@ -50,6 +50,7 @@ export interface InterpolatedUnit {
   id: string;
   cardId: string;
   owner: PlayerSide;
+  level?: number;
   hitPoints: number;
   maxHitPoints: number;
   x: number;
@@ -214,6 +215,7 @@ function toRenderUnits(
         id: String(u.id),
         cardId: String(u.cardId),
         owner: u.owner as PlayerSide,
+        level: Number(u.level ?? 1),
         hitPoints: Number(u.hitPoints ?? 0),
         maxHitPoints: Number(u.maxHitPoints ?? 1),
         x: Number(u.position?.x ?? 0),
@@ -245,6 +247,7 @@ function toRenderUnits(
       id: String(u.id),
       cardId: String(u.cardId),
       owner: u.owner as PlayerSide,
+      level: Number(u.level ?? 1),
       hitPoints: Number(u.hitPoints ?? 0),
       maxHitPoints: Number(u.maxHitPoints ?? 1),
       x: px + (cx - px) * alpha,

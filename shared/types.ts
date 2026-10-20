@@ -40,6 +40,7 @@ export interface Tower {
   id: string; // e.g. 'blue-king', 'red-princess-left'
   kind: TowerKind;
   owner: PlayerSide;
+  level?: number;
   hitPoints: number;
   maxHitPoints: number;
   position: Vec2;
@@ -51,6 +52,7 @@ export interface Unit {
   id: string; // server-assigned instance id
   cardId: string; // links to Card.id
   owner: PlayerSide;
+  level?: number;
   hitPoints: number;
   maxHitPoints: number;
   position: Vec2;

@@ -212,27 +212,24 @@ function roundedRect(
   c.closePath();
 }
 
-/**
- * Level badge next to a tower's HP bar (reference: blue "15" / red "14" square).
- * Drawn in the same local space as the HP bar (already upright). O(1).
- */
-function drawLevelBadge(
+/** Compact level square left of a troop HP bar. */
+function drawUnitLevelBadge(
   c: CanvasRenderingContext2D,
   level: number,
+  owner: "blue" | "red",
   left: number,
   top: number,
+  size: number,
 ): void {
-  const size = 15;
   c.save();
-  c.fillStyle = "#1e40af";
-  c.strokeStyle = "#dbeafe";
-  c.lineWidth = 1.5;
-  c.beginPath();
-  c.rect(left, top, size, size);
+  c.fillStyle = owner === "blue" ? "#1e40af" : "#991b1b";
+  c.strokeStyle = owner === "blue" ? "#dbeafe" : "#fee2e2";
+  c.lineWidth = 1.2;
+  roundedRect(c, left, top, size, size, 2);
   c.fill();
   c.stroke();
   c.fillStyle = "#ffffff";
-  c.font = "bold 10px sans-serif";
+  c.font = `bold ${Math.round(size * 0.62)}px system-ui, sans-serif`;
   c.textAlign = "center";
   c.textBaseline = "middle";
   c.fillText(String(level), left + size / 2, top + size / 2 + 0.5);
@@ -749,7 +746,6 @@ export default function ArenaCanvas({
           const barOffset = sideRef.current === "blue" ? half + 8 : -(half + 8);
           upright(cx, cy + barOffset, () => {
             drawTowerHpBar(c, t, 0, 0, barW);
-            drawLevelBadge(c, t.owner === "blue" ? 15 : 14, -barW / 2 - 17, -2);
           });
         } else {
           // Rubble: collapsed square.
@@ -828,10 +824,13 @@ export default function ArenaCanvas({
         const max = Math.max(1, u.maxHitPoints);
         const pct = clamp(u.hitPoints / max, 0, 1);
         const bw = TW * 1.5;
+        const barY = cy - r - 7;
+        // Troop level badge immediately left of the HP bar.
+        drawUnitLevelBadge(c, u.level ?? 1, u.owner, cx - bw / 2 - 12, barY - 3, 11);
         c.fillStyle = "rgba(0,0,0,0.65)";
-        c.fillRect(cx - bw / 2, cy - r - 7, bw, 5);
+        c.fillRect(cx - bw / 2, barY, bw, 5);
         c.fillStyle = u.owner === "blue" ? "#3b82f6" : "#ef4444";
-        c.fillRect(cx - bw / 2 + 0.5, cy - r - 6.5, (bw - 1) * pct, 4);
+        c.fillRect(cx - bw / 2 + 0.5, barY + 0.5, (bw - 1) * pct, 4);
       }
 
       // --- spells: expanding rings / flash: O(s), s small ---

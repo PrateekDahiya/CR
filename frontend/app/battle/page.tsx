@@ -297,6 +297,7 @@ export default function BattlePage() {
       id: String(u.id ?? `${u.cardId}-${u.x}-${u.y}`),
       cardId: String(u.cardId ?? "knight"),
       owner: (u.owner === "red" ? "red" : "blue") as "blue" | "red",
+      level: Number(u.level ?? 1),
       hitPoints: Number(u.hitPoints ?? 0),
       maxHitPoints: Number(u.maxHitPoints ?? 1),
       position: {

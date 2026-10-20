@@ -5,9 +5,7 @@
  * NO socket imports (MEMORY#16: transport lives in frontend/lib/socket.ts only).
  * Original code only — emoji/CSS shapes, no ripped Supercell assets.
  *
- * GAME_DESIGN §6: Princess 1400 HP, King 2400 HP.
- * UI_REFERENCE §3: HP bar above tower (blue/red fill, white text),
- * crown popup on destroy, explosion is handled by ArenaCanvas particles.
+ * In-game style: crown level badge + health number above the bar.
  */
 
 import type { Tower } from "../../../shared/types";
@@ -24,7 +22,7 @@ export interface TowerViewProps {
 }
 
 export function towerEmoji(tower: Pick<Tower, "kind">): string {
-  return tower.kind === "king" ? "👑" : "🏰";
+  return tower.kind === "king" ? "dY``" : "dY?�";
 }
 
 export function towerHpPct(tower: Pick<Tower, "hitPoints" | "maxHitPoints">): number {
@@ -41,10 +39,7 @@ function towerTrackColor(owner: PlayerSide): string {
   return owner === "blue" ? "#1e3a8a" : "#7f1d1d";
 }
 
-/**
- * DOM overlay: HP bar + crown popup. Position it absolutely over the canvas
- * tower anchor from the parent if you want DOM instead of canvas-drawn bars.
- */
+/** DOM overlay variant (canvas draws its own bars in battle). */
 export default function TowerView({ tower, width = 64, showText = true, className = "" }: TowerViewProps) {
   const pct = towerHpPct(tower);
   const fill = towerBarColor(tower.owner as PlayerSide);
@@ -57,22 +52,22 @@ export default function TowerView({ tower, width = 64, showText = true, classNam
       data-testid={`tower-view-${tower.id}`}
       aria-label={`${tower.owner} ${tower.kind} ${tower.hitPoints}/${tower.maxHitPoints}`}
     >
+      {showText && (
+        <div
+          className="text-center font-extrabold"
+          style={{ fontSize: 11, color: "#fff", textShadow: "0 1px 2px #000" }}
+        >
+          {tower.destroyed ? 0 : Math.ceil(tower.hitPoints)}
+        </div>
+      )}
       <div
         className="relative overflow-hidden rounded-sm border border-black/60"
-        style={{ height: 10, background: track }}
+        style={{ height: 9, background: track }}
       >
         <div
           className="h-full transition-[width] duration-150"
           style={{ width: `${Math.round(pct * 100)}%`, background: fill }}
         />
-        {showText && (
-          <span
-            className="absolute inset-0 flex items-center justify-center font-extrabold"
-            style={{ fontSize: 8, color: "#fff", textShadow: "0 1px 1px #000" }}
-          >
-            {tower.destroyed ? 0 : tower.hitPoints}
-          </span>
-        )}
       </div>
       {tower.destroyed && (
         <div className="flex justify-center">
@@ -82,7 +77,7 @@ export default function TowerView({ tower, width = 64, showText = true, classNam
             role="img"
             aria-label="crown"
           >
-            👑
+            dY``
           </span>
         </div>
       )}
@@ -94,8 +89,8 @@ export default function TowerView({ tower, width = 64, showText = true, classNam
 export const TowerHpBar = TowerView;
 
 /**
- * Canvas helper: draws the same HP bar + crown popup directly on the arena
- * canvas so ArenaCanvas stays single-canvas (no DOM overlay cost at 60fps).
+ * Canvas helper: crown level badge, health number above the bar, then the bar.
+ * Drawn in the caller's already-upright local space.
  */
 export function drawTowerHpBar(
   ctx: CanvasRenderingContext2D,
@@ -105,40 +100,80 @@ export function drawTowerHpBar(
   barW: number,
 ): void {
   const pct = towerHpPct(tower);
-  const barH = 8;
+  const barH = 7;
   const x = cx - barW / 2;
-  const y = topY - barH - 2;
+  const y = topY - barH - 1;
 
   ctx.save();
-  // Track
-  ctx.fillStyle = tower.owner === "blue" ? "#1e3a8a" : "#7f1d1d";
-  ctx.strokeStyle = "rgba(0,0,0,0.7)";
+  const hpText = `${tower.destroyed ? 0 : Math.ceil(tower.hitPoints)}`;
+  ctx.font = "bold 10px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = "rgba(0,0,0,0.75)";
+  ctx.strokeText(hpText, cx, y - 6, barW + 12);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(hpText, cx, y - 6, barW + 12);
+
+  ctx.fillStyle = towerTrackColor(tower.owner as PlayerSide);
+  ctx.strokeStyle = "rgba(0,0,0,0.8)";
   ctx.lineWidth = 1;
-  roundRect(ctx, x, y, barW, barH, 2);
+  roundRect(ctx, x, y, barW, barH, 2.5);
   ctx.fill();
   ctx.stroke();
-  // Fill
   if (pct > 0) {
     ctx.fillStyle = towerBarColor(tower.owner as PlayerSide);
     const w = Math.max(0, (barW - 2) * pct);
     if (w > 0) {
-      roundRect(ctx, x + 1, y + 1, w, barH - 2, 1.5);
+      roundRect(ctx, x + 1, y + 1, w, barH - 2, 2);
       ctx.fill();
     }
   }
-  // Text
-  ctx.fillStyle = "#fff";
-  ctx.font = `bold ${barH - 1}px system-ui, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(`${tower.destroyed ? 0 : Math.ceil(tower.hitPoints)}`, cx, y + barH / 2 + 0.5, barW);
 
-  // Crown popup for destroyed towers (static emoji, canvas has no CSS anim —
-  // ArenaCanvas pulses it via time-based scale).
+  drawCrownLevelBadge(ctx, tower.level ?? 1, x - 19, y - 5, 17);
+
   if (tower.destroyed) {
     ctx.font = `${Math.round(barW * 0.42)}px serif`;
-    ctx.fillText("👑", cx, y - Math.round(barW * 0.28));
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("dY``", cx, y - Math.round(barW * 0.28));
   }
+  ctx.restore();
+}
+
+/** Gold crown badge with the tower level inside it. */
+export function drawCrownLevelBadge(
+  ctx: CanvasRenderingContext2D,
+  level: number,
+  left: number,
+  top: number,
+  size = 17,
+): void {
+  const w = size;
+  const h = size * 0.9;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(left + 1, top + h * 0.45);
+  ctx.lineTo(left + 1, top + 2);
+  ctx.lineTo(left + w * 0.27, top + h * 0.36);
+  ctx.lineTo(left + w * 0.5, top);
+  ctx.lineTo(left + w * 0.73, top + h * 0.36);
+  ctx.lineTo(left + w - 1, top + 2);
+  ctx.lineTo(left + w - 1, top + h * 0.45);
+  ctx.lineTo(left + w - 3, top + h - 2);
+  ctx.lineTo(left + 3, top + h - 2);
+  ctx.closePath();
+  ctx.fillStyle = "#facc15";
+  ctx.strokeStyle = "#78350f";
+  ctx.lineWidth = 1.2;
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#451a03";
+  ctx.font = `bold ${Math.round(size * 0.42)}px system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(String(level), left + w / 2, top + h * 0.66);
   ctx.restore();
 }
 
