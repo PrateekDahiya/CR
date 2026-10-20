@@ -21,8 +21,12 @@ export interface TowerViewProps {
   className?: string;
 }
 
+/** Tower glyphs (escaped so the source stays pure ASCII). */
+const CROWN_GLYPH = "\u{1F451}";
+const CASTLE_GLYPH = "\u{1F3F0}";
+
 export function towerEmoji(tower: Pick<Tower, "kind">): string {
-  return tower.kind === "king" ? "dY``" : "dY?�";
+  return tower.kind === "king" ? CROWN_GLYPH : CASTLE_GLYPH;
 }
 
 export function towerHpPct(tower: Pick<Tower, "hitPoints" | "maxHitPoints">): number {
@@ -77,7 +81,7 @@ export default function TowerView({ tower, width = 64, showText = true, classNam
             role="img"
             aria-label="crown"
           >
-            dY``
+            {CROWN_GLYPH}
           </span>
         </div>
       )}
@@ -137,7 +141,7 @@ export function drawTowerHpBar(
     ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("dY``", cx, y - Math.round(barW * 0.28));
+    ctx.fillText(CROWN_GLYPH, cx, y - Math.round(barW * 0.28));
   }
   ctx.restore();
 }

@@ -34,12 +34,34 @@ Notes: The King Tower row in Decks > Towers now renders
 `/towers/king-blue-active.png` instead of the crown glyph.
 
 ### 2026-10-20 - Better card movement / walk animation
-Status: pending
+Status: scheduled (next session - see the card asset task below)
 Source: "make the game cards movement , movement animation better search web for better animations add to suggestions"
 Notes: Research better 2D walk/movement animation sources for the deployed
 troops (more frames, smoother cycles, per-card directionality) and swap them
 into the strip pipeline. Keep the current fallbacks working so a missing strip
 never breaks a match.
+
+### 2026-10-20 - Card assets for both teams (front + back views, with movement)
+Status: scheduled (next session)
+Source: "i want to start a new session and make it continue with the pending
+task in suggestions and updade the task inside suggestion to search for each
+card asset online front-view and back-view both for red side and blue side
+respectively with moving animation for both red and blue just like we did for
+towers"
+Notes: Same treatment the towers got, extended to every card:
+  - For each of the 108 catalogue cards, fetch an online asset for BOTH
+    orientations: the FRONT view (red team) and the BACK view (blue team),
+    exactly like the towers (red = front view, blue = back view).
+  - Each view needs a movement animation (idle / walk / attack / death),
+    i.e. real 2D strips, not a single static image.
+  - The renderer must pick the view by team: red uses the front art, blue the
+    back art, and the direction must flip with the unit's facing.
+  - Fallbacks must stay intact: a missing card asset falls back to the
+    current static art / glyph, never breaking a match.
+  - Working dir: the same worktree (branch `card-mechanics`). The tower
+    pipeline in `scripts/make_tower_art.py` +
+    `scripts/prepare_edited_tower_art.py` is the reference for the layout,
+    and `frontend/lib/battle/spriteAnim.ts` is the strip loader to extend.
 
 ### 2026-10-20 - Verify the elixir pump + elixir-gain animation
 Status: implemented

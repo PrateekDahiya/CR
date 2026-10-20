@@ -625,7 +625,7 @@ export default function BattlePage() {
                 data-testid="double-elixir-badge"
                 className="rounded-full bg-fuchsia-950/85 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-fuchsia-200"
               >
-                �s� {battle.elixirMultiplier}x Elixir
+                {"\u26A1"} {battle.elixirMultiplier}x Elixir
               </div>
             </div>
           )}

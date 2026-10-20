@@ -112,19 +112,6 @@ export default function TopBar({ coins, gems }: TopBarCurrencies) {
       <div className="flex flex-1 items-center justify-end gap-2">
         <Pill icon={<CoinIcon />} value={coinsValue} tone="gold" testid="topbar-coins" href="/shop" />
         <Pill icon={<GemIcon />} value={gemsValue} tone="emerald" testid="topbar-gems" href="/shop" />
-        {/* Battle log button (the icon row in the Clash Royale top bar). */}
-        <button
-          type="button"
-          data-testid="topbar-battle-log"
-          onClick={() => setLogOpen(true)}
-          title="Battle Log"
-          aria-label="Open battle log"
-          className="grid h-7 w-7 place-items-center rounded-md border border-slate-500 bg-slate-800/80 text-white"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
-            <path d="M5 3h11a2 2 0 0 1 2 2v2h-2V5H7v12h2v2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm14 4h1v12a2 2 0 0 1-2 2h-6v-2h6V7Zm-3 3h-2v2H9v2h5v-2h-2v-2Zm0 5h-2v2h5v-2h-3Z" />
-          </svg>
-        </button>
         <div ref={menuRef} className="relative">
           <button
             type="button"
@@ -142,6 +129,17 @@ export default function TopBar({ coins, gems }: TopBarCurrencies) {
               data-testid="topbar-menu-panel"
               className="absolute right-0 top-full z-50 mt-2 w-44 overflow-hidden rounded-lg border border-slate-600 bg-[#0d1a38] shadow-xl"
             >
+              <button
+                type="button"
+                data-testid="topbar-battle-log"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setLogOpen(true);
+                }}
+                className="block w-full px-3 py-2 text-left text-xs font-bold text-white hover:bg-slate-700/70"
+              >
+                Battle Log
+              </button>
               <button
                 type="button"
                 data-testid="topbar-rename"
@@ -192,9 +190,10 @@ export default function TopBar({ coins, gems }: TopBarCurrencies) {
 /** Gold coin (inline SVG so the top bar never depends on emoji fonts). */
 function CoinIcon() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
-      <circle cx="12" cy="12" r="9" fill="#ffd24a" stroke="#a16207" strokeWidth="1.5" />
-      <circle cx="12" cy="12" r="5" fill="none" stroke="#a16207" strokeWidth="1.2" />
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
+      <circle cx="12" cy="12" r="10" fill="#ffe27a" stroke="#7c4a03" strokeWidth="2" />
+      <circle cx="12" cy="12" r="5.5" fill="none" stroke="#7c4a03" strokeWidth="1.8" />
+      <path d="M12 3.5v3M12 17.5v3" stroke="#7c4a03" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }
@@ -202,9 +201,9 @@ function CoinIcon() {
 /** Emerald gem (inline SVG so the top bar never depends on emoji fonts). */
 function GemIcon() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
-      <path d="M7 3h10l4 6-9 12L3 9l4-6Z" fill="#34d399" stroke="#065f46" strokeWidth="1.4" />
-      <path d="M3 9h18M8 9l4 12 4-12" fill="none" stroke="#065f46" strokeWidth="1.1" />
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5">
+      <path d="M7 2.5h10l4.5 6.5L12 21.5 2.5 9 7 2.5Z" fill="#4ade80" stroke="#064e3b" strokeWidth="2" />
+      <path d="M2.5 9h19M7 2.5 9 9l3 12.5L15 9l2-6.5" fill="none" stroke="#064e3b" strokeWidth="1.6" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -234,7 +233,7 @@ function Pill({
       className={`flex items-center gap-1 rounded-full border border-black/30 bg-gradient-to-b ${colors[tone]} px-2 py-1 text-sm font-extrabold text-white shadow-inner`}
       style={{ textShadow: "0 1px 0 rgba(0,0,0,0.6)" }}
     >
-      <span aria-hidden="true" className="grid h-4 w-4 place-items-center text-base">
+      <span aria-hidden="true" className="grid h-5 w-5 place-items-center">
         {icon}
       </span>
       <span className="tabular-nums">{value.toLocaleString()}</span>

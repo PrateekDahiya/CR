@@ -38,11 +38,14 @@ test("the top bar opens a battle log with the finished battle", async ({ page })
   await expect(page.getByTestId("battle-result")).toBeVisible({ timeout: 30000 });
   await page.waitForTimeout(1500);
 
-  // The battle log lives in the top bar.
+  // The battle log lives in the top-bar menu.
   await page.goto(`${BASE}/`);
-  const button = page.getByTestId("topbar-battle-log");
-  await expect(button).toBeVisible({ timeout: 20000 });
-  await button.click();
+  const menu = page.getByTestId("topbar-menu");
+  await expect(menu).toBeVisible({ timeout: 20000 });
+  await menu.click();
+  const logEntry = page.getByTestId("topbar-battle-log");
+  await expect(logEntry).toBeVisible();
+  await logEntry.click();
   await expect(page.getByTestId("battle-log")).toBeVisible();
 
   const entries = page.getByTestId("battle-log-entry");
