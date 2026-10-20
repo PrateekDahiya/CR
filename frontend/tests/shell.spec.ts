@@ -23,7 +23,6 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(page.getByTestId("home-root")).toBeVisible();
     await expect(page.getByTestId("home-battle")).toBeVisible();
     await expect(page.getByTestId("topbar")).toBeVisible();
-    await expect(page.getByTestId("topbar-cards")).toBeVisible();
     await expect(page.getByTestId("topbar-coins")).toBeVisible();
     await expect(page.getByTestId("topbar-gems")).toBeVisible();
     await expect(page.getByTestId("bottom-nav")).toBeVisible();

@@ -14,7 +14,7 @@ export type TopBarCurrencies = { cards: number; coins: number; gems: number };
  * profile (PlayerProvider) and fall back to the props for static renders.
  * Rename, admin, and logout live inside the menu to keep the bar uncluttered.
  */
-export default function TopBar({ cards, coins, gems }: TopBarCurrencies) {
+export default function TopBar({ coins, gems }: TopBarCurrencies) {
   const { profile, setName } = usePlayer();
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -60,7 +60,6 @@ export default function TopBar({ cards, coins, gems }: TopBarCurrencies) {
   const trophies = profile?.trophies ?? 0;
   const coinsValue = profile?.coins ?? coins;
   const gemsValue = profile?.gems ?? gems;
-  const cardsValue = profile?.cardsOwned ?? cards;
 
   return (
     <div
@@ -109,7 +108,6 @@ export default function TopBar({ cards, coins, gems }: TopBarCurrencies) {
         )}
       </div>
       <div className="flex flex-1 items-center justify-end gap-2">
-        <Pill icon="🃏" value={cardsValue} tone="blue" testid="topbar-cards" href="/collection" />
         <Pill icon="🪙" value={coinsValue} tone="gold" testid="topbar-coins" href="/shop" />
         <Pill icon="💎" value={gemsValue} tone="emerald" testid="topbar-gems" href="/shop" />
         <div ref={menuRef} className="relative">
