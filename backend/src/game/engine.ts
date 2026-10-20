@@ -115,6 +115,9 @@ export interface SimUnit {
   rampTargetId?: string;
   /** Phase 13: minimum attack range (Mortar cannot hit adjacent units). */
   minRange?: number;
+  /** Presentation flags: suppress decay-only floating damage on the client. */
+  decayedThisTick?: boolean;
+  hitByAttackThisTick?: boolean;
 }
 
 interface DamageField {
@@ -592,6 +595,7 @@ function applyStatus(
 
 function damageUnit(unit: SimUnit, amount: number): void {
   if (amount <= 0) return;
+  unit.hitByAttackThisTick = true;
   const shield = unit.shieldHp ?? 0;
   if (shield > 0) {
     const absorbed = Math.min(shield, amount);
@@ -1666,7 +1670,9 @@ function lifetimeDecayPhase(state: EngineState, dt: number): void {
     if (u.hp <= 0 || u.expiresAt === undefined || u.maxHp <= 0) continue;
     const lifetime = u.lifetimeSec;
     if (lifetime === undefined || lifetime <= 0) continue;
+    const before = u.hp;
     u.hp = Math.max(0, u.hp - (u.maxHp / lifetime) * dt);
+    if (u.hp < before) u.decayedThisTick = true;
     // Never outlive the timer, even under a large dt.
     if (u.hp <= 0 && now < u.expiresAt) u.hp = 0;
   }
@@ -1850,6 +1856,12 @@ function sweepDeadUnits(state: EngineState): void {
 export function tickGame(state: EngineState, dt: number = TICK_DT): EngineState {
   if (state.over) return state; // O(1) early-out once decided
   const step = Number.isFinite(dt) && dt > 0 && dt <= 0.5 ? dt : TICK_DT;
+
+  // Presentation-only hit vs lifetime-decay flags, cleared every tick.
+  for (const unit of state.units) {
+    unit.decayedThisTick = false;
+    unit.hitByAttackThisTick = false;
+  }
 
   // (2) elixir regen — server float, cap 10, double from t=120s incl. OT.
   const doubleRate = state.timeSec + CLOCK_EPS >= DOUBLE_AT_SEC;

@@ -55,6 +55,8 @@ export interface Unit {
   maxHitPoints: number;
   position: Vec2;
   targetId?: string; // tower or unit id being attacked
+  /** True when this snapshot's HP loss is only building lifetime wear-down. */
+  decayOnly?: boolean;
 }
 
 /** Authoritative snapshot broadcast at 10-20Hz (Phase 3 tick). */

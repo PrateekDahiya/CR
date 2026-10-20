@@ -46,6 +46,7 @@ export interface Unit {
   maxHitPoints: number;
   position: Vec2;
   targetId?: string;
+  decayOnly?: boolean;
 }
 
 export interface GameState {
@@ -135,6 +136,8 @@ export interface SimState {
     x: number;
     y: number;
     targetId?: string;
+    decayedThisTick?: boolean;
+    hitByAttackThisTick?: boolean;
   }>;
   crowns: Record<PlayerSide, number>;
   winner?: PlayerSide | "draw";
@@ -342,6 +345,9 @@ function syncWire(room: Room): void {
     }
     if (su.targetId !== undefined) wu.targetId = su.targetId;
     else delete wu.targetId;
+    const decayOnly = su.decayedThisTick === true && su.hitByAttackThisTick !== true;
+    if (decayOnly) wu.decayOnly = true;
+    else delete wu.decayOnly;
   }
   s.units.length = n;
   s.crowns.blue = sim.crowns.blue; // reuse crowns object (no alloc)

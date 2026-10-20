@@ -384,7 +384,9 @@ export default function ArenaCanvas({
     for (let i = 0; i < live.length; i++) {
       const u = live[i];
       const oldHp = hpRef.current.get(u.id);
-      if (oldHp !== undefined && u.hitPoints < oldHp) {
+      // Building lifetime wear-down reduces HP every tick, but that is not a
+      // hit: keep the HP bar accurate without spamming floating damage numbers.
+      if (oldHp !== undefined && u.hitPoints < oldHp && u.decayOnly !== true) {
         const dmg = Math.round(oldHp - u.hitPoints);
         hitFlashRef.current.set(u.id, now);
         lastFlashAtRef.current = now;
