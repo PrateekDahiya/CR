@@ -212,6 +212,7 @@ export default function ShopPage() {
                   rarity={tower.rarity}
                   cost={tower.cost}
                   level={towerLevels[tower.id] ?? 1}
+                  showLevel={false}
                   size="sm"
                   testId={`shop-tower-${tower.id}`}
                   className="pointer-events-none"

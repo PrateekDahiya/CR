@@ -46,7 +46,7 @@ function readPlayerId(): string {
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [playerId, setPlayerId] = useState("guest");
+  const [playerId, setPlayerId] = useState<string>(() => readPlayerId());
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

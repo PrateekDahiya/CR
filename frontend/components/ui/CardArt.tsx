@@ -74,10 +74,10 @@ export default function CardArt({
       {showLevel && level > 0 && (
         <div
           data-testid="card-level"
-          className="absolute inset-x-0 bottom-0 bg-gradient-to-b from-amber-300 to-amber-600 py-0.5 text-center text-[10px] font-extrabold text-amber-950 shadow"
+          className="absolute inset-x-0 bottom-0 whitespace-nowrap bg-gradient-to-b from-amber-300 to-amber-600 py-px text-center text-[9px] font-extrabold leading-none text-amber-950 shadow"
           style={{ textShadow: "0 1px 0 rgba(255,255,255,0.4)" }}
         >
-          Level {level}
+          Lv {level}
         </div>
       )}
       {/* Optional progress (cards owned / required) */}
