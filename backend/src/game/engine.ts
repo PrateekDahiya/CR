@@ -20,6 +20,7 @@
 import { getCard, getSpawnTemplate } from "./cards";
 import type { EffectSpec } from "./cardMechanics";
 import { getLevelStats, type LevelStats } from "./levelStats";
+import { resolveGameMode, type GameModeConfig } from "./modes";
 import {
   CENTER_X,
   Pocket,
@@ -112,6 +113,8 @@ export interface SimUnit {
   periodicNextAt?: number[];
   /** Phase 13: dash (Bandit/Prince/Dark Prince) re-arms once the unit travels. */
   dashReady?: boolean;
+  /** Presentation: current attack target for client animation/projectiles. */
+  targetId?: string;
   /** Phase 13: ramping-beam (Inferno) stage index + the target it is locked on. */
   rampStage?: number;
   rampTargetId?: string;
@@ -141,7 +144,10 @@ export interface EngineState {
   tick: number; // +1 per tick (10Hz)
   timeSec: number; // authoritative clock (§9: tick count is truth)
   serverTimeMs: number;
-  elixir: Record<PlayerSide, number>; // server float 0–10 (§7)
+  /** Selected game mode + resolved rules (registry: game/modes.ts). */
+  modeId: string;
+  mode: GameModeConfig;
+  elixir: Record<PlayerSide, number>; // server float 0..mode.elixirCap
   towers: SimTower[]; // 6 total
   units: SimUnit[];
   crowns: Record<PlayerSide, number>;
@@ -170,7 +176,7 @@ export interface EngineState {
 export const TICK_DT = 0.1;
 export const TICKS_PER_SEC = 10;
 
-export const ELIXIR_START = 5;
+export const ELIXIR_START = 8; // all registered modes start at 8 (2026-10-20)
 export const ELIXIR_CAP = 10;
 export const ELIXIR_SINGLE_SEC = 2.8; // 1 per 2.8s (t < 120s)
 export const ELIXIR_DOUBLE_SEC = 1.4; // 1 per 1.4s (t >= 120s + all OT)
@@ -363,8 +369,11 @@ export function createGame(
     blueTowerTroopId?: string;
     redTowerTroopId?: string;
     statVersion?: number;
+    /** Game-mode registry id (unknown ids fall back to standard). */
+    modeId?: string;
   },
 ): EngineState {
+  const mode = resolveGameMode(opts?.modeId);
   for (const [label, deck] of [
     ["blue", blueDeck],
     ["red", redDeck],
@@ -409,7 +418,9 @@ export function createGame(
     tick: 0,
     timeSec: 0,
     serverTimeMs: opts?.startTimeMs ?? 0,
-    elixir: { blue: ELIXIR_START, red: ELIXIR_START },
+    modeId: mode.id,
+    mode,
+    elixir: { blue: mode.startElixir, red: mode.startElixir },
     towers: makeTowers(towerProfiles, kingLevels, princessLevels),
     units: [],
     crowns: { blue: 0, red: 0 },
@@ -849,7 +860,7 @@ function applyDatabaseEffects(
         }
       } else if (effect.kind === "elixir") {
         const amount = Math.max(0, Number(effect.amount ?? 0));
-        state.elixir[other(side)] = Math.min(ELIXIR_CAP, state.elixir[other(side)] + amount);
+        state.elixir[other(side)] = Math.min(state.mode.elixirCap, state.elixir[other(side)] + amount);
       } else if (effect.kind === "levelUp") {
         // Royal Chef: periodically level up the strongest eligible friendly troop.
         const excludeBuildings = effect.excludeBuildings === true;
@@ -958,7 +969,7 @@ function periodicPhase(state: EngineState): void {
       const interval = Math.max(0.1, Number(effect.intervalMs ?? 0) / 1000);
       unit.periodicNextAt[i] = nextAt + interval;
       if (effect.kind === "elixir") {
-        state.elixir[unit.owner] = Math.min(ELIXIR_CAP, state.elixir[unit.owner] + Number(effect.amount ?? 0));
+        state.elixir[unit.owner] = Math.min(state.mode.elixirCap, state.elixir[unit.owner] + Number(effect.amount ?? 0));
       } else if (effect.kind === "spawn" && typeof effect.childId === "string") {
         spawnChildUnits(state, unit.owner, effect.childId, unit.x, unit.y, Math.max(1, Number(effect.count ?? 1)));
       }
@@ -1318,6 +1329,11 @@ function damageTower(
   for (let i = 0; i < towers.length; i++) {
     const k = towers[i];
     if (k.owner === owner && k.kind === "king" && !k.destroyed) k.active = true;
+  }
+  if (state.mode.winCondition === "first-tower" && !state.over) {
+    // Takedown: any tower destroyed (princess or king) wins immediately.
+    endMatch(state, bySide);
+    return;
   }
   if (state.overtime && !state.over) {
     endMatch(state, bySide); // sudden-death: first blood wins (§8.1)
@@ -1722,13 +1738,23 @@ function unitPhase(state: EngineState, dt: number): void {
   for (let oi = 0; oi < ordered.length; oi++) {
     const u = ordered[oi];
     if (u.hp <= 0) continue;
-    if (now < u.stunUntil || isFrozen(u, now)) continue;
-    if (now < u.readyAt) continue; // Cannon deploy 1.0s
+    if (now < u.stunUntil || isFrozen(u, now)) {
+      u.targetId = undefined;
+      continue;
+    }
+    if (now < u.readyAt) {
+      u.targetId = undefined;
+      continue; // Cannon deploy 1.0s
+    }
     u.cooldown -= dt * speedMultiplier(u, now);
     const target = acquireUnitTarget(state, u);
-    if (!target) continue;
+    if (!target) {
+      u.targetId = undefined;
+      continue;
+    }
     const tx = target.kind === "tower" ? target.tower.x : target.unit.x;
     const ty = target.kind === "tower" ? target.tower.y : target.unit.y;
+    u.targetId = target.kind === "tower" ? target.tower.id : target.unit.id;
     // Phase 13: a declared minimum range creates a dead zone (Mortar).
     // Phase 15: suicide units (Fire Spirit, Ice Spirit) leap onto the target,
 // detonate once and die. This runs BEFORE the range check because a spirit
@@ -1870,11 +1896,20 @@ export function tickGame(state: EngineState, dt: number = TICK_DT): EngineState 
     unit.hitByAttackThisTick = false;
   }
 
-  // (2) elixir regen — server float, cap 10, double from t=120s incl. OT.
-  const doubleRate = state.timeSec + CLOCK_EPS >= DOUBLE_AT_SEC;
-  const perSec = doubleRate ? ELIXIR_DOUBLE_SEC : ELIXIR_SINGLE_SEC;
-  state.elixir.blue = Math.min(ELIXIR_CAP, state.elixir.blue + step / perSec);
-  state.elixir.red = Math.min(ELIXIR_CAP, state.elixir.red + step / perSec);
+  // (2) elixir regen — server float, cap from the mode registry. Standard
+  // keeps the t>=120s double window; modes with a fixed multiplier (e.g.
+  // Infinite Elixir 8x) apply it for the whole match instead.
+  const mode = state.mode;
+  const fixedRate = mode.elixirRateMultiplier !== 1;
+  const doubleRate = !fixedRate && mode.doubleElixir !== false && state.timeSec + CLOCK_EPS >= DOUBLE_AT_SEC;
+  const perSec = fixedRate
+    ? ELIXIR_SINGLE_SEC / mode.elixirRateMultiplier
+    : doubleRate
+      ? ELIXIR_DOUBLE_SEC
+      : ELIXIR_SINGLE_SEC;
+  const cap = mode.elixirCap;
+  state.elixir.blue = Math.min(cap, state.elixir.blue + step / perSec);
+  state.elixir.red = Math.min(cap, state.elixir.red + step / perSec);
 
   // Database-defined persistent area effects (Poison, Earthquake, Rage, etc.)
   // resolve before movement and combat on the authoritative clock.

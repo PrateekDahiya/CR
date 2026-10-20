@@ -151,8 +151,10 @@ function fallbackMove(room: Room, side: PlayerSide): BotMove | null {
     if (tags.includes("tank") && enemyTank === null) score += 3;
 
     // --- elixir discipline: keep a reserve unless the play is urgent ---
+    // Fast-regeneration modes (Infinite Elixir, 2x) should not hoard elixir.
     const urgent = enemyAir !== null || enemyWinCondition !== null || enemyTank !== null;
-    if (!urgent && elixir - card.cost < 1) score -= 3;
+    const rateMultiplier = room.state.mode?.elixirRateMultiplier ?? 1;
+    if (!urgent && rateMultiplier <= 1 && elixir - card.cost < 1) score -= 3;
 
     // Small controlled randomness so matches are not identical.
     score += Math.random() * 2.5;
@@ -251,6 +253,8 @@ export async function requestBotMove(
         hand,
         elixir: room.state.elixir[side],
         side,
+        mode: room.state.mode,
+        modeId: room.state.modeId,
       }),
       signal: controller.signal,
     });
@@ -268,6 +272,27 @@ const BOT_THINK_MS = 900;
 const BOT_ELIXIR_RESERVE = 1;
 const timers = new Map<string, ReturnType<typeof setInterval>>();
 const busy = new Set<string>();
+
+/**
+ * Think cadence per elixir rate (game modes). A faster-regenerating match
+ * (Infinite Elixir 8x, 2x Elixir) must not leave the bot hoarding elixir, so
+ * the brain wakes up more often as the rate grows.
+ * O(1) - one multiply + clamp.
+ */
+export function botThinkMsFor(rateMultiplier: number): number {
+  if (!Number.isFinite(rateMultiplier) || rateMultiplier <= 1) return BOT_THINK_MS;
+  return Math.max(300, Math.round(BOT_THINK_MS / rateMultiplier));
+}
+
+/**
+ * Elixir the bot keeps in reserve. Fast-regeneration modes spend down to the
+ * cap instead of hoarding a fixed reserve.
+ * O(1).
+ */
+export function botReserveFor(rateMultiplier: number, elixir: number, cap: number): number {
+  if (rateMultiplier <= 1) return BOT_ELIXIR_RESERVE;
+  return elixir >= cap ? 0 : BOT_ELIXIR_RESERVE;
+}
 
 /** Emergency if enemy troops are on the bot half or a tower is below 55%. */
 function botUrgent(room: Room, side: PlayerSide): boolean {
@@ -312,7 +337,10 @@ export function startBotLoop(io: Server, room: Room, difficulty = "medium"): voi
           return;
         }
         const minCost = cheapestInHand(current, botSide);
-        const reserve = botUrgent(current, botSide) ? 0 : BOT_ELIXIR_RESERVE;
+        const mode = current.state.mode;
+        const rate = mode?.elixirRateMultiplier ?? 1;
+        const cap = mode?.elixirCap ?? 10;
+        const reserve = botUrgent(current, botSide) ? 0 : botReserveFor(rate, current.state.elixir[botSide], cap);
         // Never spend below the reserve unless the base is actually threatened.
         if (minCost === 99 || current.state.elixir[botSide] < minCost + reserve) return;
         const move = await requestBotMove(current, botSide, difficulty);
@@ -340,7 +368,7 @@ export function startBotLoop(io: Server, room: Room, difficulty = "medium"): voi
         busy.delete(room.matchId);
       }
     })();
-  }, BOT_THINK_MS);
+  }, botThinkMsFor(room.state.mode?.elixirRateMultiplier ?? 1));
   (tick as unknown as { unref?: () => void }).unref?.();
   timers.set(room.matchId, tick);
 }

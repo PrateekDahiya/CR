@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { PageShell, CRButton, MatchmakingLoader } from "../components/ui";
+import { PageShell, CRButton, MatchmakingLoader, CardArt } from "../components/ui";
 import { cardRoles, providesWinCondition } from "../lib/cardRoles";
-import { backendUrl, getCatalog, getProfile, type CatalogEntry, type ProfileResponse } from "../lib/api";
+import { backendUrl, getCatalog, getGameModes, getProfile, type CatalogEntry, type ProfileResponse } from "../lib/api";
+import type { GameModeConfig } from "../../shared/types";
 import { useDeckState } from "../lib/useDeck";
 import { usePlayer } from "../lib/playerContext";
 
@@ -17,6 +18,9 @@ export default function Home() {
   const [status, setStatus] = useState<"checking" | "online" | "offline">("checking");
   const [matchmaking, setMatchmaking] = useState<null | "pvp" | "ai">(null);
   const [modesOpen, setModesOpen] = useState(false);
+  /** Authoritative mode registry (backend /game-modes) + the picked mode. */
+  const [modes, setModes] = useState<GameModeConfig[]>([]);
+  const [selectedModeId, setSelectedModeId] = useState("standard");
   const { deck } = useDeckState();
   const { profile: ownedProfile } = usePlayer();
 
@@ -51,6 +55,25 @@ export default function Home() {
         // ignore
       }
     })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Mode registry comes from the backend (single source of truth): adding a
+  // mode there is enough for the picker to show it.
+  useEffect(() => {
+    let cancelled = false;
+    getGameModes(backendUrl())
+      .then((r) => {
+        if (cancelled) return;
+        const list = Array.isArray(r?.modes) ? r.modes : [];
+        setModes(list);
+        setSelectedModeId((current) =>
+          list.some((m) => m.id === current) ? current : (list[0]?.id ?? "standard"),
+        );
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -145,15 +168,27 @@ export default function Home() {
               <span data-testid="home-deck-name" className="truncate text-[11px] font-extrabold leading-tight text-white">
                 {deckName}
               </span>
-              <span className="mt-1 border-t border-slate-600/70 pt-0.5">
-                <span className="block text-[7px] font-bold uppercase tracking-wide text-slate-400">
-                  {hasWinCondition ? "Win condition" : "Fallback"}
-                </span>
-                <span
-                  data-testid="home-win-condition"
-                  className={`block truncate text-[10px] font-extrabold ${hasWinCondition ? "text-amber-200" : "text-slate-300"}`}
-                >
-                  {winLabel}
+              <span className="mt-1 flex items-center gap-1 border-t border-slate-600/70 pt-1">
+                {winCondition && (
+                  <CardArt
+                    name={winCondition}
+                    level={0}
+                    showLevel={false}
+                    showCost={false}
+                    size="sm"
+                    className="!h-8 !w-7 shrink-0"
+                  />
+                )}
+                <span className="min-w-0">
+                  <span className="block text-[7px] font-bold uppercase tracking-wide text-slate-400">
+                    {hasWinCondition ? "Win condition" : "Fallback"}
+                  </span>
+                  <span
+                    data-testid="home-win-condition"
+                    className={`block truncate text-[10px] font-extrabold ${hasWinCondition ? "text-amber-200" : "text-slate-300"}`}
+                  >
+                    {winLabel}
+                  </span>
                 </span>
               </span>
             </span>
@@ -186,12 +221,27 @@ export default function Home() {
           </header>
           {modesOpen ? (
             <div className="grid grid-cols-2 gap-2" data-testid="home-modes-grid">
-              <ModeTile title="Trophy Road" subtitle="Ranked Ladder" tone="blue" />
-              <ModeTile title="Casual 1v1" subtitle="Free play" tone="gray" />
-              <ModeTile title="Path of Legends" subtitle="Ranked ladder" tone="purple" />
-              <ModeTile title="Trophy Rush" subtitle="Coming soon" tone="gray" />
+              {modes.map((mode) => (
+                <ModeTile
+                  key={mode.id}
+                  id={mode.id}
+                  title={mode.label}
+                  subtitle={mode.description}
+                  tone={modeTone(mode.id)}
+                  selected={mode.id === selectedModeId}
+                  onSelect={() => setSelectedModeId(mode.id)}
+                />
+              ))}
+              {modes.length === 0 ? (
+                <p className="col-span-2 text-[11px] text-slate-400" data-testid="home-modes-empty">
+                  Modes unavailable (backend offline).
+                </p>
+              ) : null}
             </div>
           ) : null}
+          <p className="mt-2 text-[11px] text-slate-300" data-testid="home-selected-mode">
+            Selected: {modes.find((m) => m.id === selectedModeId)?.label ?? "Standard"}
+          </p>
         </section>
 
         {/* Quick play vs AI shortcut (kept from Phase 11). */}
@@ -212,6 +262,7 @@ export default function Home() {
       {matchmaking ? (
         <MatchmakingLoader
           mode={matchmaking}
+          gameModeId={selectedModeId}
           onCancel={() => setMatchmaking(null)}
         />
       ) : null}
@@ -219,16 +270,46 @@ export default function Home() {
   );
 }
 
-function ModeTile({ title, subtitle, tone }: { title: string; subtitle: string; tone: "blue" | "purple" | "gray" }) {
+/** Visual tone for a registry mode id (UI-only, no gameplay meaning). */
+function modeTone(id: string): "blue" | "purple" | "gray" {
+  if (id.includes("elixir")) return "purple";
+  if (id.includes("takedown")) return "gray";
+  return "blue";
+}
+
+function ModeTile({
+  id,
+  title,
+  subtitle,
+  tone,
+  selected,
+  onSelect,
+}: {
+  id: string;
+  title: string;
+  subtitle: string;
+  tone: "blue" | "purple" | "gray";
+  selected: boolean;
+  onSelect: () => void;
+}) {
   const toneClass = tone === "purple" ? "from-purple-600 to-purple-800" : tone === "gray" ? "from-slate-500 to-slate-700" : "from-sky-500 to-blue-700";
   return (
     <button
       type="button"
-      data-testid={`home-mode-${title.toLowerCase().replace(/\s+/g, "-")}`}
-      className={`rounded-xl border-b-4 border-black/30 bg-gradient-to-b ${toneClass} p-3 text-left font-extrabold text-white shadow-md active:translate-y-0.5`}
+      data-testid={`home-mode-${id}`}
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={`rounded-xl border-b-4 p-3 text-left font-extrabold text-white shadow-md active:translate-y-0.5 ${
+        selected
+          ? "border-amber-400 bg-gradient-to-b from-amber-300 to-amber-600 text-amber-950 ring-2 ring-amber-300"
+          : `border-black/30 bg-gradient-to-b ${toneClass}`
+      }`}
     >
       <div className="text-sm">{title}</div>
       <div className="text-[11px] opacity-80">{subtitle}</div>
+      {selected ? (
+        <div className="mt-1 text-[10px] font-extrabold uppercase tracking-wide">Selected</div>
+      ) : null}
     </button>
   );
 }

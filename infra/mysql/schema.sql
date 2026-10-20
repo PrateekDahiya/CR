@@ -257,3 +257,9 @@ CREATE TABLE IF NOT EXISTS player_decks (
   FOREIGN KEY (player_id) REFERENCES player_profiles(player_id) ON DELETE CASCADE,
   INDEX idx_player_decks (player_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS battle_log (
+  player_id VARCHAR(64) PRIMARY KEY,
+  entries JSON NOT NULL,
+  updated_at_ms BIGINT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -301,6 +301,9 @@ describe("15.5 elixir golem chain", () => {
 
     const blob = state.units.find((u) => u.cardId === "elixir-blob");
     assert.ok(blob, "golemites split into blobs");
+    // Modes now start at 8 elixir, so the opponent would already sit at the
+    // 10 cap and the payout would be invisible. Drop it first.
+    state.elixir.red = 4;
     const blueBefore = state.elixir.blue;
     const redBefore = state.elixir.red;
     blob.hp = 0;

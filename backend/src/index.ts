@@ -51,6 +51,8 @@ import { ensureAdminAccount, hydrateAccounts } from "./accounts.js";
 import { loadPlayerState } from "./playerStore.js";
 import { ensureMysqlDatabase, hydrateLevelStatsFromMysql, hydrateMechanicsFromMysql, hydrateSpawnTemplatesFromMysql, isMysqlConfigured } from "./mysql.js";
 import { CARD_LIST } from "./game/cards.js";
+import { listGameModes, parseGameMode } from "./game/modes.js";
+import { hydrateBattleLog } from "./battleLog.js";
 
 dotenv.config();
 
@@ -62,6 +64,14 @@ app.use(express.json());
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true, service: "backend" });
+});
+
+/**
+ * Public game-mode registry for the home-screen picker. One source of truth:
+ * the client renders whatever this returns (no second hard-coded mode list).
+ */
+app.get("/game-modes", (_req, res) => {
+  res.json({ modes: listGameModes() });
 });
 
 mountMeta(app);
@@ -102,6 +112,7 @@ interface QueueJoinPayload {
   deck?: string[];
   levels?: Record<string, number>;
   towerTroopId?: string;
+  modeId?: string;
 }
 
 interface LegacyJoinPayload {
@@ -110,6 +121,7 @@ interface LegacyJoinPayload {
   deck?: string[];
   levels?: Record<string, number>;
   towerTroopId?: string;
+  modeId?: string;
 }
 
 interface CardPlayPayload {
@@ -152,7 +164,7 @@ function fail(socket: Socket, ack: AckFn | undefined, code: string, message: str
  */
 function handlePracticeMatch(
   socket: Socket,
-  payload: { playerId?: string; deck?: string[]; difficulty?: string; levels?: Record<string, number>; towerTroopId?: string },
+  payload: { playerId?: string; deck?: string[]; difficulty?: string; levels?: Record<string, number>; towerTroopId?: string; modeId?: string },
   ack?: AckFn,
 ): void {
   const playerId = payload?.playerId;
@@ -160,6 +172,12 @@ function handlePracticeMatch(
     fail(socket, ack, "BAD_PLAYER", "playerId is required");
     return;
   }
+  const parsedMode = parseGameMode(payload?.modeId);
+  if (!parsedMode.ok) {
+    fail(socket, ack, parsedMode.code, parsedMode.message);
+    return;
+  }
+  const mode = parsedMode.mode;
   const deck = payload?.deck ?? getDeck(playerId);
   const checked = validateDeck(deck);
   if (!checked.ok) {
@@ -208,6 +226,7 @@ function handlePracticeMatch(
     matchId,
     { playerId, socketId: socket.id, deck: validDeck, levels: resolvedLevels, towerTroopId: payload.towerTroopId },
     { playerId: `bot-${matchId}`, socketId: `bot-${matchId}`, deck: botDeck, levels: botLevels, towerTroopId: botTowerTroopId },
+    mode.id,
   );
   socketPlayer.set(socket.id, playerId);
   playerSocket.set(playerId, socket.id);
@@ -219,10 +238,12 @@ function handlePracticeMatch(
     opponentId,
     side: "blue" satisfies PlayerSide,
     serverTimeMs,
-    mode: "ai",
+    modeId: mode.id,
+    mode,
+    matchType: "ai",
     difficulty,
   });
-  socket.emit("match:found", { matchId, opponentId });
+  socket.emit("match:found", { matchId, opponentId, modeId: mode.id, mode });
   socket.emit("match:start", { matchId, state: room.state });
   broadcastState(io, room);
   startTickLoop(io, matchId);
@@ -236,6 +257,12 @@ function handleQueueJoin(socket: Socket, payload: QueueJoinPayload, ack?: AckFn)
     fail(socket, ack, "BAD_DECK", "playerId is required");
     return;
   }
+  const parsedMode = parseGameMode(payload?.modeId);
+  if (!parsedMode.ok) {
+    fail(socket, ack, parsedMode.code, parsedMode.message);
+    return;
+  }
+  const mode = parsedMode.mode;
   const deck = payload?.deck ?? getDeck(playerId);
   const checked = validateDeck(deck);
   if (!checked.ok) {
@@ -255,7 +282,7 @@ function handleQueueJoin(socket: Socket, payload: QueueJoinPayload, ack?: AckFn)
   }
   setDeck(playerId, validDeck);
   const resolvedLevels = battleLevelsFor(playerId, validDeck, payload.towerTroopId, (levels as { levels: Record<string, number> }).levels);
-  const { position } = joinQueue(socket.id, playerId, validDeck, resolvedLevels, payload.towerTroopId);
+  const { position } = joinQueue(socket.id, playerId, validDeck, resolvedLevels, payload.towerTroopId, mode.id);
   socketPlayer.set(socket.id, playerId);
   playerSocket.set(playerId, socket.id);
   ack?.({ ok: true, position });
@@ -274,6 +301,8 @@ function handleQueueJoin(socket: Socket, payload: QueueJoinPayload, ack?: AckFn)
   const serverTimeMs = Date.now();
   const blueSocket = io.sockets.sockets.get(blue.socketId);
   const redSocket = io.sockets.sockets.get(red.socketId);
+  const modeId = room.state.modeId;
+  const matchMode = room.state.mode;
   // NOTE: the legacy `match:found` twin MUST carry the same `side`, otherwise
   // clients that listen to both events flip the red player to blue.
   blueSocket?.emit("queue:matched", {
@@ -281,24 +310,32 @@ function handleQueueJoin(socket: Socket, payload: QueueJoinPayload, ack?: AckFn)
     opponentId: red.playerId,
     side: "blue" satisfies PlayerSide,
     serverTimeMs,
+    modeId,
+    mode: matchMode,
   });
   blueSocket?.emit("match:found", {
     matchId,
     opponentId: red.playerId,
     side: "blue" satisfies PlayerSide,
     serverTimeMs,
+    modeId,
+    mode: matchMode,
   });
   redSocket?.emit("queue:matched", {
     matchId,
     opponentId: blue.playerId,
     side: "red" satisfies PlayerSide,
     serverTimeMs,
+    modeId,
+    mode: matchMode,
   });
   redSocket?.emit("match:found", {
     matchId,
     opponentId: blue.playerId,
     side: "red" satisfies PlayerSide,
     serverTimeMs,
+    modeId,
+    mode: matchMode,
   });
   io.to(matchId).emit("match:start", { matchId, state: room.state });
   broadcastState(io, room);
@@ -442,16 +479,16 @@ io.on("connection", (socket) => {
   });
 
   // Practice vs AI: instant real match against the server-side bot.
-  socket.on("match:practice", (payload: { playerId?: string; deck?: string[]; difficulty?: string }, ack?: AckFn) => {
+  socket.on("match:practice", (payload: { playerId?: string; deck?: string[]; difficulty?: string; modeId?: string }, ack?: AckFn) => {
     handlePracticeMatch(socket, payload, ack);
   });
-  socket.on("queue:ai", (payload: { playerId?: string; deck?: string[]; difficulty?: string }, ack?: AckFn) => {
+  socket.on("queue:ai", (payload: { playerId?: string; deck?: string[]; difficulty?: string; modeId?: string }, ack?: AckFn) => {
     handlePracticeMatch(socket, payload, ack);
   });
 
   // Legacy alias: matchId is ignored, treated as queue:join (§11/§12.3).
   socket.on("match:join", (payload: LegacyJoinPayload, ack?: AckFn) => {
-    handleQueueJoin(socket, { playerId: payload?.playerId, deck: payload?.deck, levels: payload?.levels, towerTroopId: payload?.towerTroopId }, ack);
+    handleQueueJoin(socket, { playerId: payload?.playerId, deck: payload?.deck, levels: payload?.levels, towerTroopId: payload?.towerTroopId, modeId: payload?.modeId }, ack);
   });
 
   socket.on("queue:leave", (payload: { playerId?: string }, ack?: AckFn) => {
@@ -539,10 +576,11 @@ void ensureMysqlDatabase().then(async (bootstrap) => {
   const stored = await loadPlayerState();
   const playerCount = hydratePlayers(stored.players, stored.decks);
   const accountCount = hydrateAccounts(stored.accounts);
+  const battleLogCount = await hydrateBattleLog();
   const syncedAdmin = ensureAdminAccount();
   if (syncedAdmin !== null) console.log(`[backend] admin account ready: ${syncedAdmin}`);
   if (isMysqlConfigured()) {
-    console.log(`[backend] restored ${playerCount} players, ${accountCount} accounts, ${stored.decks.length} decks`);
+    console.log(`[backend] restored ${playerCount} players, ${accountCount} accounts, ${stored.decks.length} decks, ${battleLogCount} battle-log entries`);
   }
   return Promise.all([hydrateMechanicsFromMysql(), hydrateSpawnTemplatesFromMysql(), hydrateLevelStatsFromMysql()]);
 }).then((result) => {

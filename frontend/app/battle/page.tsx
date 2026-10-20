@@ -34,7 +34,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import ArenaCanvas, { type InspectTarget } from "../../components/battle/ArenaCanvas";
+import ArenaCanvas, { type InspectTarget, type SpellFx } from "../../components/battle/ArenaCanvas";
 import BattleTopBar from "../../components/battle/BattleTopBar";
 import ElixirBar from "../../components/battle/ElixirBar";
 import Hand from "../../components/battle/Hand";
@@ -64,6 +64,7 @@ import type { Tower, Unit } from "../../../shared/types";
 
 const DECK_STORAGE_KEY = "cr-clone-deck-v1";
 const PLAYER_STORAGE_KEY = "cr-player-id";
+const MAX_SPELL_FX = 8;
 
 const FALLBACK_DECK: string[] = [
   "knight",
@@ -139,6 +140,7 @@ export default function BattlePage() {
   const [coinDelta, setCoinDelta] = useState<number | null>(null);
   const [foe, setFoe] = useState<{ name: string; club: string; trophies: number } | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [spells, setSpells] = useState<SpellFx[]>([]);
   const arenaRef = useRef<HTMLDivElement | null>(null);
   /** Horizontal inset of the arena inside its container (arena is centred). */
   const [hudInset, setHudInset] = useState(0);
@@ -172,6 +174,17 @@ export default function BattlePage() {
 
   const { refresh: refreshProfile, profile } = usePlayer();
   const [towerTroopId, setTowerTroopId] = useState(DEFAULT_TOWER_ID);
+  /** Selected game mode (from the home picker, carried through the redirect). */
+  const [gameModeId, setGameModeId] = useState("standard");
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const mid = params.get("modeId");
+      if (mid && mid.length > 0) setGameModeId(mid);
+    } catch {
+      // ignore malformed query
+    }
+  }, []);
   useEffect(() => {
     setTowerTroopId(loadTowerSelection());
   }, []);
@@ -194,6 +207,7 @@ export default function BattlePage() {
     deck,
     levels: battleLevels,
     towerTroopId,
+    modeId: gameModeId,
   });
   const { phase, matchId, side, opponentId, renderState, displayElixir } = battle;
 
@@ -269,6 +283,10 @@ export default function BattlePage() {
         blueCrowns: r.crowns?.blue ?? 0,
         redCrowns: r.crowns?.red ?? 0,
         durationMs: Math.max(0, 180_000 - battle.timeLeftSec * 1000),
+        matchId: r.matchId,
+        mode: battle.mode?.id ?? battle.modeId ?? gameModeId,
+        blueDeck: side === "blue" ? deck : [],
+        redDeck: side === "red" ? deck : [],
       },
       backendUrl,
     )
@@ -442,6 +460,24 @@ export default function BattlePage() {
       if (res.ok) {
         setNotice(null);
         playDeploy();
+        const played = getCard(cardId);
+        if (played?.type === "spell") {
+          const startedAt = performance.now();
+          const id = `spell-${cardId}-${startedAt}`;
+          const fx: SpellFx = {
+            id,
+            kind: cardId,
+            x,
+            y,
+            radius: played.radius > 0 ? played.radius : 2.5,
+            startedAt,
+            durationMs: cardId === "poison" ? 3000 : cardId === "the-log" ? 1500 : 1200,
+          };
+          setSpells((prev) => [...prev.filter((item) => startedAt - item.startedAt < 3600), fx].slice(-MAX_SPELL_FX));
+          window.setTimeout(() => {
+            setSpells((prev) => prev.filter((item) => item.id !== id));
+          }, 3800);
+        }
       } else {
         flashInvalid(res.error ?? "Deploy rejected.");
       }
@@ -496,6 +532,8 @@ export default function BattlePage() {
         .battle-shake { animation: battle-shake 0.4s ease; }
         @keyframes elixir-pulse { 0%,100% { box-shadow: 0 0 6px rgba(232,121,249,0.7); } 50% { box-shadow: 0 0 16px rgba(232,121,249,1); } }
         .elixir-full { animation: elixir-pulse 1.2s ease-in-out infinite; }
+        @keyframes elixir-gain-rise { 0% { transform: translateY(6px) scale(0.8); opacity: 0; } 25% { transform: translateY(0) scale(1.15); opacity: 1; } 100% { transform: translateY(-16px) scale(1); opacity: 0; } }
+        .elixir-gain-pop { animation: elixir-gain-rise 1.1s ease-out forwards; }
         @keyframes battle-spin { to { transform: rotate(360deg); } }
         .battle-spinner { animation: battle-spin 0.9s linear infinite; }
       `}</style>
@@ -518,9 +556,11 @@ export default function BattlePage() {
           <ArenaCanvas
             towers={towers}
             entities={entities}
-            selectedCell={hover}
+            selectedCell={battle.selected === null ? null : hover}
+            selectedAnywhere={selectedCard?.type === "spell"}
             mySide={side}
             towerTroopId={towerTroopId}
+            spells={spells}
             selectedRadius={selectedRadius}
             inspectRange={inspectRange}
             inspectEnabled={battle.selected === null}
@@ -585,10 +625,21 @@ export default function BattlePage() {
                 data-testid="double-elixir-badge"
                 className="rounded-full bg-fuchsia-950/85 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-fuchsia-200"
               >
-                ⚡ {battle.elixirMultiplier}x Elixir
+                �s� {battle.elixirMultiplier}x Elixir
               </div>
             </div>
           )}
+          {/* Active game mode (server-resolved). */}
+          {phase === "in-match" && battle.mode ? (
+            <div className="mt-0.5 flex justify-end pr-2">
+              <div
+                data-testid="battle-mode-badge"
+                className="rounded-full bg-sky-950/85 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-sky-200"
+              >
+                {battle.mode.label}
+              </div>
+            </div>
+          ) : null}
           {battle.reconnecting && (
             <div
               data-testid="reconnect-banner"
@@ -663,8 +714,22 @@ export default function BattlePage() {
               onSelect={battle.selectCard}
             />
           </div>
-          <div className="mt-0.5">
-            <ElixirBar elixir={ready ? displayElixir : 5} max={10} opponentElixir={opponentElixir} />
+          <div className="relative mt-0.5">
+            <ElixirBar
+              elixir={ready ? displayElixir : 8}
+              max={battle.mode?.elixirCap ?? 10}
+              opponentElixir={opponentElixir}
+            />
+            {/* "+N" popup when a card grants elixir (collector pump, golem payout). */}
+            {battle.elixirGain ? (
+              <span
+                key={battle.elixirGain.id}
+                data-testid="elixir-gain-popup"
+                className="elixir-gain-pop pointer-events-none absolute left-3 top-0 z-10 text-sm font-extrabold text-fuchsia-200 drop-shadow-[0_1px_0_rgba(0,0,0,0.8)]"
+              >
+                +{battle.elixirGain.amount}
+              </span>
+            ) : null}
           </div>
         </div>
 

@@ -2,7 +2,7 @@
  * engine.test.ts — unit tests for the authoritative game engine (no server needed).
  *
  * Covers docs/GAME_DESIGN.md normative behavior:
- *  - §7  elixir regen (start 5, cap 10, 1 per 2.8s single / 1 per 1.4s double)
+ *  - §7  elixir regen (start 8, cap 10, 1 per 2.8s single / 1 per 1.4s double)
  *  - §11 playCard deducts elixir + validates (cost, hand cycle, cardId echo)
  *  - §6  tower damage + king activation (Princess 1400, King 2400, inactive king)
  *  - §8  win / crowns (princess = 1 crown, king = instant win + 3 crowns;
@@ -150,16 +150,16 @@ function strikeUntilDestroyed(
 // ---------------------------------------------------------------------------
 describe('engine — elixir regen (GAME_DESIGN §7)', () => {
   it('locks the normative elixir constants', () => {
-    assert.equal(ELIXIR_START, 5);
+    assert.equal(ELIXIR_START, 8);
     assert.equal(ELIXIR_CAP, 10);
     assert.equal(ELIXIR_SINGLE_SEC, 2.8);
     assert.equal(ELIXIR_DOUBLE_SEC, 1.4);
   });
 
-  it('starts at 5 elixir for both players', () => {
+  it('starts at 8 elixir for both players', () => {
     const s = newGame();
-    assert.equal(s.elixir.blue, 5);
-    assert.equal(s.elixir.red, 5);
+    assert.equal(s.elixir.blue, 8);
+    assert.equal(s.elixir.red, 8);
   });
 
   it('regenerates 1 elixir per 2.8s in single time', () => {

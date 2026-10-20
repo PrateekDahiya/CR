@@ -12,6 +12,8 @@ export interface MatchmakingLoaderProps {
   /** "ai" = play the bot immediately. "pvp" = queue, then fall back to the bot. */
   mode?: "pvp" | "ai";
   difficulty?: "easy" | "medium" | "hard";
+  /** Selected game-mode id (server registry). Carried into queue/practice. */
+  gameModeId?: string;
 }
 
 /** How long PvP matchmaking waits for a human before the AI takes the slot. */
@@ -47,6 +49,7 @@ export default function MatchmakingLoader({
   onMatched,
   mode = "ai",
   difficulty = "medium",
+  gameModeId = "standard",
 }: MatchmakingLoaderProps) {
   const router = useRouter();
   const [seconds, setSeconds] = useState(0);
@@ -100,7 +103,7 @@ export default function MatchmakingLoader({
           router.push(
             `/battle?matchId=${encodeURIComponent(matchId)}&side=${side}&opponent=${encodeURIComponent(
               opponentId ?? "",
-            )}&mode=${matchId.startsWith("ai-") ? "ai" : "pvp"}`,
+            )}&mode=${matchId.startsWith("ai-") ? "ai" : "pvp"}&modeId=${encodeURIComponent(gameModeId)}`,
           );
         });
         socket.onGameError((code, message) => {
@@ -113,13 +116,13 @@ export default function MatchmakingLoader({
         const startPractice = () => {
           if (cancelled || didFallback) return;
           didFallback = true;
-          socket.joinAiMatch(pid, deck, difficulty);
+          socket.joinAiMatch(pid, deck, difficulty, { modeId: gameModeId });
         };
 
         if (mode === "ai") {
           startPractice();
         } else {
-          socket.joinQueue(pid, deck);
+          socket.joinQueue(pid, deck, { modeId: gameModeId });
           // Real CR: give a human 5 seconds to find an opponent before the bot
           // takes the slot, so an incoming 1v1 still pairs up.
           fallbackTimer = setTimeout(startPractice, PVP_SEARCH_MS);

@@ -12,6 +12,8 @@
  * Sibling note (MEMORY#16): transport only — no UI imports here.
  */
 
+import type { GameModeConfig } from "../../shared/types";
+
 export const DEFAULT_BACKEND_URL = "http://localhost:4000";
 export const DEFAULT_AI_URL = "http://localhost:8000";
 
@@ -240,6 +242,12 @@ export function invalidateApiCache(prefix?: string): void {
 export function getHealth(baseUrl?: string): Promise<HealthResponse> {
   const base = backendUrl(baseUrl);
   return fetchJson<HealthResponse>(`${base.replace(/\/$/, "")}/health`);
+}
+
+/** GET {backend}/game-modes - authoritative selectable mode registry. O(m). */
+export function getGameModes(baseUrl?: string): Promise<{ modes: GameModeConfig[] }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return cachedGet("game-modes", `${base}/game-modes`, 60_000, true);
 }
 
 /** GET {ai}/health — liveness probe for the ai-service. */
@@ -597,9 +605,41 @@ export function reportMatch(input: {
   blueCrowns?: number;
   redCrowns?: number;
   durationMs?: number;
+  /** Match id (used as the battle-log entry key). */
+  matchId?: string;
+  /** Game mode id the match ran in. */
+  mode?: string;
+  /** Decks that were played (the server prefers its own room data). */
+  blueDeck?: string[];
+  redDeck?: string[];
 }, baseUrl?: string): Promise<{ deltas: { playerId: string; trophyDelta: number; coinDelta: number }[] }> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
   return postJson(`${base}/matches/report`, input);
+}
+
+export interface BattleLogEntry {
+  id: string;
+  matchId: string;
+  playerId: string;
+  opponentId: string;
+  opponentName: string;
+  result: "win" | "loss" | "draw";
+  crowns: number;
+  opponentCrowns: number;
+  deck: string[];
+  opponentDeck: string[];
+  mode: string;
+  trophies: number;
+  opponentTrophies: number;
+  trophyDelta: number;
+  durationMs: number;
+  createdAtMs: number;
+}
+
+/** GET /battle-log/:playerId - recent battles, newest first. */
+export function getBattleLog(playerId: string, baseUrl?: string): Promise<{ entries: BattleLogEntry[] }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/battle-log/${encodeURIComponent(playerId)}`);
 }
 
 // --- Admin ------------------------------------------------------------------

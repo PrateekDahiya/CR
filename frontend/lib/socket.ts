@@ -17,6 +17,7 @@
  */
 
 import { io, type Socket } from "socket.io-client";
+import type { GameModeConfig } from "../../shared/types";
 
 export type PlayerSide = "blue" | "red";
 
@@ -41,6 +42,9 @@ export interface StateUpdate {
   crowns: Record<PlayerSide, number>;
   winner?: PlayerSide | "draw";
   endsAtMs?: number;
+  /** Server-resolved game mode (id + rules) for the running match. */
+  modeId?: string;
+  mode?: GameModeConfig;
 }
 
 export interface QueueMatched {
@@ -48,6 +52,8 @@ export interface QueueMatched {
   opponentId: string;
   side: PlayerSide;
   serverTimeMs: number;
+  modeId?: string;
+  mode?: GameModeConfig;
 }
 
 export interface MatchEnd {
@@ -107,6 +113,8 @@ export function getSocket(): Socket | null {
 export interface MatchExtras {
   levels?: Record<string, number>;
   towerTroopId?: string;
+  /** Selected game-mode id (registry: backend /game-modes). */
+  modeId?: string;
 }
 
 export interface SocketClient {
@@ -130,6 +138,7 @@ function wrapSocket(s: Socket | null): SocketClient {
       if (deck) payload.deck = deck;
       if (extras?.levels) payload.levels = extras.levels;
       if (extras?.towerTroopId) payload.towerTroopId = extras.towerTroopId;
+      if (extras?.modeId) payload.modeId = extras.modeId;
       s.emit("queue:join", payload);
     },
     joinAiMatch: (playerId, deck, difficulty, extras) => {
@@ -140,6 +149,7 @@ function wrapSocket(s: Socket | null): SocketClient {
         ...(difficulty ? { difficulty } : {}),
         ...(extras?.levels ? { levels: extras.levels } : {}),
         ...(extras?.towerTroopId ? { towerTroopId: extras.towerTroopId } : {}),
+        ...(extras?.modeId ? { modeId: extras.modeId } : {}),
       });
     },
     leaveQueue: (playerId) => {
@@ -297,6 +307,7 @@ export function joinQueue(playerId: string, deck: string[], extras?: MatchExtras
     deck,
     ...(extras?.levels ? { levels: extras.levels } : {}),
     ...(extras?.towerTroopId ? { towerTroopId: extras.towerTroopId } : {}),
+    ...(extras?.modeId ? { modeId: extras.modeId } : {}),
   });
 }
 
@@ -317,6 +328,7 @@ export function joinAiMatch(
     difficulty,
     ...(extras?.levels ? { levels: extras.levels } : {}),
     ...(extras?.towerTroopId ? { towerTroopId: extras.towerTroopId } : {}),
+    ...(extras?.modeId ? { modeId: extras.modeId } : {}),
   });
 }
 
