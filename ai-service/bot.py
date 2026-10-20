@@ -132,6 +132,11 @@ _SPELL_VALUE: dict[str, float] = {
 }
 
 _TANKS = frozenset({"golem", "giant", "knight"})
+_AIR_UNITS = frozenset({
+    "bats", "minions", "minion-horde", "baby-dragon", "balloon", "lava-hound",
+    "inferno-dragon", "electro-dragon", "flying-machine", "phoenix",
+    "skeleton-barrel",
+})
 _TANK_ORDER = ("golem", "giant", "knight")  # richest win-con first
 _SUPPORTS = frozenset({"musketeer", "archers", "baby-dragon"})
 
@@ -347,6 +352,11 @@ def _legalize(x: float, y: float, cid: str, bot: str) -> tuple[float, float]:
 # picks (streaming over the hand, h <= 4).
 # ---------------------------------------------------------------------------
 
+def _is_splash(cid: str) -> bool:
+    spec = CARDS.get(cid)
+    return spec is not None and float(spec.get("radius") or 0.0) > 0.0
+
+
 def _best_greedy(hand: list[str], elixir: float) -> tuple[str | None, int]:
     """Highest DPS-per-elixir affordable troop/building (spells last resort).
 
@@ -454,7 +464,7 @@ def choose_move(
     if diff == "easy":
         return _choose_easy(ids, norm, elixir_val, bot)
     if diff == "medium":
-        return _choose_medium(ids, norm, elixir_val, towers, bot, enemy)
+        return _choose_medium(ids, norm, elixir_val, towers, units, bot, enemy)
     return _choose_hard(ids, norm, elixir_val, towers, units, bot, enemy)
 
 
@@ -488,25 +498,79 @@ def _choose_medium(
     norm: list[tuple[str, int]],
     elixir_val: float,
     towers: Any,
+    units: Any,
     bot: str,
     enemy: str,
 ) -> dict[str, Any]:
-    """Greedy: best DPS-per-elixir affordable card on weakest enemy lane.
+    """Counter-aware greedy.
 
-    Time O(h+t) single-pass scans; space O(1) aux beyond the result.
+    Reacts to enemy troops (ground/air/swarm/tank), otherwise pushes the weaker
+    lane. Time O(h+t+u) single-pass scans; space O(1) aux beyond the result.
     """
+    weak_x, wtx, wty, own_frac, own_x, own_y = _scan_towers(towers, bot, enemy)
+    (n, sumx, sumy, ax, ay, threat, tx, ty, best_key) = _scan_enemies(
+        units, enemy, own_x, own_y, bot
+    )
+    afford = {cid for cid in ids if CARDS[cid]["cost"] <= elixir_val}
+
+    # Defensive counter when the enemy is already on our half or close to a tower.
+    dx, dy = tx - own_x, ty - own_y
+    close = n > 0 and (dx * dx + dy * dy <= 121.0)
+    if n > 0 and (_on_bot_half(ty, bot) or close):
+        air_threat = threat in _AIR_UNITS
+        swarm = _cluster_info(units, enemy, ax, ay, _ZAP_R)[0] >= 3
+        pick: str | None = None
+        if swarm and "zap" in afford:
+            pick = "zap"
+        elif swarm and "arrows" in afford:
+            pick = "arrows"
+        elif swarm:
+            for cid in ids:
+                if cid in afford and CARDS[cid]["type"] != "spell" and _is_splash(cid):
+                    pick = cid
+                    break
+        if pick is None and air_threat:
+            for cid in ids:
+                spec = CARDS[cid]
+                if cid in afford and spec["type"] != "spell" and "air" in str(spec.get("targets", "")):
+                    pick = cid
+                    break
+        if pick is None:
+            for counter in _COUNTERS.get(threat or "", ()):
+                if counter in afford:
+                    pick = counter
+                    break
+        if pick is None:
+            pick, _ = _best_greedy(ids, elixir_val)
+        if pick is None:
+            pick, _ = _cheapest(ids)
+        if pick is None:
+            pick = "knight"
+        if _is_spell(pick):
+            x, y = _legalize(tx, ty, pick, bot)
+        else:
+            # Body-block on the threat's lane, between the threat and our tower.
+            x, y = _legalize((tx + own_x) / 2.0, (ty + own_y) / 2.0, pick, bot)
+        return {"card": pick, "x": x, "y": y, "handIndex": _orig_index(norm, pick)}
+
+    # No immediate danger: push the weaker lane, keeping support behind a tank.
     card, _ = _best_greedy(ids, elixir_val)
     if card is None:
         card, _ = _cheapest(ids)
     if card is None:
         card = "knight"
-    weak_x, _, _, _, _, _ = _scan_towers(towers, bot, enemy)
-    y = _push_y(card, bot)
-    x, y = _legalize(weak_x, y, card, bot)
-    # Spell-only fallback chips the weakest tower instead of a blind push.
+    lane_x = weak_x
+    if n > 0:
+        lane_x = RIGHT_LANE_X if (sumx / n) < 9.0 else LEFT_LANE_X
+    elif random.random() < 0.45:
+        # Mix up proactive pushes between lanes instead of a single drop tile.
+        lane_x = RIGHT_LANE_X if lane_x == LEFT_LANE_X else LEFT_LANE_X
     if _is_spell(card):
-        _, wtx, wty, _, _, _ = _scan_towers(towers, bot, enemy)
         x, y = _legalize(wtx, wty, card, bot)
+    else:
+        x = lane_x + random.uniform(-1.2, 1.2)
+        y = _push_y(card, bot) + random.uniform(-1.0, 1.0)
+        x, y = _legalize(x, y, card, bot)
     return {"card": card, "x": x, "y": y, "handIndex": _orig_index(norm, card)}
 
 
@@ -592,7 +656,9 @@ def _choose_hard(
     if _is_spell(pick):  # spell-only hand: chip the weakest tower
         x, y = _legalize(wtx, wty, pick, bot)
     else:
-        x, y = _legalize(lane_x, _push_y(pick, bot), pick, bot)
+        x = lane_x + random.uniform(-1.2, 1.2)
+        y = _push_y(pick, bot) + random.uniform(-1.0, 1.0)
+        x, y = _legalize(x, y, pick, bot)
     return {"card": pick, "x": x, "y": y, "handIndex": _orig_index(norm, pick)}
 
 
@@ -657,10 +723,9 @@ if __name__ == "__main__":  # pragma: no cover
             assert _on_bot_half(_m["y"], "red"), _m
         assert 0 <= _m["handIndex"] < len(_HAND), _m
         assert _dt < 50.0, (_d, _dt)
-    # Hard answers the skeleton cluster with zap; medium plays greedy value
-    # (skeletons: 240 dps / 1 elixir = best DPS-per-elixir in hand).
+    # Both medium and hard answer the skeleton cluster with zap now.
     assert choose_move(_STATE, _HAND, 8.0, "hard")["card"] == "zap"
-    assert choose_move(_STATE, _HAND, 8.0, "medium")["card"] == "skeletons"
+    assert choose_move(_STATE, _HAND, 8.0, "medium")["card"] == "zap"
     # Degenerate inputs never raise and stay in-bounds.
     for _m2 in (choose_move({}, [], 0.0, "easy"),
                 choose_move(None, ["zap"], 0.0, "hard"),

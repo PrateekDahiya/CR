@@ -649,6 +649,30 @@ export function adminUpdatePlayer(
   return player;
 }
 
+/**
+ * Server-authoritative battle levels: profile values win over the submitted
+ * map. Prevents a client race (BATTLE pressed before profile hydration) from
+ * creating a level-1 match for a level-16 account. O(deck).
+ */
+export function battleLevelsFor(
+  playerId: string,
+  deck: readonly string[],
+  towerTroopId: unknown,
+  submitted: Record<string, number>,
+): Record<string, number> {
+  const profile = ensurePlayer(playerId);
+  const out: Record<string, number> = {};
+  for (const id of deck) out[id] = profile.cards[id] ?? submitted[id] ?? 1;
+  const kingLevel = Math.max(1, Math.min(16, Math.trunc(profile.kingLevel ?? 1)));
+  out["king-tower"] = kingLevel;
+  const towerId = typeof towerTroopId === "string" ? towerTroopId : "tower-princess";
+  out[towerId] = Math.max(
+    kingLevel,
+    Math.min(16, Math.trunc(profile.towerLevels?.[towerId] ?? kingLevel)),
+  );
+  return out;
+}
+
 /** Convenience for shop cards: every engine card id. O(1) array copy. */
 export function allCardIds(): string[] {
   return Object.keys(CARDS);

@@ -102,3 +102,45 @@ def test_bot_move_latency_budget():
         assert r.status_code == 200
     dt_ms = (time.perf_counter() - t0) * 1000.0 / 20.0
     assert dt_ms < 50.0, dt_ms
+
+def test_medium_counters_air_on_own_half():
+    state = {
+        "towers": [
+            {"id": "red-pl", "kind": "princess", "owner": "red", "hitPoints": 4000, "maxHitPoints": 4858, "position": {"x": 3.5, "y": 24.5}},
+        ],
+        "units": [
+            {"cardId": "baby-dragon", "owner": "blue", "hitPoints": 1200, "position": {"x": 8.0, "y": 20.0}},
+        ],
+    }
+    hand = [
+        {"card": "giant", "handIndex": 0, "cost": 5},
+        {"card": "archers", "handIndex": 1, "cost": 3},
+        {"card": "fireball", "handIndex": 2, "cost": 4},
+    ]
+    res = client.post("/bot/move", json={"difficulty": "medium", "hand": hand, "elixir": 6, "side": "red", "game_state": state})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["card"] in ("archers", "fireball")
+    assert body["y"] >= 17.0
+
+
+def test_medium_answers_swarm_with_small_spell():
+    state = {
+        "towers": [
+            {"id": "red-pl", "kind": "princess", "owner": "red", "hitPoints": 4000, "maxHitPoints": 4858, "position": {"x": 3.5, "y": 24.5}},
+        ],
+        "units": [
+            {"cardId": "skeletons", "owner": "blue", "hitPoints": 81, "position": {"x": 8.0, "y": 20.0}},
+            {"cardId": "skeletons", "owner": "blue", "hitPoints": 81, "position": {"x": 8.6, "y": 20.2}},
+            {"cardId": "skeletons", "owner": "blue", "hitPoints": 81, "position": {"x": 7.5, "y": 19.6}},
+        ],
+    }
+    hand = [
+        {"card": "giant", "handIndex": 0, "cost": 5},
+        {"card": "zap", "handIndex": 1, "cost": 2},
+        {"card": "archers", "handIndex": 2, "cost": 3},
+    ]
+    res = client.post("/bot/move", json={"difficulty": "medium", "hand": hand, "elixir": 5, "side": "red", "game_state": state})
+    assert res.status_code == 200
+    assert res.json()["card"] == "zap"
+

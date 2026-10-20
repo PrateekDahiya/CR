@@ -46,7 +46,7 @@ import { mountMeta } from "./meta.js";
 import { mountContent } from "./content.js";
 import { mountShop } from "./shop.js";
 import { mountAdmin } from "./admin.js";
-import { ensurePlayer, hydratePlayers } from "./players.js";
+import { battleLevelsFor, ensurePlayer, hydratePlayers } from "./players.js";
 import { ensureAdminAccount, hydrateAccounts } from "./accounts.js";
 import { loadPlayerState } from "./playerStore.js";
 import { ensureMysqlDatabase, hydrateLevelStatsFromMysql, hydrateMechanicsFromMysql, hydrateSpawnTemplatesFromMysql, isMysqlConfigured } from "./mysql.js";
@@ -185,6 +185,7 @@ function handlePracticeMatch(
   // AI fairness: every bot card is normalized to the player deck's average
   // owned-card level, so a level-5 player never faces level-15 bots.
   const playerProfile = ensurePlayer(playerId);
+  const resolvedLevels = battleLevelsFor(playerId, validDeck, payload.towerTroopId, (levels as { levels: Record<string, number> }).levels);
   const averageLevel = Math.max(
     1,
     Math.min(
@@ -195,10 +196,18 @@ function handlePracticeMatch(
     ),
   );
   const botLevels = Object.fromEntries(botDeck.map((id) => [id, averageLevel]));
+  const botTowerTroopId = payload.towerTroopId ?? "tower-princess";
+  const playerKingLevel = Math.max(1, Math.min(16, Math.trunc(playerProfile.kingLevel ?? 1)));
+  const playerTowerLevel = Math.max(
+    playerKingLevel,
+    Math.min(16, Math.trunc(playerProfile.towerLevels?.[botTowerTroopId] ?? playerKingLevel)),
+  );
+  botLevels["king-tower"] = playerKingLevel;
+  botLevels[botTowerTroopId] = playerTowerLevel;
   const room = createRoom(
     matchId,
-    { playerId, socketId: socket.id, deck: validDeck, levels: (levels as { levels: Record<string, number> }).levels, towerTroopId: payload.towerTroopId },
-    { playerId: `bot-${matchId}`, socketId: `bot-${matchId}`, deck: botDeck, levels: botLevels, towerTroopId: "tower-princess" },
+    { playerId, socketId: socket.id, deck: validDeck, levels: resolvedLevels, towerTroopId: payload.towerTroopId },
+    { playerId: `bot-${matchId}`, socketId: `bot-${matchId}`, deck: botDeck, levels: botLevels, towerTroopId: botTowerTroopId },
   );
   socketPlayer.set(socket.id, playerId);
   playerSocket.set(playerId, socket.id);
@@ -245,7 +254,8 @@ function handleQueueJoin(socket: Socket, payload: QueueJoinPayload, ack?: AckFn)
     return;
   }
   setDeck(playerId, validDeck);
-  const { position } = joinQueue(socket.id, playerId, validDeck, (levels as { levels: Record<string, number> }).levels, payload.towerTroopId);
+  const resolvedLevels = battleLevelsFor(playerId, validDeck, payload.towerTroopId, (levels as { levels: Record<string, number> }).levels);
+  const { position } = joinQueue(socket.id, playerId, validDeck, resolvedLevels, payload.towerTroopId);
   socketPlayer.set(socket.id, playerId);
   playerSocket.set(playerId, socket.id);
   ack?.({ ok: true, position });

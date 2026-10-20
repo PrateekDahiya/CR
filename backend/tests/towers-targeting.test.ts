@@ -2,6 +2,7 @@ import { before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { createGame, playCard, tickGame } from "../src/game/engine.js";
 import { getSpawnTemplate } from "../src/game/cards.js";
+import { battleLevelsFor, ensurePlayer, resetPlayers } from "../src/players.js";
 import { hydrateMechanicsFromMysql, hydrateSpawnTemplatesFromMysql } from "../src/mysql.js";
 import { forceInHand } from "./deckHelpers.js";
 
@@ -77,6 +78,20 @@ describe("level-scaled crown towers", () => {
     const princess = state.towers.find((t) => t.owner === "blue" && t.kind === "princess");
     assert.equal(king?.maxHp, 2400);
     assert.equal(princess?.maxHp, 1400);
+  });
+});
+
+describe("server-authoritative battle levels", () => {
+  it("profile levels override a missing/stale client map", () => {
+    resetPlayers();
+    const player = ensurePlayer("level-race");
+    player.cards["giant"] = 16;
+    player.kingLevel = 16;
+    player.towerLevels["tower-princess"] = 16;
+    const levels = battleLevelsFor("level-race", ["giant", "knight"], "tower-princess", { giant: 1, knight: 1 });
+    assert.equal(levels.giant, 16);
+    assert.equal(levels["king-tower"], 16);
+    assert.equal(levels["tower-princess"], 16);
   });
 });
 

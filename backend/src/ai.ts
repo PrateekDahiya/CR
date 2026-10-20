@@ -264,8 +264,24 @@ export async function requestBotMove(
   }
 }
 
-const BOT_THINK_MS = 700;
+const BOT_THINK_MS = 900;
+const BOT_ELIXIR_RESERVE = 1;
 const timers = new Map<string, ReturnType<typeof setInterval>>();
+const busy = new Set<string>();
+
+/** Emergency if enemy troops are on the bot half or a tower is below 55%. */
+function botUrgent(room: Room, side: PlayerSide): boolean {
+  const ownHalfLimit = side === "red" ? 17.5 : 14.5;
+  for (const unit of room.state.units) {
+    if (unit.owner === side || unit.hitPoints <= 0) continue;
+    if (side === "red" ? unit.position.y < ownHalfLimit : unit.position.y > ownHalfLimit) return true;
+  }
+  for (const tower of room.state.towers) {
+    if (tower.owner !== side || tower.destroyed) continue;
+    if (tower.hitPoints / Math.max(1, tower.maxHitPoints) < 0.55) return true;
+  }
+  return false;
+}
 
 /** Cheapest card currently in the bot's hand (O(h)); 0 when the hand is empty. */
 function cheapestInHand(room: Room, side: PlayerSide): number {
@@ -286,33 +302,42 @@ export function startBotLoop(io: Server, room: Room, difficulty = "medium"): voi
   if (timers.has(room.matchId)) return;
   const botSide: PlayerSide = "red";
   const tick = setInterval(() => {
+    if (busy.has(room.matchId)) return;
+    busy.add(room.matchId);
     void (async () => {
-      const current = getRoomSafe(room.matchId);
-      if (current === undefined || current.state.winner !== undefined) {
-        stopBotLoop(room.matchId);
-        return;
-      }
-      const minCost = cheapestInHand(current, botSide);
-      // Cheap guard: never burn an AI call when nothing is affordable yet.
-      if (minCost === 99 || current.state.elixir[botSide] < minCost) return;
-      const move = await requestBotMove(current, botSide, difficulty);
-      if (move === null) return;
-      const played = applyEnginePlay(
-        current,
-        botSide,
-        move.handIndex,
-        move.x,
-        move.y,
-        move.card,
-        current.matchId,
-        "bot",
-      );
-      if (played.ok) {
-        io.to(current.matchId).emit("bot:played", {
-          matchId: current.matchId,
-          card: move.card,
-          side: botSide,
-        });
+      try {
+        const current = getRoomSafe(room.matchId);
+        if (current === undefined || current.state.winner !== undefined) {
+          stopBotLoop(room.matchId);
+          return;
+        }
+        const minCost = cheapestInHand(current, botSide);
+        const reserve = botUrgent(current, botSide) ? 0 : BOT_ELIXIR_RESERVE;
+        // Never spend below the reserve unless the base is actually threatened.
+        if (minCost === 99 || current.state.elixir[botSide] < minCost + reserve) return;
+        const move = await requestBotMove(current, botSide, difficulty);
+        if (move === null) return;
+        const played = applyEnginePlay(
+          current,
+          botSide,
+          move.handIndex,
+          move.x,
+          move.y,
+          move.card,
+          current.matchId,
+          "bot",
+        );
+        if (played.ok) {
+          io.to(current.matchId).emit("bot:played", {
+            matchId: current.matchId,
+            card: move.card,
+            side: botSide,
+            x: move.x,
+            y: move.y,
+          });
+        }
+      } finally {
+        busy.delete(room.matchId);
       }
     })();
   }, BOT_THINK_MS);
