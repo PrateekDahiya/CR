@@ -58,6 +58,19 @@ describe("level-scaled crown towers", () => {
     assert.notEqual(tower.hitByAttackThisTick, true);
   });
 
+  it("tags deployed troops with their owned card level", () => {
+    const state = createGame("unit-level-16", ["skeletons", ...DECK.slice(0, 7)], DECK, {
+      blueCardLevels: { skeletons: 16, "king-tower": 16 },
+      blueTowerTroopId: "tower-princess",
+      redTowerTroopId: "tower-princess",
+    });
+    state.elixir.blue = 10;
+    playCard(state, "blue", { handIndex: forceInHand(state, "blue", "skeletons"), x: 9, y: 10 });
+    const skeleton = state.units.find((u) => u.owner === "blue" && u.cardId === "skeletons");
+    assert.ok(skeleton);
+    assert.equal(skeleton.level, 16);
+  });
+
   it("keeps level-1 defaults for legacy callers", () => {
     const state = createGame("towers-1", DECK, DECK);
     const king = state.towers.find((t) => t.owner === "blue" && t.kind === "king");

@@ -825,8 +825,11 @@ export default function ArenaCanvas({
         const pct = clamp(u.hitPoints / max, 0, 1);
         const bw = TW * 1.5;
         const barY = cy - r - 7;
-        // Troop level badge immediately left of the HP bar.
-        drawUnitLevelBadge(c, u.level ?? 1, u.owner, cx - bw / 2 - 12, barY - 3, 11);
+        // Troop level badge immediately left of the HP bar. Draw it upright
+        // because the blue view mirrors the canvas vertically.
+        upright(cx - bw / 2 - 6.5, barY + 2.5, () => {
+          drawUnitLevelBadge(c, u.level ?? 1, u.owner, -5.5, -5.5, 11);
+        });
         c.fillStyle = "rgba(0,0,0,0.65)";
         c.fillRect(cx - bw / 2, barY, bw, 5);
         c.fillStyle = u.owner === "blue" ? "#3b82f6" : "#ef4444";
