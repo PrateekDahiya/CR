@@ -7,6 +7,7 @@ import { authPlayerId, mintGuestToken } from "./auth.js";
 import { isAdminUsername, login, register } from "./accounts.js";
 import { getActiveMatchForPlayer, getRoom } from "./net/rooms.js";
 import { getUser, leaderboard, recordMatch, saveDeck, upsertUser, isDbLive } from "./db.js";
+import { listBattleLogEntries, recordBattleLogEntry } from "./battleLog.js";
 import {
   activeDeck,
   applyMatchResult,
@@ -222,29 +223,80 @@ export function mountMeta(app: Express): void {
   });
 
   /** Match report: trophies + coins for both sides. O(1) per player. */
-  app.post("/matches/report", (req: Request, res: Response) => {
+  app.post("/matches/report", async (req: Request, res: Response) => {
     const b = (req.body ?? {}) as Record<string, unknown>;
     const blueId = typeof b.blueId === "string" ? b.blueId : null;
     const redId = typeof b.redId === "string" ? b.redId : null;
     const winner = (typeof b.winner === "string" ? b.winner : "draw") as "blue" | "red" | "draw";
     const blueCrowns = Number(b.blueCrowns ?? 0) || 0;
     const redCrowns = Number(b.redCrowns ?? 0) || 0;
+    const durationMs = Number(b.durationMs ?? 0) || 0;
+    const matchId = typeof b.matchId === "string" ? b.matchId : "";
     const deltas = applyMatchResult({
       blueId,
       redId,
       winner,
       crowns: { blue: blueCrowns, red: redCrowns },
     });
-    const row = recordMatch({
+    const row = await recordMatch({
       blueId,
       redId,
       blueCrowns,
       redCrowns,
       winner,
-      durationMs: Number(b.durationMs ?? 0) || 0,
+      durationMs,
       season: typeof b.season === "string" ? b.season : SEASON,
     });
+    // Battle log: one entry per side, with the decks that were played.
+    // The room is authoritative for decks + mode; the payload is a fallback.
+    const room = matchId.length > 0 ? getRoom(matchId) : undefined;
+    const blueDeck = (
+      room?.players.find((p) => p.side === "blue")?.deck ??
+      (Array.isArray(b.blueDeck) ? (b.blueDeck as string[]) : [])
+    ).slice(0, 8);
+    const redDeck = (
+      room?.players.find((p) => p.side === "red")?.deck ??
+      (Array.isArray(b.redDeck) ? (b.redDeck as string[]) : [])
+    ).slice(0, 8);
+    const mode = room?.state.modeId ?? (typeof b.mode === "string" ? b.mode : "standard");
+    recordSide(blueId, "blue");
+    recordSide(redId, "red");
+
+    function recordSide(pid: string | null, side: "blue" | "red"): void {
+      if (pid === null || pid.length === 0 || pid.startsWith("bot-") || pid.startsWith("ai-")) return;
+      const foe = side === "blue" ? redId : blueId;
+      const isAiFoe = foe === null || foe.startsWith("bot-") || foe.startsWith("ai-");
+      const result = winner === "draw" ? "draw" : winner === side ? "win" : "loss";
+      const myCrowns = side === "blue" ? blueCrowns : redCrowns;
+      const foeCrowns = side === "blue" ? redCrowns : blueCrowns;
+      const me = ensurePlayer(pid);
+      const opponent = isAiFoe ? undefined : ensurePlayer(foe as string);
+      const delta = deltas.find((d) => d.playerId === pid)?.trophyDelta ?? 0;
+      recordBattleLogEntry({
+        id: `${matchId || row.id}:${pid}`,
+        matchId: matchId || row.id,
+        playerId: pid,
+        opponentId: isAiFoe ? "ai-opponent" : (foe as string),
+        opponentName: opponent?.name ?? "AI",
+        result,
+        crowns: myCrowns,
+        opponentCrowns: foeCrowns,
+        deck: side === "blue" ? blueDeck : redDeck,
+        opponentDeck: side === "blue" ? redDeck : blueDeck,
+        mode,
+        trophies: me.trophies,
+        opponentTrophies: opponent?.trophies ?? 0,
+        trophyDelta: delta,
+        durationMs,
+        createdAtMs: Date.now(),
+      });
+    }
     res.json({ ...row, deltas });
+  });
+
+  /** Battle log: the player's recent battles, newest first. O(1) read. */
+  app.get("/battle-log/:playerId", (req: Request, res: Response) => {
+    res.json({ entries: listBattleLogEntries(req.params.playerId) });
   });
 
   /**

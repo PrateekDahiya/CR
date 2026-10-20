@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { invalidateApiCache } from "../../lib/api";
 import { usePlayer } from "../../lib/playerContext";
+import BattleLogPanel from "./BattleLogPanel";
 
 export type TopBarCurrencies = { cards: number; coins: number; gems: number };
 
@@ -20,6 +21,7 @@ export default function TopBar({ coins, gems }: TopBarCurrencies) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const logout = () => {
@@ -108,8 +110,21 @@ export default function TopBar({ coins, gems }: TopBarCurrencies) {
         )}
       </div>
       <div className="flex flex-1 items-center justify-end gap-2">
-        <Pill icon="🪙" value={coinsValue} tone="gold" testid="topbar-coins" href="/shop" />
-        <Pill icon="💎" value={gemsValue} tone="emerald" testid="topbar-gems" href="/shop" />
+        <Pill icon={<CoinIcon />} value={coinsValue} tone="gold" testid="topbar-coins" href="/shop" />
+        <Pill icon={<GemIcon />} value={gemsValue} tone="emerald" testid="topbar-gems" href="/shop" />
+        {/* Battle log button (the icon row in the Clash Royale top bar). */}
+        <button
+          type="button"
+          data-testid="topbar-battle-log"
+          onClick={() => setLogOpen(true)}
+          title="Battle Log"
+          aria-label="Open battle log"
+          className="grid h-7 w-7 place-items-center rounded-md border border-slate-500 bg-slate-800/80 text-white"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-current">
+            <path d="M5 3h11a2 2 0 0 1 2 2v2h-2V5H7v12h2v2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm14 4h1v12a2 2 0 0 1-2 2h-6v-2h6V7Zm-3 3h-2v2H9v2h5v-2h-2v-2Zm0 5h-2v2h5v-2h-3Z" />
+          </svg>
+        </button>
         <div ref={menuRef} className="relative">
           <button
             type="button"
@@ -160,7 +175,37 @@ export default function TopBar({ coins, gems }: TopBarCurrencies) {
           )}
         </div>
       </div>
+      {logOpen ? (
+        <BattleLogPanel
+          playerId={profile?.playerId ?? ""}
+          onClose={() => setLogOpen(false)}
+          onPractice={() => {
+            setLogOpen(false);
+            router.push("/battle");
+          }}
+        />
+      ) : null}
     </div>
+  );
+}
+
+/** Gold coin (inline SVG so the top bar never depends on emoji fonts). */
+function CoinIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+      <circle cx="12" cy="12" r="9" fill="#ffd24a" stroke="#a16207" strokeWidth="1.5" />
+      <circle cx="12" cy="12" r="5" fill="none" stroke="#a16207" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+/** Emerald gem (inline SVG so the top bar never depends on emoji fonts). */
+function GemIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+      <path d="M7 3h10l4 6-9 12L3 9l4-6Z" fill="#34d399" stroke="#065f46" strokeWidth="1.4" />
+      <path d="M3 9h18M8 9l4 12 4-12" fill="none" stroke="#065f46" strokeWidth="1.1" />
+    </svg>
   );
 }
 
@@ -171,7 +216,7 @@ function Pill({
   testid,
   href,
 }: {
-  icon: string;
+  icon: ReactNode;
   value: number;
   tone: "blue" | "gold" | "emerald";
   testid: string;
@@ -189,7 +234,7 @@ function Pill({
       className={`flex items-center gap-1 rounded-full border border-black/30 bg-gradient-to-b ${colors[tone]} px-2 py-1 text-sm font-extrabold text-white shadow-inner`}
       style={{ textShadow: "0 1px 0 rgba(0,0,0,0.6)" }}
     >
-      <span aria-hidden="true" className="text-base">
+      <span aria-hidden="true" className="grid h-4 w-4 place-items-center text-base">
         {icon}
       </span>
       <span className="tabular-nums">{value.toLocaleString()}</span>
