@@ -55,6 +55,7 @@ export interface InterpolatedUnit {
   x: number;
   y: number;
   targetId?: string;
+  decayOnly?: boolean;
 }
 
 export interface RenderState {
@@ -218,6 +219,7 @@ function toRenderUnits(
         x: Number(u.position?.x ?? 0),
         y: Number(u.position?.y ?? 0),
         targetId: u.targetId !== undefined ? String(u.targetId) : undefined,
+        ...(u.decayOnly === true ? { decayOnly: true } : {}),
       };
     }
     return out;
@@ -248,6 +250,7 @@ function toRenderUnits(
       x: px + (cx - px) * alpha,
       y: py + (cy - py) * alpha,
       targetId: u.targetId !== undefined ? String(u.targetId) : undefined,
+      ...(u.decayOnly === true ? { decayOnly: true } : {}),
     };
   }
   return out;
