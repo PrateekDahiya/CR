@@ -1143,6 +1143,13 @@ export default function ArenaCanvas({
         // Real 2D strip art (soft feathered edges baked into the strip). The
         // static-art fallback keeps a circular clip so it never shows a square.
         let spriteDrawn = false;
+        // Phase 19: a hidden unit (invisible Royal Ghost, buried Tesla) is
+        // drawn faintly so the player can still see where it is.
+        const hidden = u.invisible === true;
+        if (hidden) {
+          c.save();
+          c.globalAlpha = 0.32;
+        }
         upright(drawCx, drawCy, () => {
           spriteDrawn = drawCardSprite(c, u.cardId, state, now, r * 2.08, facing, 1, u.owner);
         });
@@ -1165,6 +1172,7 @@ export default function ArenaCanvas({
           });
           c.restore();
         }
+        if (hidden) c.restore();
 
         if (flash) {
           c.save();

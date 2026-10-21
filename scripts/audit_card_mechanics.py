@@ -93,6 +93,14 @@ SUPPORTED_STATUSES = {
     "rage",
     "shield",
     "heal",
+    # Phase 19: the visibility statuses, the stored shot, the lock-on and the
+    # curse are real mutations now (the engine branches on them).
+    "invisible",
+    "reveal",
+    "buried",
+    "chargeUp",
+    "lockOn",
+    "curse",
 }
 
 # Statuses the engine intentionally treats as advisory bookkeeping rather
@@ -100,14 +108,7 @@ SUPPORTED_STATUSES = {
 # presentation-only). Listed explicitly so they are never "discovered" as
 # unknown later.
 ADVISORY_STATUSES = {
-    "lockOn",
-    "invisible",
-    "curse",
     "reflect",
-    "chargeUp",
-    "heal",
-    "reveal",
-    "buried",
 }
 
 SUPPORTED_MOVEMENTS = {"ground", "flying", "siege", "burrow"}

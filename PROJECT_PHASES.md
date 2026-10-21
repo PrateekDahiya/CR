@@ -29,11 +29,11 @@
 - [x] Phase 16 - Spirit Jump + Range (2026-10-20, branch `feature/phase-16-spirit-jump-range`): the spirits jump onto their target and the range rules match the card data. Merged into `card-mechanics`.
 
 ## CURRENTLY IN PROGRESS
-- [ ] **Phase 18 - Per-Card Verification Matrix** (2026-10-21, branch `card-mechanics`): `backend/tests/card-matrix.test.ts` verifies all 108 cards three ways (data conformance, deploy behaviour, mechanic probe) and pins the plan gaps in `docs/CARD_MECHANICS_PLAN.md` §8. Found and fixed the Rage spell (it buffed the enemy) and the Lumberjack's rage field (it spawned with 0 HP and died immediately). Backend suite 450/450, Playwright 107/107, `tsc` clean.
+- [x] **Phase 18 - Per-Card Verification Matrix** (2026-10-21, branch `card-mechanics`): `backend/tests/card-matrix.test.ts` verifies all 108 cards three ways (data conformance, deploy behaviour, mechanic probe) and pins the plan gaps in `docs/CARD_MECHANICS_PLAN.md` §8. Found and fixed the Rage spell (it buffed the enemy) and the Lumberjack's rage field (it spawned with 0 HP and died immediately). Backend suite 450/450, Playwright 107/107, `tsc` clean.
 - The detailed work lists of the finished phases 13-15 live in the DONE section above.
 
 ## NEXT (Planned)
-- [ ] **Phase 19 - Close the tracked mechanic gaps** (branch `card-mechanics`): the gaps the card matrix pins down (`docs/CARD_MECHANICS_PLAN.md` §8): the inert status kinds (`invisible` royal ghost, `curse` mother-witch / goblin-curse, `chargeUp` sparky, `buried` tesla, `lockOn` x-bow), the pull knockback (tornado), the effect delays (`delayMs`), the miner's burrow teleport and the champion ability action. Every gap closed also updates the matrix row.
+- [ ] **Phase 19 - Close the tracked mechanic gaps** (branch `card-mechanics`): the gaps the card matrix pins down (`docs/CARD_MECHANICS_PLAN.md` §8). **Closed so far**: the inert status kinds (`invisible` royal ghost, `reveal`, `buried` tesla, `chargeUp` sparky, `lockOn` x-bow, `curse` mother-witch / goblin-curse) and the tornado's pull. **Still open**: the effect delays (`delayMs`: rocket, royal delivery, giant skeleton), the miner's burrow teleport, the executioner's second pierce pass and the champion ability action.
 - [x] Card mechanics - 108-card catalog and database-defined mechanics (branch `card-mechanics`; plan: `docs/CARD_MECHANICS_PLAN.md`). The generated 108-row catalog is authoritative, `card_mechanics` seeds the database, the engine interprets the effects generically and the card matrix verifies every card.
 
 ## Phase Log
@@ -52,5 +52,6 @@
 | 10 | `feature/phase-10-authentic-content` | b1a00ca (merge --no-ff, PR #2) | 2026-10-17 | authentic CR content + Aiven MySQL (MEMORY#22) |
 | 11-16 | `feature/phase-1x-*` + `feat/*` + `fix/*` | ca7d81c, 663140e, fe61365, 147ecdc, dabf58e, ae467a0, b93470b, f391d0d, 07f2e11, 554f48e, a67c3d0 | 2026-10-17..20 | persistence, UI polish, deck in place, mechanics fixes (13/14), mechanics correctness (15), spirit jump (16) |
 | 17 | `card-mechanics` | 1b09f30 (merge --no-ff) | 2026-10-21 | per-team card art for all 108 cards (front/back + 8-frame strips) + the Clash Royale battle log (battles/tournaments tabs, both decks per row, Practice, Watch replay, tournament registry + bracket). backend 168/168, Playwright 107/107, next build PASS |
-| 18 | `card-mechanics` | pending | 2026-10-21 | per-card verification matrix (282 matrix cases, 450 backend tests): fixed the Rage spell (buffed the enemy) and the Lumberjack rage field (0 HP), tracked the remaining gaps in the plan |
+| 18 | `card-mechanics` | 6be6b86 (merge --no-ff) | 2026-10-21 | per-card verification matrix (283 matrix cases): fixed the Rage spell (buffed the enemy), the Lumberjack rage field (0 HP), the AI placeholder player row and the Goblin Drill deploy zone. backend 453/453, Playwright 111/111 |
+| 19 | `card-mechanics` | pending | 2026-10-21 | the inert status kinds (invisible / reveal / buried / chargeUp / lockOn / curse) and the tornado pull are real mechanics now; the effect delays, the burrow teleport and the champion ability action are still open |
 

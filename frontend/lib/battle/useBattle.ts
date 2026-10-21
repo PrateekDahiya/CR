@@ -58,6 +58,8 @@ export interface InterpolatedUnit {
   y: number;
   targetId?: string;
   decayOnly?: boolean;
+  /** Phase 19: the unit is hidden (invisible Royal Ghost, buried Tesla). */
+  invisible?: boolean;
 }
 
 export interface RenderState {
@@ -233,6 +235,7 @@ function toRenderUnits(
         y: Number(u.position?.y ?? 0),
         targetId: u.targetId !== undefined ? String(u.targetId) : undefined,
         ...(u.decayOnly === true ? { decayOnly: true } : {}),
+      ...(u.invisible === true ? { invisible: true } : {}),
       };
     }
     return out;
@@ -265,6 +268,7 @@ function toRenderUnits(
       y: py + (cy - py) * alpha,
       targetId: u.targetId !== undefined ? String(u.targetId) : undefined,
       ...(u.decayOnly === true ? { decayOnly: true } : {}),
+      ...(u.invisible === true ? { invisible: true } : {}),
     };
   }
   return out;

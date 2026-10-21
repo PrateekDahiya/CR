@@ -97,7 +97,7 @@ const MATRIX: CardRow[] = [
   { id: "giant-snowball", type: "spell", attack: "none", targeting: "all", movement: null, own: 0 },
   { id: "goblin-barrel", type: "spell", attack: "none", targeting: "all", movement: null, own: 0, deployChildren: { "goblin": 3 } },
   { id: "goblin-cage", type: "building", attack: "none", targeting: "none", movement: "ground", own: 1, deathChildren: { "goblin-brawler": 1 } },
-  { id: "goblin-curse", type: "spell", attack: "none", targeting: "all", movement: null, own: 0, gap: "the curse status is inert - the enemies are not turned into goblins" },
+  { id: "goblin-curse", type: "spell", attack: "none", targeting: "all", movement: null, own: 0 },
   { id: "goblin-demolisher", type: "troop", attack: "splash", targeting: "ground", movement: "ground", own: 1 },
   { id: "goblin-drill", type: "building", attack: "none", targeting: "none", movement: "burrow", own: 1, deployChildren: { "goblin": 1 }, deathChildren: { "goblin": 2 }, periodicChildren: { "goblin": 1 } },
   { id: "goblin-gang", type: "troop", attack: "single", targeting: "ground", movement: "ground", own: 0, deployChildren: { "goblin": 3, "spear-goblin": 3 } },
@@ -129,7 +129,7 @@ const MATRIX: CardRow[] = [
   { id: "minions", type: "troop", attack: "single", targeting: "air+ground", movement: "flying", own: 3, flying: true },
   { id: "monk", type: "troop", attack: "single", targeting: "ground", movement: "ground", own: 1, gap: "champion ability (a later protocol extension)" },
   { id: "mortar", type: "building", attack: "splash", targeting: "ground", movement: "siege", own: 1 },
-  { id: "mother-witch", type: "troop", attack: "single", targeting: "air+ground", movement: "ground", own: 1, gap: "the curse status never spawns the cursed hog" },
+  { id: "mother-witch", type: "troop", attack: "single", targeting: "air+ground", movement: "ground", own: 1 },
   { id: "musketeer", type: "troop", attack: "single", targeting: "air+ground", movement: "ground", own: 1 },
   { id: "night-witch", type: "troop", attack: "single", targeting: "ground", movement: "ground", own: 1, deathChildren: { "bat": 1 }, periodicChildren: { "bat": 2 } },
   { id: "pekka", type: "troop", attack: "single", targeting: "ground", movement: "ground", own: 1 },
@@ -143,7 +143,7 @@ const MATRIX: CardRow[] = [
   { id: "rocket", type: "spell", attack: "none", targeting: "all", movement: null, own: 0, gap: "the travel delay (delayMs) is not implemented" },
   { id: "royal-chef", type: "tower", attack: "single", targeting: "air+ground", movement: null, own: 1, towerTroop: true },
   { id: "royal-delivery", type: "spell", attack: "none", targeting: "enemy", movement: null, own: 0, deployChildren: { "royal-recruit": 1 }, gap: "the drop delay (delayMs) is not implemented" },
-  { id: "royal-ghost", type: "troop", attack: "single", targeting: "ground", movement: "ground", own: 1, gap: "the invisible status is inert - the ghost is never hidden" },
+  { id: "royal-ghost", type: "troop", attack: "single", targeting: "ground", movement: "ground", own: 1 },
   { id: "royal-giant", type: "troop", attack: "single", targeting: "buildings", movement: "ground", own: 1 },
   { id: "royal-hogs", type: "troop", attack: "single", targeting: "buildings", movement: "ground", own: 4 },
   { id: "royal-recruits", type: "troop", attack: "single", targeting: "ground", movement: "ground", own: 6 },
@@ -151,18 +151,18 @@ const MATRIX: CardRow[] = [
   { id: "skeleton-barrel", type: "troop", attack: "none", targeting: "buildings", movement: "flying", own: 1, deathChildren: { "skeleton": 7 }, flying: true },
   { id: "skeleton-king", type: "troop", attack: "single", targeting: "ground", movement: "ground", own: 1, gap: "champion ability (a later protocol extension)" },
   { id: "skeletons", type: "troop", attack: "single", targeting: "ground", movement: "ground", own: 3 },
-  { id: "sparky", type: "troop", attack: "splash", targeting: "ground", movement: "ground", own: 1, gap: "the chargeUp status is inert - there is no stored shot" },
+  { id: "sparky", type: "troop", attack: "splash", targeting: "ground", movement: "ground", own: 1 },
   { id: "spear-goblins", type: "troop", attack: "single", targeting: "air+ground", movement: "ground", own: 3 },
-  { id: "tesla", type: "building", attack: "single", targeting: "air+ground", movement: "ground", own: 1, gap: "the buried/reveal statuses are inert - the tesla is never hidden" },
+  { id: "tesla", type: "building", attack: "single", targeting: "air+ground", movement: "ground", own: 1 },
   { id: "the-log", type: "spell", attack: "none", targeting: "ground", movement: null, own: 0 },
   { id: "tombstone", type: "building", attack: "none", targeting: "none", movement: "ground", own: 1, deathChildren: { "skeleton": 4 }, periodicChildren: { "skeleton": 2 } },
-  { id: "tornado", type: "spell", attack: "none", targeting: "enemy", movement: null, own: 0, gap: "the pull knockback is not implemented - the tornado pushes the units away" },
+  { id: "tornado", type: "spell", attack: "none", targeting: "enemy", movement: null, own: 0 },
   { id: "tower-princess", type: "tower", attack: "single", targeting: "air+ground", movement: null, own: 1, towerTroop: true },
   { id: "valkyrie", type: "troop", attack: "splash", targeting: "ground", movement: "ground", own: 1 },
   { id: "void", type: "spell", attack: "none", targeting: "all", movement: null, own: 0 },
   { id: "witch", type: "troop", attack: "splash", targeting: "air+ground", movement: "ground", own: 1, periodicChildren: { "skeleton": 3 } },
   { id: "wizard", type: "troop", attack: "splash", targeting: "air+ground", movement: "ground", own: 1 },
-  { id: "x-bow", type: "building", attack: "beam", targeting: "ground", movement: "siege", own: 1, gap: "the lockOn status is inert - the beam does not lock on" },
+  { id: "x-bow", type: "building", attack: "beam", targeting: "ground", movement: "siege", own: 1 },
   { id: "zap", type: "spell", attack: "none", targeting: "all", movement: null, own: 0 },
   { id: "zappies", type: "troop", attack: "chain", targeting: "air+ground", movement: "ground", own: 3 },
 ];
@@ -795,56 +795,108 @@ describe("card matrix - mechanic probes", () => {
     assert.equal(drill.y, 26);
   });
 
-  // --- known gaps: the plan behaviour the engine does not implement yet --
+  // --- visibility, charge, lock-on and curse (Phase 19) ---------------
 
-  it("royal-ghost: the ghost is visible to the enemy (invisible is a known gap)", () => {
-    const state = scenario("royal-ghost", "gap");
+  it("royal-ghost: the ghost deploys hidden and reveals itself when it attacks", () => {
+    const state = scenario("royal-ghost", "visibility");
     const deployed = play(state, "blue", "royal-ghost", STAGE.x, STAGE.y);
     assert.equal(deployed.ok, true);
     const ghost = state.units.find((u) => u.cardId === "royal-ghost" && u.owner === "blue");
     assert.ok(ghost);
-    assert.equal((ghost as unknown as { invisibleUntil?: number }).invisibleUntil, undefined);
+    assert.equal(
+      ghost.invisibleUntil,
+      Number.POSITIVE_INFINITY,
+      "the ghost must deploy hidden",
+    );
+
+    // A red troop next to it cannot see it while it stays hidden.
+    play(state, "red", "knight", STAGE.x, STAGE.y + 3);
+    const hpBefore = ghost.hp;
+    for (let i = 0; i < 6; i++) tickGame(state);
+    assert.equal(ghost.hp, hpBefore, "a hidden unit must not be targeted");
+
+    // When it attacks, it shows itself.
+    const prey = pinRed(state, STAGE.x, STAGE.y + 1);
+    for (let i = 0; i < 10; i++) tickGame(state);
+    assert.ok(prey.hp < 1_000_000, "the ghost must attack");
+    assert.ok(
+      (ghost.revealedUntil ?? 0) > state.timeSec,
+      "the ghost must reveal itself when it attacks",
+    );
   });
 
-  it("mother-witch: the cursed hog is never spawned (curse is a known gap)", () => {
-    const state = scenario("mother-witch", "gap");
-    const deployed = play(state, "blue", "mother-witch", STAGE.x, STAGE.y);
-    assert.equal(deployed.ok, true);
-    const witch = state.units.find((u) => u.cardId === "mother-witch" && u.owner === "blue");
-    assert.ok(witch);
-    pinRed(state, witch.x, witch.y + 1);
-    for (let i = 0; i < 12; i++) tickGame(state);
-    assert.equal(countUnits(state, "cursed-hog", "red"), 0, "the curse does not spawn the hog yet");
-  });
-
-  it("sparky: there is no stored shot (chargeUp is a known gap)", () => {
-    const state = scenario("sparky", "gap");
-    const deployed = play(state, "blue", "sparky", STAGE.x, STAGE.y);
-    assert.equal(deployed.ok, true);
-    const sparky = state.units.find((u) => u.cardId === "sparky" && u.owner === "blue");
-    assert.ok(sparky);
-    const target = pinRed(state, STAGE.x, STAGE.y + 2);
-    const before = target.hp;
-    for (let i = 0; i < 8; i++) tickGame(state);
-    assert.ok(target.hp < before, "sparky still damages its target");
-    assert.equal((sparky as unknown as { chargedShot?: boolean }).chargedShot, undefined);
-  });
-
-  it("tesla: the building is never hidden (buried is a known gap)", () => {
-    const state = scenario("tesla", "gap");
+  it("tesla: the building starts buried and pops up when it shoots", () => {
+    const state = scenario("tesla", "visibility");
     const deployed = play(state, "blue", "tesla", STAGE.x, STAGE.y);
     assert.equal(deployed.ok, true);
     const tesla = state.units.find((u) => u.cardId === "tesla" && u.owner === "blue");
     assert.ok(tesla);
-    assert.equal((tesla as unknown as { buriedUntil?: number }).buriedUntil, undefined);
+    assert.equal(tesla.invisibleUntil, Number.POSITIVE_INFINITY, "the tesla starts buried");
+
+    pinRed(state, STAGE.x, STAGE.y + 2);
+    for (let i = 0; i < 6; i++) tickGame(state);
+    assert.ok(
+      (tesla.revealedUntil ?? 0) > state.timeSec,
+      "the tesla must pop up when it shoots",
+    );
   });
 
-  it("x-bow: the beam does not lock on (lockOn is a known gap)", () => {
-    const state = scenario("x-bow", "gap");
+  it("sparky: the shot is stored while it charges and fires for double", () => {
+    const state = scenario("sparky", "charge");
+    const deployed = play(state, "blue", "sparky", STAGE.x, STAGE.y);
+    assert.equal(deployed.ok, true);
+    const sparky = state.units.find((u) => u.cardId === "sparky" && u.owner === "blue");
+    assert.ok(sparky);
+    const target = pinRed(state, STAGE.x, STAGE.y + 1.2);
+    for (let i = 0; i < 6; i++) tickGame(state);
+    assert.ok((sparky.chargeReadyAt ?? 0) > 0, "sparky must start charging");
+    assert.equal(sparky.chargeMultiplier, 2, "the stored shot is a double hit");
+
+    // While it charges it does not shoot; when the charge is done the stored
+    // shot lands (the charge lasts four seconds).
+    const duringCharge = target.hp;
+    for (let i = 0; i < 60; i++) tickGame(state);
+    const afterCharge = target.hp;
+    assert.ok(afterCharge < duringCharge, "the stored shot must land");
+  });
+
+  it("x-bow: the beam locks onto its target", () => {
+    const state = scenario("x-bow", "lockon");
     const deployed = play(state, "blue", "x-bow", STAGE.x, STAGE.y);
     assert.equal(deployed.ok, true);
     const bow = state.units.find((u) => u.cardId === "x-bow" && u.owner === "blue");
     assert.ok(bow);
-    assert.equal((bow as unknown as { lockedTargetId?: string }).lockedTargetId, undefined);
+    const first = pinRed(state, STAGE.x, STAGE.y + 2);
+    const second = pinRed(state, STAGE.x + 2, STAGE.y + 2);
+    for (let i = 0; i < 6; i++) tickGame(state);
+    assert.ok(bow.lockedTargetId !== undefined, "the x-bow must lock on");
+    assert.equal(bow.lockedTargetId, first.id, "the lock stays on the first target");
+    assert.ok(first.hp < 1_000_000, "the locked target takes the beam");
+    assert.equal(second.hp, 1_000_000, "the beam does not jump to another target");
+  });
+
+  it("mother-witch: the troop she hits turns into a cursed hog for her", () => {
+    const state = scenario("mother-witch", "curse");
+    const deployed = play(state, "blue", "mother-witch", STAGE.x, STAGE.y);
+    assert.equal(deployed.ok, true);
+    const witch = state.units.find((u) => u.cardId === "mother-witch" && u.owner === "blue");
+    assert.ok(witch);
+    const victim = pinRed(state, STAGE.x, STAGE.y + 1);
+    for (let i = 0; i < 12; i++) tickGame(state);
+    assert.equal(victim.cardId, "cursed-hog", "the cursed troop becomes a hog");
+    assert.equal(victim.owner, "blue", "the hog fights for the witch");
+    assert.equal(victim.targets, "buildings", "the hog runs at the towers");
+  });
+
+  it("goblin-curse: the cursed troops turn into goblins for the caster", () => {
+    const state = scenario("goblin-curse", "curse");
+    const victim = pinRed(state, TARGET.x, TARGET.y);
+    const result = play(state, "blue", "goblin-curse", TARGET.x, TARGET.y);
+    assert.equal(result.ok, true);
+    assert.ok(victim.hp < 1_000_000, "the cursed area damages the troop");
+    // The curse runs out after six seconds and the troop turns.
+    for (let i = 0; i < 70; i++) tickGame(state);
+    assert.equal(victim.cardId, "goblin", "the cursed troop becomes a goblin");
+    assert.equal(victim.owner, "blue", "the goblin fights for the caster");
   });
 });
