@@ -1824,7 +1824,8 @@
     "onAttack": [
       {
         "kind": "status",
-        "status": "reveal"
+        "status": "reveal",
+        "durationMs": 2000
       }
     ],
     "onHit": [],
@@ -1892,7 +1893,11 @@
       },
       {
         "kind": "knockback",
-        "mode": "pull"
+        "mode": "pull",
+        "radius": 5.5,
+        "distance": 0.35,
+        "durationMs": 1050,
+        "intervalMs": 350
       }
     ],
     "onAttack": [],

@@ -84,6 +84,8 @@ export interface Unit {
   targetId?: string; // tower or unit id being attacked
   /** True when this snapshot's HP loss is only building lifetime wear-down. */
   decayOnly?: boolean;
+  /** Phase 19: the unit is hidden (invisible Royal Ghost, buried Tesla). */
+  invisible?: boolean;
 }
 
 /** Authoritative snapshot broadcast at 10-20Hz (Phase 3 tick). */

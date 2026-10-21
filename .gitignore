@@ -11,6 +11,8 @@ backend/dist/
 *.tsbuildinfo
 frontend/test-results/
 frontend/playwright-report/
+test-results/
+playwright-report/
 
 # python
 __pycache__/

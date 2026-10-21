@@ -120,6 +120,23 @@ export interface SimUnit {
   rampTargetId?: string;
   /** Phase 13: minimum attack range (Mortar cannot hit adjacent units). */
   minRange?: number;
+  /**
+   * Visibility (Phase 19): the unit cannot be targeted by the enemy while
+   * `now < invisibleUntil` - unless it is currently revealed. The Royal Ghost
+   * deploys hidden, the Tesla starts buried.
+   */
+  invisibleUntil?: number;
+  /** Reveal window: overrides the invisibility while `now < revealedUntil`. */
+  revealedUntil?: number;
+  /** Charge-up (Sparky): the shot is stored and fired when the charge is done. */
+  chargeReadyAt?: number;
+  chargeMultiplier?: number;
+  /** Lock-on (X-Bow): the unit keeps firing at this target. */
+  lockedTargetId?: string;
+  /** Curse: the unit is converted to `curseChildId` when the timer expires. */
+  cursedUntil?: number;
+  curseChildId?: string;
+  curseOwner?: PlayerSide;
   /** Presentation flags: suppress decay-only floating damage on the client. */
   decayedThisTick?: boolean;
   hitByAttackThisTick?: boolean;
@@ -578,6 +595,97 @@ function effectTargetMatches(effect: EffectSpec, unit: SimUnit): boolean {
   return true;
 }
 
+/**
+ * Phase 19 - visibility.
+ *
+ * A unit is hidden from the enemy while it is invisible (the Royal Ghost
+ * deploys hidden, the Tesla starts buried) and becomes visible again when it
+ * is revealed. A reveal with a duration is a window: the unit shows itself
+ * for that long and hides again (the Tesla pops up to shoot and sinks back).
+ */
+function isHidden(unit: SimUnit, now: number): boolean {
+  const invisibleUntil = unit.invisibleUntil ?? 0;
+  if (invisibleUntil <= 0) return false;
+  if (now < (unit.revealedUntil ?? 0)) return false;
+  return true;
+}
+
+/**
+ * Statuses that describe the CASTER, not the units in the blast radius:
+ * the Royal Ghost deploys hidden and reveals itself when it attacks, the
+ * Tesla starts buried, the X-Bow locks on, the Sparky starts charging. They
+ * are applied to the attacker itself.
+ */
+const SELF_STATUSES: ReadonlySet<string> = new Set([
+  "invisible",
+  "buried",
+  "reveal",
+  "lockOn",
+  "chargeUp",
+]);
+
+/**
+ * Push the enemy units away from (or pull them towards) a point.
+ *
+ * `mode: "pull"` is the Tornado: it drags the units into the vortex instead
+ * of pushing them out. A pull needs a direction, so a unit exactly on the
+ * centre is not moved.
+ */
+function applyKnockback(
+  state: EngineState,
+  side: PlayerSide,
+  x: number,
+  y: number,
+  effect: EffectSpec,
+): void {
+  const knockRadius = Math.max(1, Number(effect.radius ?? 0));
+  const pull = effect.mode === "pull";
+  const distance = Number(effect.distance ?? (pull ? 0.35 : 0.8));
+  for (const unit of state.units) {
+    if (unit.owner !== other(side) || unit.hp <= 0) continue;
+    const dx = unit.x - x;
+    const dy = unit.y - y;
+    if (dx * dx + dy * dy > knockRadius * knockRadius) continue;
+    const length = Math.hypot(dx, dy);
+    if (length < 0.001) continue; // exactly on the centre: no direction
+    const sign = pull ? -1 : 1;
+    unit.x = Math.min(18, Math.max(0, unit.x + (sign * dx / length) * distance));
+    unit.y = Math.min(32, Math.max(0, unit.y + (sign * dy / length) * distance));
+  }
+}
+
+/**
+ * Phase 19 - the curse conversion.
+ *
+ * A cursed unit becomes the child template (the Cursed Hog, a Goblin) and
+ * fights for the caster from then on.
+ */
+function convertCursedUnit(state: EngineState, unit: SimUnit): void {
+  const childId = unit.curseChildId;
+  if (childId === undefined) return;
+  const template = getSpawnTemplate(childId);
+  if (template === undefined) return;
+  const stats = getLevelStats(template, unit.level, "ladder", state.statVersion);
+  unit.cardId = childId;
+  unit.owner = unit.curseOwner ?? unit.owner;
+  unit.hp = stats.hitPoints;
+  unit.maxHp = stats.hitPoints;
+  unit.damage = stats.damage;
+  unit.hitSpeed = stats.hitSpeedMs / 1000;
+  unit.range = stats.range;
+  unit.sightRange = stats.sightRange;
+  unit.speed = stats.moveSpeed;
+  unit.targets = stats.targets as SimUnit["targets"];
+  unit.flying = stats.flying;
+  unit.splash = stats.radius;
+  unit.mechanics = template.mechanics;
+  unit.cursedUntil = undefined;
+  unit.curseChildId = undefined;
+  unit.curseOwner = undefined;
+  unit.invisibleUntil = undefined;
+  unit.revealedUntil = undefined;
+}
+
 function applyStatus(
   target: SimUnit | SimTower,
   effect: EffectSpec,
@@ -602,6 +710,27 @@ function applyStatus(
     // Max-HP capped friendly heal (P.E.K.K.A style support effects).
     const maxHp = (target as { maxHp: number }).maxHp;
     target.hp = Math.min(maxHp, target.hp + Number(effect.amount ?? 0));
+  } else if (status === "invisible" && "readyAt" in target) {
+    // Hidden from the enemy until it is revealed (Royal Ghost).
+    target.invisibleUntil = duration > 0 ? now + duration : Number.POSITIVE_INFINITY;
+  } else if (status === "reveal" && "readyAt" in target) {
+    // A reveal with a duration is a window: visible for that long, then the
+    // unit hides again (the Tesla sinks back after it shot).
+    target.revealedUntil = duration > 0 ? now + duration : Number.POSITIVE_INFINITY;
+  } else if (status === "buried" && "readyAt" in target) {
+    // Buried buildings stay hidden (the Tesla) but still fire.
+    target.invisibleUntil = Number.POSITIVE_INFINITY;
+    target.revealedUntil = 0;
+  } else if (status === "chargeUp" && "readyAt" in target) {
+    // The shot is stored while the unit charges (Sparky).
+    target.chargeReadyAt = now + (duration > 0 ? duration : 2);
+    target.chargeMultiplier = Number(effect.multiplier ?? 2);
+  } else if (status === "curse" && "readyAt" in target) {
+    // The cursed unit fights for the caster: it becomes the child template
+    // when the curse runs out - or when it dies (the death conversion hook).
+    // The caster's side is filled in by the caller (applyDatabaseEffects).
+    target.cursedUntil = duration > 0 ? now + duration : now;
+    target.curseChildId = typeof effect.childId === "string" ? effect.childId : "goblin";
   }
   // Phase 13: statuses that describe targeting/visibility bookkeeping rather
   // than a stat mutation are intentionally inert here — they are consumed by
@@ -824,25 +953,47 @@ function applyDatabaseEffects(
           effect.target === "friendly" || (effect.target === undefined && targeting === "friendly")
             ? side
             : other(side);
-        for (const unit of state.units) {
-          if (unit.owner !== targetOwner || unit.hp <= 0 || !effectTargetMatches(effect, unit)) continue;
-          if (dist2(x, y, unit.x, unit.y) <= statusRadius * statusRadius) applyStatus(unit, effect, state.timeSec);
+        const statusName = typeof effect.status === "string" ? effect.status : "";
+        // The caster statuses (reveal / lockOn / chargeUp) belong to the
+        // attacker, not to the units in the blast radius.
+        if (!SELF_STATUSES.has(statusName)) {
+          for (const unit of state.units) {
+            if (unit.owner !== targetOwner || unit.hp <= 0 || !effectTargetMatches(effect, unit)) continue;
+            if (dist2(x, y, unit.x, unit.y) > statusRadius * statusRadius) continue;
+            applyStatus(unit, effect, state.timeSec);
+            if (statusName === "curse") {
+              unit.curseOwner = side;
+              // A curse without a duration converts at once (the Mother
+              // Witch turns the troop she hits into a hog right away).
+              if ((unit.cursedUntil ?? 0) <= state.timeSec) convertCursedUnit(state, unit);
+            }
+          }
         }
         for (const tower of state.towers) {
           if (tower.owner !== targetOwner || tower.destroyed) continue;
-          if (dist2(x, y, tower.x, tower.y) <= (statusRadius + 0.5) ** 2) applyStatus(tower, effect, state.timeSec);
+          if (dist2(x, y, tower.x, tower.y) > (statusRadius + 0.5) ** 2) continue;
+          applyStatus(tower, effect, state.timeSec);
         }
       } else if (effect.kind === "knockback") {
-        const knockRadius = Math.max(1, radius);
-        for (const unit of state.units) {
-          if (unit.owner !== other(side) || unit.hp <= 0) continue;
-          const dx = unit.x - x;
-          const dy = unit.y - y;
-          if (dx * dx + dy * dy > knockRadius * knockRadius) continue;
-          const length = Math.max(0.001, Math.hypot(dx, dy));
-          const distance = Number(effect.distance ?? 0.8);
-          unit.x = Math.min(18, Math.max(0, unit.x + (dx / length) * distance));
-          unit.y = Math.min(32, Math.max(0, unit.y + (dy / length) * distance));
+        applyKnockback(state, side, x, y, effect);
+        // A knockback with a duration is a sustained force (the Tornado pulls
+        // the units in on every tick instead of a single impulse).
+        const duration = Number(effect.durationMs ?? 0) / 1000;
+        const interval = Number(effect.intervalMs ?? 0) / 1000;
+        if (duration > 0 && interval > 0) {
+          state.fields.push({
+            id: state.nextFieldId++,
+            owner: side,
+            x,
+            y,
+            radius,
+            remainingSec: Math.max(0, duration - interval),
+            intervalSec: interval,
+            cooldown: interval,
+            effect,
+            damage: 0,
+            towerDamage: 0,
+          });
         }
       } else if (effect.kind === "clone") {
         const cloneRadius = Math.max(0, radius);
@@ -957,6 +1108,9 @@ function fieldPhase(state: EngineState, dt: number): void {
           field.y,
           Math.max(1, Number(field.effect.count ?? 1)),
         );
+      } else if (field.effect.kind === "knockback") {
+        // A sustained push/pull (the Tornado drags the units in every tick).
+        applyKnockback(state, field.owner, field.x, field.y, field.effect);
       } else {
         applyAreaDamage(state, field.owner, field.x, field.y, field.effect, field.damage, field.towerDamage);
       }
@@ -1184,6 +1338,9 @@ export function playCard(
     applyUnitScopedEffects(state, side, state.units[state.units.length - 1], [
       card.mechanics?.onDeploy,
     ]);
+    // Phase 19: the deploy statuses that hide the unit (the Royal Ghost
+    // deploys invisible, the Tesla starts buried) belong to the unit itself.
+    applyCasterStatusEffects(state, state.units[state.units.length - 1], card.mechanics?.onDeploy, null);
   }
   if (card.mechanics?.onDeploy !== undefined) {
     applyDatabaseEffects(
@@ -1266,6 +1423,9 @@ function acquireUnitTarget(
   for (let i = 0; i < units.length; i++) {
     const e = units[i];
     if (e.owner === owner || e.hp <= 0) continue;
+    // Phase 19: a hidden unit (invisible Royal Ghost, buried Tesla) cannot be
+    // targeted by the enemy.
+    if (isHidden(e, state.timeSec)) continue;
     if (groundOnly && e.flying) continue;
     const dx = ux - e.x;
     if (dx > sight || dx < -sight) continue; // AABB early-out on sight box
@@ -1296,6 +1456,8 @@ function acquireTowerTarget(state: EngineState, t: SimTower): SimUnit | null {
   for (let i = 0; i < units.length; i++) {
     const e = units[i];
     if (e.owner === owner || e.hp <= 0) continue;
+    // Phase 19: the towers cannot shoot a hidden unit.
+    if (isHidden(e, state.timeSec)) continue;
     const dx = tx - e.x;
     if (dx > r || dx < -r) continue;
     const dy = ty - e.y;
@@ -1750,14 +1912,45 @@ function unitPhase(state: EngineState, dt: number): void {
     if (u.hp <= 0) continue;
     if (now < u.stunUntil || isFrozen(u, now)) {
       u.targetId = undefined;
+      // A stun resets the stored shot (the Sparky loses its charge).
+      u.chargeReadyAt = undefined;
       continue;
     }
     if (now < u.readyAt) {
       u.targetId = undefined;
       continue; // Cannon deploy 1.0s
     }
+    // Phase 19: a cursed unit turns into the child template when the curse
+    // runs out (it fights for the caster from then on).
+    if (u.cursedUntil !== undefined && now >= u.cursedUntil) {
+      convertCursedUnit(state, u);
+    }
     u.cooldown -= dt * speedMultiplier(u, now);
-    const target = acquireUnitTarget(state, u);
+    // Phase 19: charge-up (Sparky). While the unit charges it does not shoot;
+    // when the charge completes it fires the stored shot and starts over.
+    let chargeMultiplier = 1;
+    let chargeFired = false;
+    if (u.chargeReadyAt !== undefined && u.chargeReadyAt > 0) {
+      if (now < u.chargeReadyAt) {
+        u.targetId = undefined;
+        continue; // still charging
+      }
+      chargeMultiplier = u.chargeMultiplier ?? 2;
+      chargeFired = true;
+    }
+    // Phase 19: lock-on (X-Bow). The unit keeps firing at the locked target
+    // until it dies or leaves the range.
+    let target: { kind: "tower"; tower: SimTower } | { kind: "unit"; unit: SimUnit } | null = null;
+    if (u.lockedTargetId !== undefined) {
+      for (let i = 0; i < units.length; i++) {
+        const locked = units[i];
+        if (locked.id !== u.lockedTargetId || locked.hp <= 0 || locked.owner === u.owner) continue;
+        target = { kind: "unit", unit: locked };
+        break;
+      }
+      if (target === null) u.lockedTargetId = undefined;
+    }
+    if (target === null) target = acquireUnitTarget(state, u);
     if (!target) {
       u.targetId = undefined;
       continue;
@@ -1779,11 +1972,12 @@ if (trySuicide(state, u, target)) {
     const rampMultiplier = tryRamp(state, u, target);
     // A normal (non-dash) hit re-arms the dash for the next engagement.
     u.dashReady = true;
+    const hitDamage = u.damage * rampMultiplier * chargeMultiplier;
     if (target.kind === "tower") {
-      damageTower(state, target.tower, u.damage * rampMultiplier, u.owner);
+      damageTower(state, target.tower, hitDamage, u.owner);
       if (state.over) return;
     } else {
-      damageUnit(target.unit, u.damage * rampMultiplier);
+      damageUnit(target.unit, hitDamage);
       if (u.splash > 0) {
         const sr = u.splash + RANGE_EPS;
         const sr2 = sr * sr;
@@ -1818,10 +2012,48 @@ if (trySuicide(state, u, target)) {
         u.mechanics.onAttack,
       );
     }
+    // Phase 19: the caster statuses (reveal / lockOn / chargeUp) apply to the
+    // attacker itself - the Royal Ghost reveals itself when it attacks, the
+    // X-Bow locks onto its target, the Sparky starts charging.
+    applyCasterStatusEffects(state, u, u.mechanics?.onAttack, target);
+    if (chargeFired) {
+      // The stored shot was fired: the Sparky starts charging again.
+      u.chargeReadyAt = undefined;
+      u.chargeMultiplier = undefined;
+    }
     u.cooldown = u.hitSpeed > 0 ? u.hitSpeed / speedMultiplier(u, now) : 0;
     if (state.over) return;
   }
   sweepDeadUnits(state);
+}
+
+/**
+ * Phase 19 - apply the statuses that describe the caster.
+ *
+ * `reveal` makes a hidden unit visible again, `lockOn` keeps the unit firing
+ * at its target and `chargeUp` stores the shot for a heavy hit.
+ */
+function applyCasterStatusEffects(
+  state: EngineState,
+  unit: SimUnit,
+  effects: EffectSpec[] | undefined,
+  target: { kind: "tower"; tower: SimTower } | { kind: "unit"; unit: SimUnit } | null,
+): void {
+  if (effects === undefined) return;
+  const now = state.timeSec;
+  for (const effect of effects) {
+    if (effect.kind !== "status") continue;
+    const status = typeof effect.status === "string" ? effect.status : "";
+    // Only the caster statuses belong to the attacker: a stun or a slow in
+    // the same effect list still hits the units in the blast radius.
+    if (!SELF_STATUSES.has(status)) continue;
+    if (status === "lockOn") {
+      if (target === null) continue;
+      unit.lockedTargetId = target.kind === "tower" ? target.tower.id : target.unit.id;
+      continue;
+    }
+    applyStatus(unit, effect, now);
+  }
 }
 
 /** Rock Golem death burst: 280 to enemy units + towers in area 2.0. §1 */
@@ -1874,6 +2106,11 @@ function sweepDeadUnits(state: EngineState): void {
     }
     if (unit.mechanics?.onDeath !== undefined) {
       applyDatabaseEffects(state, unit.owner, unit.x, unit.y, unit.damage, undefined, unit.mechanics?.targeting, unit.mechanics.onDeath);
+    }
+    // Phase 19: the death conversion hook - a cursed unit that dies rises as
+    // the child template and fights for the caster.
+    if (unit.cursedUntil !== undefined && unit.cursedUntil > 0) {
+      convertCursedUnit(state, unit);
     }
   }
   arr.length = w;

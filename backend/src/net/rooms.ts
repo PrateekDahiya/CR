@@ -51,6 +51,8 @@ export interface Unit {
   position: Vec2;
   targetId?: string;
   decayOnly?: boolean;
+  /** Phase 19: the unit is hidden (invisible Royal Ghost, buried Tesla). */
+  invisible?: boolean;
 }
 
 export interface GameState {
@@ -149,6 +151,11 @@ export interface SimState {
     targetId?: string;
     decayedThisTick?: boolean;
     hitByAttackThisTick?: boolean;
+    /** Phase 19: the unit is hidden (invisible Royal Ghost, buried Tesla). */
+    invisible?: boolean;
+    /** Phase 19: visibility flags (the engine owns the hidden/revealed timers). */
+    invisibleUntil?: number;
+    revealedUntil?: number;
   }>;
   crowns: Record<PlayerSide, number>;
   winner?: PlayerSide | "draw";
@@ -372,6 +379,15 @@ function syncWire(room: Room): void {
     const decayOnly = su.decayedThisTick === true && su.hitByAttackThisTick !== true;
     if (decayOnly) wu.decayOnly = true;
     else delete wu.decayOnly;
+    // Phase 19: the visibility flags (the engine owns the hidden/revealed
+    // timers; the wire only carries the resolved flag). A reveal is a window:
+    // when it expires the unit hides again.
+    const nowSec = (s.serverTimeMs - room.startedAtMs) / 1000;
+    const invisibleUntil = su.invisibleUntil ?? 0;
+    const revealedUntil = su.revealedUntil ?? 0;
+    const hidden = invisibleUntil > nowSec && revealedUntil <= nowSec;
+    if (hidden) wu.invisible = true;
+    else delete wu.invisible;
   }
   s.units.length = n;
   s.crowns.blue = sim.crowns.blue; // reuse crowns object (no alloc)

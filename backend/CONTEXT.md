@@ -93,8 +93,34 @@ npm start
 - When `DB_HOST` is set, startup runs `ensureMysqlDatabase()`: schema migration plus idempotent full seed of cards/stats, 108 catalog rows, mechanics, child templates, menus, and sprites before opening the listener. See `docs/DATABASE_BOOTSTRAP.md`.
 - `src/game/engine.ts` interprets database-defined area damage, status, knockback, clone, splash, and persistent field effects without card-id branches. Full card-by-card implementation remains tracked in `docs/CARD_MECHANICS_PLAN.md`.
 
-## Battle log polish update (2026-10-21, branch card-mechanics)
-- `src/tournaments.ts` — the tournament registry: create/join, the ready pairing
+## Phase 19 update (2026-10-21, branch card-mechanics) - the inert status kinds
+- The status system is no longer advisory-only. `applyStatus` now mutates the
+  unit for `invisible` (hidden until revealed), `reveal` (a window: visible
+  for the duration, then hidden again), `buried` (hidden but still shooting),
+  `chargeUp` (the stored shot) and `curse` (the unit turns into the child
+  template and fights for the caster).
+- New unit flags: `invisibleUntil` / `revealedUntil` (visibility),
+  `chargeReadyAt` / `chargeMultiplier` (the Sparky), `lockedTargetId` (the
+  X-Bow), `cursedUntil` / `curseChildId` / `curseOwner` (the curse).
+- The caster statuses (`invisible`, `buried`, `reveal`, `lockOn`,
+  `chargeUp`) are applied to the attacker itself
+  (`applyCasterStatusEffects`); the target statuses (stun / slow / rage /
+  shield / curse) keep hitting the units in the blast radius.
+- Hidden units are skipped by the troop targeting AND by the crown towers
+  (`isHidden`).
+- The knockback effect understands `mode: "pull"` (the Tornado drags the units
+  in) and can be a sustained force: a knockback with a duration becomes a
+  field that applies the force on every tick.
+- The curse converts the unit when the timer runs out AND when the unit dies
+  (the death conversion hook). The Mother Witch turns the troop she hits into
+  a Cursed Hog; the Goblin Curse turns the cursed troops into Goblins for the
+  caster.
+- The matrix rows for `royal-ghost`, `tesla`, `sparky`, `x-bow`,
+  `mother-witch`, `goblin-curse` and `tornado` are no longer gaps.
+  `scripts/audit_card_mechanics.py` moved those statuses from the advisory
+  list to the supported list.
+
+## Battle log polish update (2026-10-21, branch card-mechanics)- `src/tournaments.ts` — the tournament registry: create/join, the ready pairing
   (the server pairs the two ready players), the single-elimination bracket
   (winner advances, loser struck through, champion at the end) and the listing
   payload. O(p) per case (p <= MAX_PLAYERS = 8), O(t) listing (t <= 50

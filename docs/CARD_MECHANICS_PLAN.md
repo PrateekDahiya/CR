@@ -465,18 +465,22 @@ The matrix found and fixed two real bugs:
 
 | card | plan behaviour | current behaviour |
 | --- | --- | --- |
-| `royal-ghost` | invisible until it attacks | the status is inert, the ghost is always visible |
-| `mother-witch` | the curse turns the enemy into a cursed hog | the curse status never spawns the hog |
-| `goblin-curse` | the cursed troops become goblins | the damage lands, the conversion does not |
-| `sparky` | charge-up shot | the status is inert, there is no stored shot |
-| `tesla` | hidden until it attacks | the buried/reveal statuses are inert |
-| `x-bow` | lock-on beam | the lockOn status is inert |
-| `tornado` | pulls the units in | the knockback always pushes them away |
-| `miner` | burrows under the arena | the teleport is a no-op, the miner appears at the drop point |
+| `monk` | the ability reflects the projectiles | the champion ability is a later protocol extension (see below) |
+| `miner` | burrows under the arena | the deploy zone is right, the burrow teleport is a no-op |
 | `executioner` | the pierce returns for a second pass | only the first pass happens |
 | `rocket`, `royal-delivery`, `giant-skeleton` | a travel / fuse delay | `delayMs` is not implemented, the effect lands immediately |
 | the champions | the ability is a later protocol extension | the base troop deploys and attacks, which is what the plan requires until the ability action exists |
 | `firecracker`, `graveyard` | not listed in this plan | data-only cards, verified by the matrix |
+
+Closed in Phase 19 (2026-10-21): `invisible` / `reveal` (the Royal Ghost
+deploys hidden and shows itself when it attacks), `buried` (the Tesla starts
+buried and pops up for two seconds when it shoots), `chargeUp` (the Sparky
+stores its shot for four seconds and fires it for double), `lockOn` (the
+X-Bow keeps firing at the locked target), `curse` (the Mother Witch turns the
+troop she hits into a **Cursed Hog** that fights for her, the Goblin Curse
+turns the cursed troops into Goblins for the caster) and the Tornado's
+**pull** (the vortex drags the units in on every tick instead of pushing them
+away).
 
 Closing a gap means implementing it **and** updating the matrix row, so the
 suite stays the single source of truth.
