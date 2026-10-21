@@ -775,6 +775,7 @@ function applyDatabaseEffects(
   y: number,
   damage: number,
   towerDamage: number | undefined,
+  targeting: string | undefined,
   ...effectLists: Array<EffectSpec[] | undefined>
 ): void {
   const defaultTowerDamage = towerDamage ?? damage * 0.4;
@@ -815,7 +816,14 @@ function applyDatabaseEffects(
         applyChainArea(state, side, x, y, effect, damage, defaultTowerDamage);
       } else if (effect.kind === "status") {
         const statusRadius = radius + RANGE_EPS;
-        const targetOwner = effect.target === "friendly" ? side : other(side);
+        // An explicit `target` in the effect wins. Otherwise the CARD's own
+        // targeting decides the side: a "friendly" card (the Rage spell, the
+        // Lumberjack's rage field) must buff the caster's troops - without
+        // this the Rage spell buffed the ENEMY (found by the card matrix).
+        const targetOwner =
+          effect.target === "friendly" || (effect.target === undefined && targeting === "friendly")
+            ? side
+            : other(side);
         for (const unit of state.units) {
           if (unit.owner !== targetOwner || unit.hp <= 0 || !effectTargetMatches(effect, unit)) continue;
           if (dist2(x, y, unit.x, unit.y) <= statusRadius * statusRadius) applyStatus(unit, effect, state.timeSec);
@@ -1109,6 +1117,7 @@ export function playCard(
       y,
       stats.damage,
       stats.towerDamage,
+      card.mechanics?.targeting,
       withTerminalRelease(card.mechanics?.onDeploy, card.mechanics?.onDeath),
       card.mechanics?.onAttack,
     );
@@ -1184,6 +1193,7 @@ export function playCard(
       y,
        stats.damage,
        stats.towerDamage,
+      card.mechanics.targeting,
       card.mechanics.onDeploy,
     );
   }
@@ -1490,7 +1500,7 @@ function applyMultiTargetAttack(
         lastY = best.y;
       }
       if (attacker.mechanics?.onAttack !== undefined) {
-        applyDatabaseEffects(state, attacker.owner, lastX, lastY, attacker.damage, undefined, attacker.mechanics.onAttack);
+        applyDatabaseEffects(state, attacker.owner, lastX, lastY, attacker.damage, undefined, attacker.mechanics?.targeting, attacker.mechanics?.onAttack);
       }
     }
   } else {
@@ -1598,7 +1608,7 @@ function tryDash(
 
   // Remaining onAttack effects (Dark Prince splash, Mega Knight landing) still
   // resolve at the impact point.
-  applyDatabaseEffects(state, u.owner, tx, ty, dashDamage, undefined, u.mechanics?.onAttack);
+  applyDatabaseEffects(state, u.owner, tx, ty, dashDamage, undefined, u.mechanics?.targeting, u.mechanics?.onAttack);
   u.cooldown = u.hitSpeed > 0 ? u.hitSpeed / speedMultiplier(u, state.timeSec) : 0;
   return true;
 }
@@ -1667,7 +1677,7 @@ if (u.mechanics?.attack !== "suicide") return false;
   if (target.kind === "tower") damageTower(state, target.tower, u.damage, u.owner);
   else damageUnit(target.unit, u.damage);
   if (u.mechanics?.onAttack !== undefined) {
-    applyDatabaseEffects(state, u.owner, tx, ty, u.damage, undefined, u.mechanics.onAttack);
+    applyDatabaseEffects(state, u.owner, tx, ty, u.damage, undefined, u.mechanics?.targeting, u.mechanics.onAttack);
   }
 
   // Self-destruct: the spirit is spent.
@@ -1804,6 +1814,7 @@ if (trySuicide(state, u, target)) {
         ty,
         u.damage,
         undefined,
+        u.mechanics?.targeting,
         u.mechanics.onAttack,
       );
     }
@@ -1862,7 +1873,7 @@ function sweepDeadUnits(state: EngineState): void {
       continue;
     }
     if (unit.mechanics?.onDeath !== undefined) {
-      applyDatabaseEffects(state, unit.owner, unit.x, unit.y, unit.damage, undefined, unit.mechanics.onDeath);
+      applyDatabaseEffects(state, unit.owner, unit.x, unit.y, unit.damage, undefined, unit.mechanics?.targeting, unit.mechanics.onDeath);
     }
   }
   arr.length = w;
@@ -1949,7 +1960,7 @@ export function tickGame(state: EngineState, dt: number = TICK_DT): EngineState 
       if (u.expiresAt !== undefined && !(now < u.expiresAt)) {
         // Lifetime expiry still resolves spawn-on-death payloads (Goblin Cage).
         if (u.mechanics?.onDeath !== undefined) {
-          applyDatabaseEffects(state, u.owner, u.x, u.y, u.damage, undefined, u.mechanics.onDeath);
+          applyDatabaseEffects(state, u.owner, u.x, u.y, u.damage, undefined, u.mechanics?.targeting, u.mechanics.onDeath);
         }
         continue;
       }

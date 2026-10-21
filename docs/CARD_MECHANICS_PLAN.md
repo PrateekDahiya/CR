@@ -434,7 +434,69 @@ and configure the player's Princess Tower attack profile.
 - Record balance deviations and source/version assumptions in a test report;
   do not silently tune data while claiming exact mechanics.
 
-## 8. Acceptance Criteria
+## 8. Verification Matrix And Known Gaps (2026-10-21)
+
+`backend/tests/card-matrix.test.ts` verifies **every** card of the catalogue
+three ways, so a mechanic can never silently regress:
+
+1. **Data** - the catalogue row and the database mechanics row still match this
+   plan (type, attack pattern, targeting, movement, squad size, flying flag,
+   tower-troop flag).
+2. **Deploy** - the engine really produces the entities the plan describes
+   (the squad size, the composite children of the Goblin Gang / the Rascals /
+   the Goblin Giant, the unit flags).
+3. **Probe** - the card's special mechanic fires: a spell damages, a status
+   lands, a child spawns, a unit dashes, a chain hits, a beam ramps.
+
+The matrix found and fixed two real bugs:
+
+- **The Rage spell buffed the ENEMY.** The status effect always resolved
+  against the opposing side unless the effect carried an explicit
+  `target`. The engine now falls back to the CARD's declared targeting
+  (`friendly` -> the caster's side), which also makes the Lumberjack's rage
+  field buff the lumberjack's troops.
+- **The Lumberjack's rage field never appeared.** The `rage-field` spawn
+  template had 1 HP, which the level-1 stat normalisation rounded down to 0,
+  so the field died on the tick it was born. The template now carries 30 HP, a
+  2.5 tile rage radius and its own 4.5 s lifetime (spawn templates gained a
+  `duration_ms` column).
+
+### Known gaps (the matrix asserts the current behaviour)
+
+| card | plan behaviour | current behaviour |
+| --- | --- | --- |
+| `royal-ghost` | invisible until it attacks | the status is inert, the ghost is always visible |
+| `mother-witch` | the curse turns the enemy into a cursed hog | the curse status never spawns the hog |
+| `goblin-curse` | the cursed troops become goblins | the damage lands, the conversion does not |
+| `sparky` | charge-up shot | the status is inert, there is no stored shot |
+| `tesla` | hidden until it attacks | the buried/reveal statuses are inert |
+| `x-bow` | lock-on beam | the lockOn status is inert |
+| `tornado` | pulls the units in | the knockback always pushes them away |
+| `miner` | burrows under the arena | the teleport is a no-op, the miner appears at the drop point |
+| `executioner` | the pierce returns for a second pass | only the first pass happens |
+| `rocket`, `royal-delivery`, `giant-skeleton` | a travel / fuse delay | `delayMs` is not implemented, the effect lands immediately |
+| the champions | the ability is a later protocol extension | the base troop deploys and attacks, which is what the plan requires until the ability action exists |
+| `firecracker`, `graveyard` | not listed in this plan | data-only cards, verified by the matrix |
+
+Closing a gap means implementing it **and** updating the matrix row, so the
+suite stays the single source of truth.
+
+### Placement classes (verified by the matrix)
+
+| class | cards | rule |
+| --- | --- | --- |
+| own half | every troop and building | the deploy zone of the player's half |
+| siege | `mortar`, `x-bow` | may be placed forward (they never move, so the own-half rule made them unable to reach a tower) |
+| burrow | `miner`, `goblin-drill` | may be dropped anywhere in the arena except the river (they travel underground) |
+| spells | every spell | cast anywhere in the arena |
+
+The Goblin Drill used to be declared `movement: "ground"`, so it could only be
+placed on the own half even though it burrows like the Miner. The data now
+declares `burrow`, and the client mirrors the server (`BURROW_CARD_IDS` in
+`frontend/lib/cardAliases.ts`, asserted against the database by the phase-15
+test).
+
+## 9. Acceptance Criteria
 
 - All 108 catalog IDs have an explicit data record and a documented mechanic.
 - No card falls back to a rarity/archetype-only mechanic; every record has a
@@ -452,7 +514,7 @@ and configure the player's Princess Tower attack profile.
 - Backend and frontend card tables remain mechanically and structurally in
   sync.
 
-## 9. Known Research Caveats
+## 10. Known Research Caveats
 
 - The live game now contains more cards, evolutions, heroes, and balance changes
   than this repository's 108-entry catalog. This branch does not silently add

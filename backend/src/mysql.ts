@@ -82,6 +82,9 @@ function spawnTemplateFromRow(row: Record<string, unknown>): CardDef {
     count: Number(row.unit_count),
     radius: 0,
     flying: Number(row.flying) === 1,
+    // A template may carry its own lifetime (the Lumberjack's rage field
+    // expires on a timer).
+    ...(row.duration_ms !== undefined ? { durationMs: Number(row.duration_ms) } : {}),
     mechanics: parseCardMechanicSpec(row),
   };
 }
@@ -104,6 +107,9 @@ function spawnTemplateFromSeed(id: string, value: Record<string, unknown>): Card
     count: Number(value.count ?? 1),
     radius: 0,
     flying: value.flying === true,
+    // A template may carry its own lifetime (the Lumberjack's rage field
+    // expires on a timer).
+    ...(value.durationMs !== undefined ? { durationMs: Number(value.durationMs) } : {}),
     mechanics: {
       version: Number(value.version ?? 1),
       attack: typeof value.attack === "string" ? value.attack as CardMechanicSpec["attack"] : undefined,
@@ -252,6 +258,14 @@ export async function ensureMysqlDatabase(): Promise<{ tables: boolean; cards: n
     const dbError = error as { code?: string; errno?: number };
     if (dbError.code !== "ER_DUP_FIELDNAME" && dbError.errno !== 1060) throw error;
   }
+  try {
+    // Spawn templates may carry their own lifetime (the Lumberjack's rage
+    // field expires on a timer).
+    await p.query("ALTER TABLE card_spawn_templates ADD COLUMN duration_ms INT NOT NULL DEFAULT 0");
+  } catch (error) {
+    const dbError = error as { code?: string; errno?: number };
+    if (dbError.code !== "ER_DUP_FIELDNAME" && dbError.errno !== 1060) throw error;
+  }
 
   const cardRows = Object.values(CARDS);
   const mechanics = jsonFile("card_mechanics.json");
@@ -314,8 +328,8 @@ export async function ensureMysqlDatabase(): Promise<{ tables: boolean; cards: n
   const spawns = jsonFile("spawn_templates.json");
   for (const [templateId, value] of Object.entries(spawns)) {
     await p.query(
-      "INSERT INTO card_spawn_templates (template_id,version,hp,damage,hit_speed_ms,speed,range_tiles,sight_range,targets,unit_count,flying,attack_pattern,on_deploy,on_attack,on_hit,on_death,periodic) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE version=VALUES(version),hp=VALUES(hp),damage=VALUES(damage),hit_speed_ms=VALUES(hit_speed_ms),speed=VALUES(speed),range_tiles=VALUES(range_tiles),sight_range=VALUES(sight_range),targets=VALUES(targets),unit_count=VALUES(unit_count),flying=VALUES(flying),attack_pattern=VALUES(attack_pattern),on_deploy=VALUES(on_deploy),on_attack=VALUES(on_attack),on_hit=VALUES(on_hit),on_death=VALUES(on_death),periodic=VALUES(periodic)",
-      [templateId, Number(value.version ?? 1), value.hp, value.damage, value.hitSpeedMs, value.speed, value.range, value.sightRange, value.targets, value.count ?? 1, value.flying === true ? 1 : 0, value.attack ?? "single", JSON.stringify(value.onDeploy ?? []), JSON.stringify(value.onAttack ?? []), JSON.stringify(value.onHit ?? []), JSON.stringify(value.onDeath ?? []), JSON.stringify(value.periodic ?? [])],
+      "INSERT INTO card_spawn_templates (template_id,version,hp,damage,hit_speed_ms,speed,range_tiles,sight_range,targets,unit_count,flying,attack_pattern,duration_ms,on_deploy,on_attack,on_hit,on_death,periodic) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE version=VALUES(version),hp=VALUES(hp),damage=VALUES(damage),hit_speed_ms=VALUES(hit_speed_ms),speed=VALUES(speed),range_tiles=VALUES(range_tiles),sight_range=VALUES(sight_range),targets=VALUES(targets),unit_count=VALUES(unit_count),flying=VALUES(flying),attack_pattern=VALUES(attack_pattern),duration_ms=VALUES(duration_ms),on_deploy=VALUES(on_deploy),on_attack=VALUES(on_attack),on_hit=VALUES(on_hit),on_death=VALUES(on_death),periodic=VALUES(periodic)",
+      [templateId, Number(value.version ?? 1), value.hp, value.damage, value.hitSpeedMs, value.speed, value.range, value.sightRange, value.targets, value.count ?? 1, value.flying === true ? 1 : 0, value.attack ?? "single", Number(value.durationMs ?? 0), JSON.stringify(value.onDeploy ?? []), JSON.stringify(value.onAttack ?? []), JSON.stringify(value.onHit ?? []), JSON.stringify(value.onDeath ?? []), JSON.stringify(value.periodic ?? [])],
     );
     for (let level = 1; level <= 16; level += 1) {
       const levelDamage = scale(Number(value.damage), level);
@@ -323,7 +337,7 @@ export async function ensureMysqlDatabase(): Promise<{ tables: boolean; cards: n
       const hitSpeedMs = Number(value.hitSpeedMs);
       await p.query(
         "INSERT INTO spawn_template_level_stats (template_id,level,mode,stat_version,hit_points,damage,hit_speed_ms,dps,move_speed,range_tiles,sight_range,radius_tiles,unit_count,duration_ms,deploy_delay_ms,tower_damage,death_burst,death_burst_radius,flying,targets,attack_pattern,source,is_approximation,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE hit_points=VALUES(hit_points),damage=VALUES(damage),hit_speed_ms=VALUES(hit_speed_ms),dps=VALUES(dps),move_speed=VALUES(move_speed),range_tiles=VALUES(range_tiles),sight_range=VALUES(sight_range),radius_tiles=VALUES(radius_tiles),unit_count=VALUES(unit_count),duration_ms=VALUES(duration_ms),deploy_delay_ms=VALUES(deploy_delay_ms),tower_damage=VALUES(tower_damage),death_burst=VALUES(death_burst),death_burst_radius=VALUES(death_burst_radius),flying=VALUES(flying),targets=VALUES(targets),attack_pattern=VALUES(attack_pattern),source=VALUES(source),is_approximation=VALUES(is_approximation),notes=VALUES(notes)",
-        [templateId, level, mode, statVersion, levelHp, levelDamage, hitSpeedMs, hitSpeedMs > 0 ? levelDamage / (hitSpeedMs / 1000) : 0, value.speed, value.range, value.sightRange, 0, value.count ?? 1, 0, 0, null, 0, 0, value.flying === true ? 1 : 0, value.targets, value.attack ?? "single", "spawn template baseline", 1, "Phase 1 normalized seed approximation"],
+        [templateId, level, mode, statVersion, levelHp, levelDamage, hitSpeedMs, hitSpeedMs > 0 ? levelDamage / (hitSpeedMs / 1000) : 0, value.speed, value.range, value.sightRange, 0, value.count ?? 1, Number(value.durationMs ?? 0), 0, null, 0, 0, value.flying === true ? 1 : 0, value.targets, value.attack ?? "single", "spawn template baseline", 1, "Phase 1 normalized seed approximation"],
       );
     }
   }
@@ -444,7 +458,7 @@ export async function hydrateSpawnTemplatesFromMysql(): Promise<{ loaded: number
   if (!p) return hydrateSpawnTemplatesFromSeedFile();
   try {
     const [rows] = await p.query(
-      "SELECT template_id,version,hp,damage,hit_speed_ms,speed,range_tiles,sight_range,targets,unit_count,flying,attack_pattern,on_deploy,on_attack,on_hit,on_death,periodic FROM card_spawn_templates ORDER BY template_id",
+      "SELECT template_id,version,hp,damage,hit_speed_ms,speed,range_tiles,sight_range,targets,unit_count,flying,attack_pattern,duration_ms,on_deploy,on_attack,on_hit,on_death,periodic FROM card_spawn_templates ORDER BY template_id",
     );
     const records: Record<string, CardDef> = {};
     for (const row of rows as Record<string, unknown>[]) records[String(row.template_id)] = spawnTemplateFromRow(row);

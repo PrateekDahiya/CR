@@ -116,3 +116,33 @@ npm start
   deck).
 - Tests: `tests/tournaments.test.ts` + `tests/replays.test.ts`; full
   `npm test` 168/168 PASS; `tsc --noEmit` clean.
+
+## Per-card verification matrix update (2026-10-21, branch card-mechanics)
+- `tests/card-matrix.test.ts` verifies all 108 catalogue cards three ways:
+  data conformance (catalogue + mechanics row vs the plan), deploy behaviour
+  (the squad size, the composite children, the unit flags) and a mechanic probe
+  per special card. 282 matrix cases; the full backend suite is 450/450.
+- Two real bugs came out of the matrix and are fixed:
+  - **The Rage spell buffed the enemy.** `applyDatabaseEffects` resolved every
+    status effect against the opposing side unless the effect carried an
+    explicit `target`. It now falls back to the CARD's declared targeting
+    (`friendly` -> the caster's side), which also makes the Lumberjack's rage
+    field buff the lumberjack's troops. The function takes the targeting as a
+    parameter; all eight call sites pass the card's / unit's targeting.
+  - **The Lumberjack's rage field never appeared.** The `rage-field` spawn
+    template had 1 HP, which the level-1 stat normalisation rounded down to 0,
+    so the field died on the tick it was born. The template now carries 30 HP,
+    a 2.5 tile rage radius and its own 4.5 s lifetime.
+- Spawn templates may now carry a lifetime: `card_spawn_templates` gained a
+  `duration_ms` column (schema + the startup migration + the seed), and the
+  template loader reads it (`spawnTemplateFromRow` / `spawnTemplateFromSeed`).
+- The remaining plan gaps (invisible / curse / chargeUp / buried / lockOn
+  statuses, the pull knockback, the effect delays, the champion ability
+  action) are tracked in `docs/CARD_MECHANICS_PLAN.md` §8 and asserted as the
+  current behaviour by the matrix.
+- **Placement classes** are read from the mechanics row (`engine.ts`
+  `isSiegePlacement` / `isBurrowPlacement`): siege buildings (Mortar, X-Bow)
+  may be placed forward, burrowers (Miner, Goblin Drill) may be dropped
+  anywhere except the river, everything else is own-half only. The Goblin
+  Drill used to be declared `movement: "ground"` and could not reach the enemy
+  half; the data now declares `burrow`.
