@@ -17,7 +17,7 @@
  * SimTower/SimUnit → shared Tower/Unit when emitting `state:update`.
  */
 
-import { getCard, getSpawnTemplate } from "./cards";
+import { getCard, getSpawnTemplate, placementClassOf } from "./cards";
 import type { EffectSpec } from "./cardMechanics";
 import { getLevelStats, type LevelStats } from "./levelStats";
 import { resolveGameMode, type GameModeConfig } from "./modes";
@@ -579,12 +579,15 @@ function fail(code: string, message: string): PlayResult {
 /**
  * Phase 13 — placement classification read from the card's database mechanics.
  * Siege buildings push forward; burrowers may be dropped anywhere.
+ *
+ * The rule lives in `cards.ts` (`placementClassOf`) so the net layer and the
+ * engine can never disagree about where a card may be dropped.
  */
-function isSiegePlacement(card: ReturnType<typeof getCard>): boolean {
+export function isSiegePlacement(card: ReturnType<typeof getCard>): boolean {
   return card?.type === "building" && card?.mechanics?.movement === "siege";
 }
 
-function isBurrowPlacement(card: ReturnType<typeof getCard>): boolean {
+export function isBurrowPlacement(card: ReturnType<typeof getCard>): boolean {
   return card?.mechanics?.movement === "burrow";
 }
 
@@ -1232,9 +1235,9 @@ export function playCard(
     // Phase 13: siege buildings (X-Bow, Mortar) may be placed forward on the
     // enemy half. They never move, so the own-half-only rule made them unable
     // to ever reach a tower from the river (10.5 tiles > their range).
-    const siege = isSiegePlacement(card);
-    const burrower = isBurrowPlacement(card);
-    const anywhere = siege || burrower;
+    // The burrowers (the Miner, the Goblin Drill) travel underground and may
+    // be dropped anywhere too. ONE rule for both layers: `placementClassOf`.
+    const anywhere = placementClassOf(card.id) === "anywhere";
     if (!anywhere && !isInDeployZone(side, x, y, pocket)) {
       return fail("BAD_POSITION", "outside legal deploy zone");
     }

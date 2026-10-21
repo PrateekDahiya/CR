@@ -12,12 +12,19 @@
  *
  * Real engine API — see `engine.test.ts` header. Run: `npm test` from `backend/`.
  */
-import { describe, it } from 'node:test';
+import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, playCard } from '../src/game/engine.js';
 import type { EngineState } from '../src/game/engine.js';
 import { forceInHand } from './deckHelpers.js';
-import { validateCardLevels, validateTowerTroopId } from '../src/net/validation.js';
+import { validateCardLevels, validatePosition, validateTowerTroopId } from '../src/net/validation.js';
+import { hydrateMechanicsFromMysql } from '../src/mysql.js';
+
+// The placement class (burrow / siege) lives in the card mechanics, so the
+// rules have to be hydrated before the position checks run.
+before(async () => {
+  await hydrateMechanicsFromMysql();
+});
 
 const BLUE_DECK = [
   'knight',
@@ -172,12 +179,57 @@ describe('validation — bad x/y positions (GAME_DESIGN §§5.3/11.2)', () => {
   });
 });
 
+describe('validation — the net layer agrees with the engine on the placement class', () => {
+  // Regression: the net layer used to reject a burrow drop on the opponent's
+  // half ("position outside your deploy zone") while the engine allowed it,
+  // so the Miner could never be dropped on the enemy side.
+  it('allows a burrower (the miner) on the opponent half', () => {
+    const blue = validatePosition('blue', 9, 25, 'miner');
+    assert.equal(blue.ok, true, 'the miner travels underground: any half is legal');
+    const red = validatePosition('red', 9, 5, 'miner');
+    assert.equal(red.ok, true, 'the miner travels underground: any half is legal');
+  });
+
+  it('allows a siege building (the mortar) on the opponent half', () => {
+    assert.equal(validatePosition('blue', 9, 25, 'mortar').ok, true);
+    assert.equal(validatePosition('red', 9, 5, 'x-bow').ok, true);
+  });
+
+  it('still rejects a burrower on the river', () => {
+    const onRiver = validatePosition('blue', 9, 15.5, 'miner');
+    assert.equal(onRiver.ok, false);
+    assert.equal(onRiver.code, 'BAD_POSITION');
+  });
+
+  it('still rejects an ordinary troop on the opponent half', () => {
+    const onEnemyHalf = validatePosition('blue', 9, 25, 'knight');
+    assert.equal(onEnemyHalf.ok, false);
+    assert.equal(onEnemyHalf.code, 'BAD_POSITION');
+  });
+
+  it('lets a spell be cast anywhere', () => {
+    assert.equal(validatePosition('blue', 9, 25, 'fireball').ok, true);
+    assert.equal(validatePosition('red', 9, 5, 'arrows').ok, true);
+  });
+
+  it('plays the miner on the opponent half through the engine too', () => {
+    const s = newGame();
+    s.elixir.blue = 10;
+    const slot = forceInHand(s, 'blue', 'miner');
+    const r = playCard(s, 'blue', { handIndex: slot, x: 9, y: 25 });
+    assert.equal(r.ok, true, 'the engine must accept the burrow drop');
+    const miner = s.units.find((u) => u.cardId === 'miner');
+    assert.ok(miner, 'the miner must spawn');
+    assert.equal(miner?.y, 25);
+  });
+});
+
 describe('validation — insufficient elixir (GAME_DESIGN §11.1)', () => {
   it('rejects with NO_ELIXIR when broke and deducts nothing', () => {
     const s = newGame();
     s.elixir.blue = 0; // below every card cost (pool is 1–6 per §1)
     const before = snapshot(s, 'blue');
-    const r = playCard(s, 'blue', { handIndex: 0, x: 9, y: 5 });
+    const r = playCard(s, 'blue', { handIndex: deploySlot(s), x: 9, y: 5 });
     assert.equal(r.ok, false);
     assert.equal((r as { code: string }).code, 'NO_ELIXIR');
     assertNoMutation(s, 'blue', before);

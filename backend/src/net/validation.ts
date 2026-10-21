@@ -30,7 +30,7 @@ export interface ValidationResult {
 
 export type PlayerSide = "blue" | "red";
 
-import { CARDS, isPlayableCard } from "../game/cards.js";
+import { CARDS, isPlayableCard, placementClassOf } from "../game/cards.js";
 
 /**
  * Elixir cost per card id. Derived from the canonical engine table (108 cards)
@@ -189,6 +189,11 @@ const FOOTPRINT_RADIUS = 0.75;
  * Troops/buildings: Blue y 0-14 (pocket y<=20 on taken lane side),
  * Red y 17-31 (pocket y>=11). River/enemy-half/tower-footprint → reject
  * (no clamping). x<9 is the left lane, x>=9 the right lane.
+ *
+ * The placement class comes from the card table (`placementClassOf`), the
+ * SAME rule the engine uses in `playCard`: the burrowers (the Miner, the
+ * Goblin Drill) and the siege buildings (the Mortar, the X-Bow) may be
+ * dropped on either half - only the river is off limits for them.
  */
 export function validatePosition(
   side: PlayerSide,
@@ -203,11 +208,17 @@ export function validatePosition(
   if (x < 0 || x > 18 || y < 0 || y > 32) {
     return { ok: false, code: "BAD_POSITION", message: "position outside arena x[0,18] y[0,32]" };
   }
-  if (isSpellCard(cardId)) {
+  const placement = placementClassOf(cardId);
+  if (placement === "spell") {
     return { ok: true };
   }
   if (y > 14 && y < 17) {
     return { ok: false, code: "BAD_POSITION", message: "cannot deploy on the river" };
+  }
+  if (placement === "anywhere") {
+    // Burrowers and siege buildings travel: either half is legal, the river
+    // is not (the tower footprint stays legal too - the engine agrees).
+    return { ok: true };
   }
   const lanePocket = (x < 9 ? pocket.left : pocket.right) === true;
   let inZone = false;
