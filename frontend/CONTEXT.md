@@ -120,12 +120,19 @@ docker run -p 3000:3000 cr-frontend
   (red team, character seen from the front) and `<card>-back.png` (blue team,
   seen from behind). Built by `scripts/make_card_art.py` from the wiki sources
   in `docs/card-art/sources/`.
-- The 2D strips live in `/public/sprites/<card>-<view>.png` (8 frames, 96x96:
-  idle x2, walk x4, attack, death) and are cut by
-  `scripts/make_card_sprites.py`. `/public/sprites/` is gitignored.
+- The 2D strips live in `/public/sprites/<card>-<view>.png` and are cut by
+  `scripts/make_card_sprites_from_sheet.py` from the **4x5 sheets**
+  (`docs/card-art/sheets/<card>.png`, 480x384) that
+  `scripts/make_card_sheets.py` renders from the CC0 KayKit 3D models with
+  Blender. A strip is **10 frames** (0-4 walk, 5-9 attack, 96x96 each) - a
+  real walk cycle and a real attack animation, not a warped still.
+  `/public/sprites/` is gitignored.
 - `lib/battle/spriteAnim.ts` loads the strip of the unit's TEAM and flips it
   with the unit's facing. Fallback chain: team strip -> old neutral strip ->
   `/cardart/<card>-<view>.png` -> `/cards/<card>.png` -> emoji glyph.
-- `/animations` shows all 108 cards with the red front view on top and the
-  blue back view below. `tests/card-art.spec.ts` guards both views and the
-  fallback chain.
+  The layout is picked from the strip width: 10 frames (new sheets), 8 frames
+  (the old warped strips) or 6 frames (the legacy strips). The 10 frame sheets
+  have no death row, so a dying unit fades the static per-team art out.
+- `/animations` shows all 108 cards (walk / walk / attack / static, red front
+  on top, blue back below). `tests/card-art.spec.ts` guards both views, the
+  10 frame layout, the real animation and the fallback chain.

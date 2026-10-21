@@ -1378,11 +1378,19 @@ export default function ArenaCanvas({
           const size = TW * 1.35;
           upright(gx, gy, () => {
             if (!drawCardSprite(c, g.cardId, "death", g.born, size, 1, 1 - age, g.owner)) {
+              // the new 10 frame sheets have no death row: fade the static
+              // per-team card art out instead
+              const art = artFor(g.cardId, g.owner);
               c.globalAlpha = 1 - age;
-              c.fillStyle = g.owner === "blue" ? "#93c5fd" : "#fca5a5";
-              c.beginPath();
-              c.arc(0, 0, TW * 0.5 * (1 - age * 0.4), 0, Math.PI * 2);
-              c.fill();
+              if (art !== null && art.complete && art.naturalWidth > 0) {
+                const d = size * 0.95;
+                c.drawImage(art, -d / 2, -d / 2, d, d);
+              } else {
+                c.fillStyle = g.owner === "blue" ? "#93c5fd" : "#fca5a5";
+                c.beginPath();
+                c.arc(0, 0, TW * 0.5 * (1 - age * 0.4), 0, Math.PI * 2);
+                c.fill();
+              }
             }
           });
         }

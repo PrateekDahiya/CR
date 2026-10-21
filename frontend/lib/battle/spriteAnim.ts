@@ -1,8 +1,14 @@
 /**
  * 2D strip animation for deployed cards.
  *
- * Strips are built by `scripts/make_card_sprites.py` from the per-team card
- * art in `/public/cardart/` into `/public/sprites/<card>-<view>.png`:
+ * Strips are built by `scripts/make_card_sprites_from_sheet.py` from the 4x5
+ * sprite sheets in `docs/card-art/sheets/` (rendered from the CC0 3D models
+ * by `scripts/make_card_sheets.py`):
+ *
+ *   0-4 walk, 5-9 attack  (10 frames, 96x96)
+ *
+ * The older strips (built by `scripts/make_card_sprites.py` from the static
+ * card art) are still supported as a fallback:
  *
  *   0-1 idle, 2-5 walk, 6 attack, 7 death  (8 frames, 96x96)
  *
@@ -31,6 +37,14 @@ const FPS: Record<SpriteState, number> = {
   death: 1,
 };
 
+/** The sheet strips: 10 frames (5 walk + 5 attack). */
+const FRAME_INDEX_10: Record<SpriteState, readonly number[]> = {
+  idle: [0],
+  walk: [0, 1, 2, 3, 4],
+  attack: [5, 6, 7, 8, 9],
+  // the sheets have no death row: the last walk frame is faded out instead
+  death: [4],
+};
 /** Current strips: 8 frames. Legacy strips (the old generator) have 6. */
 const FRAME_INDEX_8: Record<SpriteState, readonly number[]> = {
   idle: [0, 1],
@@ -84,6 +98,20 @@ function entryFor(slug: string, view: SpriteView): Entry {
   return entry;
 }
 
+/** The old warped team strips (8 frames) - only used when a sheet is missing. */
+function legacyTeamImage(slug: string, view: SpriteView): HTMLImageElement | null {
+  if (typeof window === "undefined") return null;
+  const key = `${slug}:${view}`;
+  const hit = legacyCache.get(key);
+  if (hit !== undefined) return hit === "missing" ? null : hit;
+  const img = new Image();
+  img.decoding = "async";
+  img.onerror = () => legacyCache.set(key, "missing");
+  img.src = `/sprites/legacy/${slug}-${view}.png`;
+  legacyCache.set(key, img);
+  return img;
+}
+
 /** The old team-neutral strip - only used when a team strip is missing. */
 function legacyImage(slug: string): HTMLImageElement | null {
   if (typeof window === "undefined") return null;
@@ -102,15 +130,19 @@ function ready(img: HTMLImageElement | null): boolean {
 }
 
 /**
- * The strip to draw for a card: the team strip first, the team neutral one
- * as a fallback. Returns null while nothing is usable yet.
+ * The strip to draw for a card: the team strip first, the old warped team
+ * strip and then the old team neutral one as a fallback. Returns null while
+ * nothing is usable yet.
  */
 export function spriteImage(cardId: string, team: SpriteTeam = "red"): HTMLImageElement | null {
   if (typeof window === "undefined") return null;
   const slug = slugFor(cardId);
-  const entry = entryFor(slug, spriteViewForTeam(team));
+  const view = spriteViewForTeam(team);
+  const entry = entryFor(slug, view);
   if (ready(entry.view)) return entry.view;
   if (entry.viewFailed) {
+    const old = legacyTeamImage(slug, view);
+    if (ready(old)) return old;
     const legacy = legacyImage(slug);
     return ready(legacy) ? legacy : legacy;
   }
@@ -139,8 +171,9 @@ export function drawCardSprite(
   const img = spriteImage(cardId, team);
   if (!ready(img)) return false;
   const frames = Math.max(1, Math.round((img as HTMLImageElement).naturalWidth / SPRITE_FRAME));
-  const layout = frames >= 8 ? FRAME_INDEX_8 : FRAME_INDEX_6;
+  const layout = frames >= 10 ? FRAME_INDEX_10 : frames >= 8 ? FRAME_INDEX_8 : FRAME_INDEX_6;
   const indices = layout[state];
+  if (indices.length === 0) return false;
   const fps = FPS[state];
   const idx = indices[Math.floor((nowMs / 1000) * fps) % indices.length];
   c.save();

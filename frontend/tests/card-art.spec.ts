@@ -59,6 +59,62 @@ test.describe("per-team card art", () => {
     }
   });
 
+  test("the strips are real 10 frame animations (5 walk + 5 attack)", async ({ page }) => {
+    await page.goto(`${BASE}/animations`);
+    for (const id of ["knight", "giant", "musketeer", "baby-dragon"]) {
+      for (const view of ["front", "back"]) {
+        const result = await page.evaluate(
+          async ([card, side]) => {
+            const img = new Image();
+            img.src = `/sprites/${card}-${side}.png`;
+            await new Promise((resolve) => {
+              img.onload = resolve;
+              img.onerror = resolve;
+            });
+            if (!img.complete || img.naturalWidth === 0) return { width: 0, walkDiff: 0, attackDiff: 0 };
+            const canvas = document.createElement("canvas");
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const c = canvas.getContext("2d");
+            if (!c) return { width: 0, walkDiff: 0, attackDiff: 0 };
+            c.drawImage(img, 0, 0);
+            const frame = (index: number): Uint8ClampedArray =>
+              c.getImageData(index * 96, 0, 96, 96).data;
+            const diff = (a: Uint8ClampedArray, b: Uint8ClampedArray) => {
+              let changed = 0;
+              for (let i = 0; i < a.length; i += 4) {
+                if (
+                  Math.abs(a[i] - b[i]) > 18 ||
+                  Math.abs(a[i + 1] - b[i + 1]) > 18 ||
+                  Math.abs(a[i + 2] - b[i + 2]) > 18
+                ) {
+                  changed++;
+                }
+              }
+              return changed;
+            };
+            const walk0 = frame(0);
+            const walk2 = frame(2);
+            const walk4 = frame(4);
+            const attack5 = frame(5);
+            const attack9 = frame(9);
+            return {
+              width: img.naturalWidth,
+              walkDiff: diff(walk0, walk2) + diff(walk2, walk4),
+              attackDiff: diff(walk0, attack5) + diff(attack5, attack9),
+            };
+          },
+          [id, view] as const,
+        );
+        expect(result.width, `${id}-${view} must be 10 frames wide`).toBe(960);
+        // a real walk cycle: the frames must differ from each other
+        expect(result.walkDiff, `${id}-${view} walk frames must animate`).toBeGreaterThan(120);
+        // a real attack: the attack frames must differ from the walk ones
+        expect(result.attackDiff, `${id}-${view} attack frames must animate`).toBeGreaterThan(120);
+      }
+    }
+  });
+
   test("battle loads the team strip of the deployed card", async ({ page }) => {
     const sprites: string[] = [];
     page.on("request", (req) => {

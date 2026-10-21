@@ -11,6 +11,123 @@ catalogue:
 The arena picks the view by team (red -> front, blue -> back) and flips the
 sprite with the unit's facing, exactly like the king / princess towers.
 
+## The animation sheets (real movement + attack)
+
+The static art above is the *reference*. The **animation** comes from a 4x5
+sprite sheet per card that is rendered from real 3D models:
+
+```
+docs/card-art/sheets/<card>.png    480x384, 96x96 cells, 5 columns x 4 rows
+
++-------------------------+-------------------------+-------------------------+-------------------------+
+| row 1: RED  - walk      | row 2: RED  - attack    | row 3: BLUE - walk     | row 4: BLUE - attack   |
+| 5 frames, FRONT view    | 5 frames, FRONT view    | 5 frames, BACK view    | 5 frames, BACK view    |
+| (towards the camera)    | (casting the fire spell)| (away from the camera) | (casting the ice spell)|
++-------------------------+-------------------------+-------------------------+-------------------------+
+```
+
+One sheet gives both teams at once, exactly like the king / princess towers.
+The frames of a row are a **real** walk cycle / attack animation - the
+character is the *same model* in every frame, so it cannot drift.
+
+### The pipeline
+
+```
+scripts/fetch_card_models.py          download the CC0 3D models (cached, not committed)
+        |
+        v
+scripts/card-sheets/spec.py           the per-card recipe (model, gear, weapon, colour, animation)
+        |
+        v
+scripts/make_card_sheets.py           Blender renders the 20 frames -> docs/card-art/sheets/<card>.png
+        |
+        v
+scripts/make_card_sprites_from_sheet.py   cuts the sheet into the two engine strips
+        |
+        v
+frontend/public/sprites/<card>-front.png   10 frames: 0-4 walk, 5-9 attack
+frontend/public/sprites/<card>-back.png    10 frames: 0-4 walk, 5-9 attack
+```
+
+Run it:
+
+```powershell
+python scripts/fetch_card_models.py     # once (downloads ~13 MB into the asset cache)
+python scripts/make_card_sheets.py      # every card (Blender 4.5 LTS portable needed)
+python scripts/make_card_sprites_from_sheet.py
+```
+
+Blender is expected in `%LOCALAPPDATA%\Temp\cr-assets\blender\<version>\blender.exe`
+(or on the `PATH`).
+
+### The loader
+
+`frontend/lib/battle/spriteAnim.ts` plays the 10 frame strips:
+
+| state | frames |
+| --- | --- |
+| idle | 0 (the first walk frame) |
+| walk | 0 - 4 |
+| attack | 5 - 9 |
+| death | the static per-team art with the existing fade (the sheet has no death row) |
+
+The old 8 frame strips (and the 6 frame legacy ones) are still supported, so
+the fallback chain never breaks:
+
+```
+team strip -> old neutral strip -> /cardart/<card>-<view>.png -> /cards/<card>.png -> emoji glyph
+```
+
+### Checking a card against the original
+
+`scripts/card-sheets/compare_sheets.py` builds a review page with the original
+card render next to the generated walk and attack frames:
+
+```powershell
+python scripts/card-sheets/compare_sheets.py          # every card
+python scripts/card-sheets/compare_sheets.py knight   # one card
+```
+
+The output lands in `docs/card-art/review/`.
+
+### Licence + provenance
+
+The models are **CC0** (KayKit), so the sheets are original art we own - see
+`docs/card-art/CREDITS.md`. Every sheet is listed in
+`docs/card-art/SHEET_SOURCES.json` (model, gear, weapon, animations, tool, date).
+
+## The static art pipeline (the older one)
+
+```
+docs/card-art/sources/<card>-front.png        the wiki render (a single still)
+        |
+        |  scripts/make_card_sprites.py      (a per-row warp of the still)
+        v
+frontend/public/sprites/<card>-front.png     8 frames x 96px:
+                                             0-1 idle, 2-5 walk, 6 attack, 7 death
+frontend/public/sprites/<card>-back.png      the same for the blue (back) view
+```
+
+`scripts/make_card_sprites.py` cuts an **8 frame** strip (96x96 per frame)
+per card **and per view**:
+
+```
+0-1  idle     breathing (small bob / stretch)
+2-5  walk     the lower body sways over the legs while the unit bobs and leans
+6    attack   the unit lunges forward and grows
+7    death    the unit topples over and fades out
+```
+
+The walk is a smooth per-row warp of the artwork (the legs swing, the torso
+stays), so the art is never torn apart. The frames bake in a soft feathered
+edge, so the units blend into the arena instead of sitting in a hard box.
+
+Strips live in `frontend/public/sprites/<card>-<view>.png` (gitignored, like
+the rest of the generated art). The canvas falls back to
+`/sprites/<card>.png` (old neutral strip), then to
+`/cardart/<card>-<view>.png` (static team art), then to `/cards/<card>.png`
+and finally to the emoji glyph - a missing asset never breaks a match.
+
 ## What is in here
 
 ```

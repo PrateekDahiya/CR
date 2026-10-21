@@ -4,9 +4,14 @@ import { useEffect, useRef } from "react";
 import { CARD_LIST } from "../../lib/cards";
 import { drawCardSprite, preloadCardSprite } from "../../lib/battle/spriteAnim";
 
+/**
+ * The animation lab shows the four states of every card:
+ * walk (frame 0), walk (frame 2), attack (frame 7) and the death frame (the
+ * last walk frame - the sheets have no death row).
+ */
 const STATES = [
-  { state: "idle" as const, now: 0 },
-  { state: "walk" as const, now: 120 },
+  { state: "walk" as const, now: 0 },
+  { state: "walk" as const, now: 220 },
   { state: "attack" as const, now: 0 },
   { state: "death" as const, now: 0 },
 ];
@@ -66,11 +71,11 @@ export default function AnimationsPage() {
         <div>
           <h1 className="text-lg font-extrabold">Animation Lab</h1>
           <p className="text-[10px] text-slate-300">
-            {CARD_LIST.length} cards - idle / walk / attack / death, red front view on top, blue back view
-            below
+            {CARD_LIST.length} cards - walk / walk / attack / death, red front view on top, blue back
+            view below
           </p>
         </div>
-        <span className="text-[10px] text-slate-400">/sprites/&lt;card&gt;-&lt;view&gt;.png (8 frames)</span>
+        <span className="text-[10px] text-slate-400">/sprites/&lt;card&gt;-&lt;view&gt;.png (10 frames)</span>
       </header>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4" data-testid="anim-gallery">
         {CARD_LIST.map((card) => (

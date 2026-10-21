@@ -20,9 +20,14 @@ bobs up and down and the whole figure leans into the step. The result reads as
 a walk cycle at arena size and never tears the artwork apart.
 
 Outputs (gitignored user art, same as the old strips):
-    frontend/public/sprites/<card>-front.png
-    frontend/public/sprites/<card>-back.png
-    frontend/public/sprites/manifest.json
+    frontend/public/sprites/legacy/<card>-front.png
+    frontend/public/sprites/legacy/<card>-back.png
+    frontend/public/sprites/legacy/manifest.json
+
+These are the FALLBACK strips: the real animation sheets
+(`scripts/make_card_sprites_from_sheet.py`) write the 10 frame strips to
+`frontend/public/sprites/`, and the loader only falls back to these old
+warped strips when a card has no sheet.
 
 Run from the repo root:
     python scripts/make_card_sprites.py
@@ -41,7 +46,7 @@ FRAME = 96
 FRAMES = 8
 MARGIN = 3
 ART_DIR = ROOT / "frontend" / "public" / "cardart"
-OUT_DIR = ROOT / "frontend" / "public" / "sprites"
+OUT_DIR = ROOT / "frontend" / "public" / "sprites" / "legacy"
 
 VIEWS = ("front", "back")
 

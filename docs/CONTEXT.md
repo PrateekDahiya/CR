@@ -25,6 +25,13 @@ and templates that keep the 6-step execution pipeline (MEMORY.md §11) auditable
   preview clips, two contact sheets and the list of files that still need hand
   editing (`scripts/fetch_card_art.py`, `scripts/make_card_art.py`,
   `scripts/make_card_sprites.py`, `scripts/prepare_edited_card_art.py`).
+  It also holds the **4x5 animation sheets** of every card
+  (`sheets/<card>.png`, 480x384) that are rendered from the CC0 KayKit 3D
+  models by `scripts/make_card_sheets.py` + `scripts/blender/render_card_sheet.py`
+  (recipe: `scripts/card-sheets/spec.py`), their provenance
+  (`SHEET_SOURCES.json`), the licence notes (`CREDITS.md`) and the review
+  pages that compare a sheet with the original card render
+  (`scripts/card-sheets/compare_sheets.py` -> `review/`).
   It also holds `SOURCES_AND_TOOLS.md` (the free sprite packs, the free AI
   generators and the licence matrix for the next animation pass) and
   `NEXT_SESSION_PROMPT.md` (the handover prompt for that task).
