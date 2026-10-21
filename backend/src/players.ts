@@ -499,7 +499,11 @@ export function applyMatchResult(input: {
 }): { playerId: string; trophyDelta: number; coinDelta: number }[] {
   const out: { playerId: string; trophyDelta: number; coinDelta: number }[] = [];
   const apply = (pid: string | null, result: "win" | "loss" | "draw") => {
-    if (pid === null || pid.length === 0 || pid.startsWith("bot-")) return;
+    // The bot is not a player: the client reports the opponent side as
+    // "ai-opponent" (or a "bot-" id), and that placeholder must never become
+    // a player row, a leaderboard entry or a trophy award.
+    if (pid === null || pid.length === 0 || pid.startsWith("bot-") || pid.startsWith("ai-")) return;
+    if (pid === "ai-opponent") return;
     const p = ensurePlayer(pid);
     const reward = REWARDS[result];
     p.trophies = Math.max(0, p.trophies + reward.trophies);

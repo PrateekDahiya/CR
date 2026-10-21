@@ -2,12 +2,46 @@ import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import {
   CARD_MAX_LEVEL,
+  applyMatchResult,
   cardUpgradeCost,
   ensurePlayer,
+  playerTable,
   resetPlayers,
   upgradeCard,
   upgradeTower,
 } from "../src/players.js";
+
+describe("the bot placeholder is never a player", () => {
+  beforeEach(() => resetPlayers());
+
+  it("ignores the ai-opponent placeholder and the bot ids", () => {
+    const deltas = applyMatchResult({
+      blueId: "real-player",
+      redId: "ai-opponent",
+      winner: "blue",
+      crowns: { blue: 3, red: 0 },
+    });
+    assert.equal(deltas.length, 1, "only the real player gets a result");
+    assert.equal(deltas[0].playerId, "real-player");
+    // The placeholder must not exist as a player row.
+    assert.equal(ensurePlayer("real-player").trophies > 0, true);
+    const table = playerTable(50);
+    assert.ok(
+      !table.some((row) => row.playerId === "ai-opponent"),
+      "the AI placeholder must not show up in the player table",
+    );
+  });
+
+  it("ignores the bot- prefixed ids", () => {
+    const deltas = applyMatchResult({
+      blueId: "bot-abc",
+      redId: "bot-def",
+      winner: "blue",
+      crowns: { blue: 1, red: 0 },
+    });
+    assert.equal(deltas.length, 0);
+  });
+});
 
 describe("card upgrades", () => {
   beforeEach(() => resetPlayers());
