@@ -9,6 +9,15 @@ import { getActiveMatchForPlayer, getRoom } from "./net/rooms.js";
 import { getUser, leaderboard, recordMatch, saveDeck, upsertUser, isDbLive } from "./db.js";
 import { listBattleLogEntries, recordBattleLogEntry } from "./battleLog.js";
 import {
+  createTournament,
+  findTournamentByMatch,
+  getTournament,
+  joinTournament,
+  listTournaments,
+  recordTournamentMatch,
+} from "./tournaments.js";
+import { getReplay, hasReplay } from "./replays.js";
+import {
   activeDeck,
   applyMatchResult,
   createDeck,
@@ -248,7 +257,9 @@ export function mountMeta(app: Express): void {
       season: typeof b.season === "string" ? b.season : SEASON,
     });
     // Battle log: one entry per side, with the decks that were played.
-    // The room is authoritative for decks + mode; the payload is a fallback.
+    // The room is authoritative for decks + mode; the payload is a fallback
+    // and the player's stored deck is the last resort, so the log always
+    // shows BOTH decks.
     const room = matchId.length > 0 ? getRoom(matchId) : undefined;
     const blueDeck = (
       room?.players.find((p) => p.side === "blue")?.deck ??
@@ -258,7 +269,29 @@ export function mountMeta(app: Express): void {
       room?.players.find((p) => p.side === "red")?.deck ??
       (Array.isArray(b.redDeck) ? (b.redDeck as string[]) : [])
     ).slice(0, 8);
+    // Last-resort deck for a side the room does not know (e.g. the report was
+    // sent without the room). Bots have no stored deck -> empty. O(1).
+    const fallbackDeck = (pid: string | null): string[] => {
+      if (pid === null || pid.length === 0) return [];
+      if (pid.startsWith("bot-") || pid.startsWith("ai-")) return [];
+      return activeDeck(pid).cards.slice(0, 8);
+    };
+    const blueDeckFinal = blueDeck.length > 0 ? blueDeck : fallbackDeck(blueId);
+    const redDeckFinal = redDeck.length > 0 ? redDeck : fallbackDeck(redId);
     const mode = room?.state.modeId ?? (typeof b.mode === "string" ? b.mode : "standard");
+    // Tournament matches are tagged so the battle log can split them into the
+    // BATTLES and the TOURNAMENTS tab. O(1) lookup.
+    const tournament = findTournamentByMatch(matchId || row.id);
+    if (tournament !== undefined) {
+      recordTournamentMatch(tournament.id, {
+        matchId: matchId || row.id,
+        blueId: blueId ?? "",
+        redId: redId ?? "",
+        winner,
+        blueCrowns,
+        redCrowns,
+      });
+    }
     recordSide(blueId, "blue");
     recordSide(redId, "red");
 
@@ -281,9 +314,13 @@ export function mountMeta(app: Express): void {
         result,
         crowns: myCrowns,
         opponentCrowns: foeCrowns,
-        deck: side === "blue" ? blueDeck : redDeck,
-        opponentDeck: side === "blue" ? redDeck : blueDeck,
+        deck: side === "blue" ? blueDeckFinal : redDeckFinal,
+        opponentDeck: side === "blue" ? redDeckFinal : blueDeckFinal,
         mode,
+        playerName: me.name,
+        ...(tournament !== undefined
+          ? { tournamentId: tournament.id, tournamentName: tournament.name }
+          : {}),
         trophies: me.trophies,
         opponentTrophies: opponent?.trophies ?? 0,
         trophyDelta: delta,
@@ -296,7 +333,96 @@ export function mountMeta(app: Express): void {
 
   /** Battle log: the player's recent battles, newest first. O(1) read. */
   app.get("/battle-log/:playerId", (req: Request, res: Response) => {
-    res.json({ entries: listBattleLogEntries(req.params.playerId) });
+    const entries = listBattleLogEntries(req.params.playerId);
+    // `watchable` marks the battles whose replay is still in memory (the
+    // "Watch" button in the battle log). O(1) per entry.
+    for (const entry of entries) {
+      entry.watchable = hasReplay(entry.matchId);
+    }
+    res.json({ entries });
+  });
+
+  // --- Tournaments (the TOURNAMENTS tab of the battle log) ------------------
+
+  /**
+   * The tournament list. Open tournaments first, newest first. The player id
+   * marks which ones the caller joined. O(t * (p + m)), t <= 50, p <= 8.
+   */
+  app.get("/tournaments", (req: Request, res: Response) => {
+    const playerId = typeof req.query.playerId === "string" ? req.query.playerId : undefined;
+    res.json({ tournaments: listTournaments(playerId) });
+  });
+
+  /** One tournament with its roster and its matches. O(1). */
+  app.get("/tournaments/:tournamentId", (req: Request, res: Response) => {
+    const tournament = getTournament(req.params.tournamentId);
+    if (tournament === undefined) {
+      res.status(404).json({ code: "NO_TOURNAMENT", message: "unknown tournament" });
+      return;
+    }
+    res.json({ tournament });
+  });
+
+  /** Create a tournament; the creator joins it. O(1). */
+  app.post("/tournaments", (req: Request, res: Response) => {
+    const body = (req.body ?? {}) as {
+      playerId?: unknown;
+      name?: unknown;
+      maxPlayers?: unknown;
+      deck?: unknown;
+    };
+    const playerId = typeof body.playerId === "string" ? body.playerId : "";
+    if (playerId.length === 0) {
+      res.status(400).json({ code: "BAD_PLAYER", message: "playerId is required" });
+      return;
+    }
+    const player = ensurePlayer(playerId);
+    const deck = Array.isArray(body.deck) ? (body.deck as string[]).slice(0, 8) : [];
+    const tournament = createTournament({
+      name: typeof body.name === "string" ? body.name : "Tournament",
+      playerId,
+      playerName: player.name,
+      deck,
+      trophies: player.trophies,
+      maxPlayers: typeof body.maxPlayers === "number" ? body.maxPlayers : undefined,
+    });
+    res.json({ tournament });
+  });
+
+  /** Join a tournament with the caller's current deck. O(p). */
+  app.post("/tournaments/:tournamentId/join", (req: Request, res: Response) => {
+    const body = (req.body ?? {}) as { playerId?: unknown; deck?: unknown };
+    const playerId = typeof body.playerId === "string" ? body.playerId : "";
+    if (playerId.length === 0) {
+      res.status(400).json({ code: "BAD_PLAYER", message: "playerId is required" });
+      return;
+    }
+    const player = ensurePlayer(playerId);
+    const deck = Array.isArray(body.deck) ? (body.deck as string[]).slice(0, 8) : [];
+    const result = joinTournament(req.params.tournamentId, {
+      playerId,
+      playerName: player.name,
+      deck,
+      trophies: player.trophies,
+    });
+    if (!result.ok) {
+      res.status(400).json({ code: result.code ?? "JOIN_FAILED", message: result.message ?? "join failed" });
+      return;
+    }
+    res.json({ tournament: result.tournament });
+  });
+
+  /**
+   * The replay of a finished match (the "Watch" button). O(1) read; the
+   * payload is the sampled frame stream the client plays back.
+   */
+  app.get("/replay/:matchId", (req: Request, res: Response) => {
+    const replay = getReplay(req.params.matchId);
+    if (replay === undefined) {
+      res.status(404).json({ code: "NO_REPLAY", message: "replay not available" });
+      return;
+    }
+    res.json({ replay });
   });
 
   /**

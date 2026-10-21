@@ -621,6 +621,8 @@ export interface BattleLogEntry {
   id: string;
   matchId: string;
   playerId: string;
+  /** Display name of the player (the log shows it beside the trophies). */
+  playerName?: string;
   opponentId: string;
   opponentName: string;
   result: "win" | "loss" | "draw";
@@ -629,6 +631,11 @@ export interface BattleLogEntry {
   deck: string[];
   opponentDeck: string[];
   mode: string;
+  /** Set when the match belonged to a tournament (TOURNAMENTS tab). */
+  tournamentId?: string;
+  tournamentName?: string;
+  /** True while the replay of this match can still be watched. */
+  watchable?: boolean;
   trophies: number;
   opponentTrophies: number;
   trophyDelta: number;
@@ -640,6 +647,119 @@ export interface BattleLogEntry {
 export function getBattleLog(playerId: string, baseUrl?: string): Promise<{ entries: BattleLogEntry[] }> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
   return fetchJson(`${base}/battle-log/${encodeURIComponent(playerId)}`);
+}
+
+// --- Tournaments (the TOURNAMENTS tab of the battle log) -------------------
+
+export interface TournamentPlayerRow {
+  playerId: string;
+  name: string;
+  trophies: number;
+  wins: number;
+  losses: number;
+  eliminated: boolean;
+}
+
+export interface TournamentMatchRow {
+  matchId: string;
+  blueId: string;
+  redId: string;
+  winner: "blue" | "red" | "draw";
+  blueCrowns: number;
+  redCrowns: number;
+  createdAtMs: number;
+}
+
+export interface TournamentSummary {
+  id: string;
+  name: string;
+  status: "open" | "finished";
+  maxPlayers: number;
+  playerCount: number;
+  createdAtMs: number;
+  joined: boolean;
+  championId?: string;
+  championName?: string;
+  players: TournamentPlayerRow[];
+  matches: TournamentMatchRow[];
+}
+
+/** GET /tournaments?playerId= - the tournament list (open first). */
+export function getTournaments(
+  playerId?: string,
+  baseUrl?: string,
+): Promise<{ tournaments: TournamentSummary[] }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  const query = playerId !== undefined && playerId.length > 0 ? `?playerId=${encodeURIComponent(playerId)}` : "";
+  return fetchJson(`${base}/tournaments${query}`);
+}
+
+/** POST /tournaments - create a tournament (the creator joins it). */
+export function createTournament(
+  input: { playerId: string; name: string; deck: string[]; maxPlayers?: number },
+  baseUrl?: string,
+): Promise<{ tournament: TournamentSummary }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return postJson(`${base}/tournaments`, input);
+}
+
+/** POST /tournaments/:id/join - join a tournament with the current deck. */
+export function joinTournament(
+  tournamentId: string,
+  input: { playerId: string; deck: string[] },
+  baseUrl?: string,
+): Promise<{ tournament: TournamentSummary }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return postJson(`${base}/tournaments/${encodeURIComponent(tournamentId)}/join`, input);
+}
+
+// --- Replays (the "Watch" button) -----------------------------------------
+
+export interface ReplayTower {
+  id: string;
+  kind: "king" | "princess";
+  owner: "blue" | "red";
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  destroyed: boolean;
+}
+
+export interface ReplayUnit {
+  /** Stable unit id (units are matched across frames by id). */
+  id: string;
+  cardId: string;
+  owner: "blue" | "red";
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  level: number;
+}
+
+export interface ReplayFrame {
+  t: number;
+  elixirBlue: number;
+  elixirRed: number;
+  crownsBlue: number;
+  crownsRed: number;
+  towers: ReplayTower[];
+  units: ReplayUnit[];
+}
+
+export interface MatchReplay {
+  matchId: string;
+  startedAtMs: number;
+  endedAtMs: number;
+  winner?: "blue" | "red" | "draw";
+  frames: ReplayFrame[];
+}
+
+/** GET /replay/:matchId - the sampled frames of a finished match. */
+export function getReplay(matchId: string, baseUrl?: string): Promise<{ replay: MatchReplay }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/replay/${encodeURIComponent(matchId)}`);
 }
 
 // --- Admin ------------------------------------------------------------------

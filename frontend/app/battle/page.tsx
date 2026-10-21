@@ -175,6 +175,11 @@ export default function BattlePage() {
 
   const { refresh: refreshProfile, profile } = usePlayer();
   const [towerTroopId, setTowerTroopId] = useState(DEFAULT_TOWER_ID);
+  /**
+   * Practice against a specific opponent deck (the battle log "Practice"
+   * button hands the deck of the opponent the player just faced over).
+   */
+  const [foeDeck, setFoeDeck] = useState<string[] | null>(null);
   /** Selected game mode (from the home picker, carried through the redirect). */
   const [gameModeId, setGameModeId] = useState("standard");
   useEffect(() => {
@@ -189,6 +194,28 @@ export default function BattlePage() {
   useEffect(() => {
     setTowerTroopId(loadTowerSelection());
   }, []);
+  // Read the practice opponent deck (?foeDeck=knight,archers,...) and start
+  // that practice match as soon as the battle hook is ready.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get("foeDeck");
+      if (raw === null || raw.length === 0) return;
+      const cards = raw
+        .split(",")
+        .map((id) => id.trim())
+        .filter((id) => id.length > 0 && getCard(id) !== undefined);
+      if (cards.length === 8) setFoeDeck(cards);
+    } catch {
+      // ignore malformed query
+    }
+  }, []);
+  useEffect(() => {
+    if (foeDeck === null) return;
+    void battle.joinPractice("medium", foeDeck);
+    setNotice("Practice match against the opponent's deck.");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [foeDeck]);
   // Warm up the 2D strips for the deck (both team views) so the first frame of
   // a unit is already animated instead of the static fallback.
   useEffect(() => {

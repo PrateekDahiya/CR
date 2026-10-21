@@ -115,6 +115,8 @@ export interface MatchExtras {
   towerTroopId?: string;
   /** Selected game-mode id (registry: backend /game-modes). */
   modeId?: string;
+  /** Deck the bot must play (practice against a previous opponent). */
+  foeDeck?: string[];
 }
 
 export interface SocketClient {
@@ -150,6 +152,7 @@ function wrapSocket(s: Socket | null): SocketClient {
         ...(extras?.levels ? { levels: extras.levels } : {}),
         ...(extras?.towerTroopId ? { towerTroopId: extras.towerTroopId } : {}),
         ...(extras?.modeId ? { modeId: extras.modeId } : {}),
+        ...(extras?.foeDeck ? { foeDeck: extras.foeDeck } : {}),
       });
     },
     leaveQueue: (playerId) => {
@@ -329,6 +332,7 @@ export function joinAiMatch(
     ...(extras?.levels ? { levels: extras.levels } : {}),
     ...(extras?.towerTroopId ? { towerTroopId: extras.towerTroopId } : {}),
     ...(extras?.modeId ? { modeId: extras.modeId } : {}),
+    ...(extras?.foeDeck ? { foeDeck: extras.foeDeck } : {}),
   });
 }
 
@@ -469,5 +473,68 @@ export function onGameError(cb: (e: GameError) => void): Unsubscribe {
   return () => {
     s.off("error", handler);
     s.off("error:game", handler);
+  };
+}
+
+/** Identify this socket with a player id so the server can reach it later. */
+export function registerPlayer(playerId: string): void {
+  if (playerId.length === 0) return;
+  const s = requireSocket();
+  s.emit("player:register", { playerId });
+}
+
+/** A tournament match the server paired the player into. */
+export interface TournamentMatchInfo {
+  matchId: string;
+  side: PlayerSide;
+  opponentId: string;
+  tournamentId?: string;
+}
+
+/**
+ * Tell the server the player is ready to play a tournament match. The server
+ * pairs two ready players and answers with `tournament:match` on BOTH
+ * sockets; until then it answers `tournament:waiting`.
+ */
+export function tournamentReady(args: {
+  tournamentId: string;
+  playerId: string;
+  deck: string[];
+  levels?: Record<string, number>;
+  towerTroopId?: string;
+  modeId?: string;
+}): Promise<Ack> {
+  return emitWithAck("tournament:ready", {
+    tournamentId: args.tournamentId,
+    playerId: args.playerId,
+    deck: args.deck,
+    ...(args.levels ? { levels: args.levels } : {}),
+    ...(args.towerTroopId ? { towerTroopId: args.towerTroopId } : {}),
+    ...(args.modeId ? { modeId: args.modeId } : {}),
+  });
+}
+
+/** Subscribe to the tournament pairing result. */
+export function onTournamentMatch(cb: (m: TournamentMatchInfo) => void): Unsubscribe {
+  const s = requireSocket();
+  const handler = (m: TournamentMatchInfo): void => {
+    if (typeof m?.matchId !== "string" || m.matchId.length === 0) return;
+    cb(m);
+  };
+  s.on("tournament:match", handler);
+  return () => {
+    s.off("tournament:match", handler);
+  };
+}
+
+/** Subscribe to "waiting for an opponent" (the tournament has no rival yet). */
+export function onTournamentWaiting(cb: (info: { tournamentId: string }) => void): Unsubscribe {
+  const s = requireSocket();
+  const handler = (info: { tournamentId: string }): void => {
+    cb(info);
+  };
+  s.on("tournament:waiting", handler);
+  return () => {
+    s.off("tournament:waiting", handler);
   };
 }

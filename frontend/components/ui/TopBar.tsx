@@ -177,9 +177,13 @@ export default function TopBar({ coins, gems }: TopBarCurrencies) {
         <BattleLogPanel
           playerId={profile?.playerId ?? ""}
           onClose={() => setLogOpen(false)}
-          onPractice={() => {
+          onPractice={(foeDeck) => {
             setLogOpen(false);
-            router.push("/battle");
+            const query =
+              foeDeck !== undefined && foeDeck.length > 0
+                ? `?foeDeck=${foeDeck.join(",")}`
+                : "";
+            router.push(`/battle${query}`);
           }}
         />
       ) : null}

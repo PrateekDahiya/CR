@@ -19,6 +19,8 @@ export interface BattleLogEntry {
   /** Match id (stable, used as the "Watch" key). */
   matchId: string;
   playerId: string;
+  /** Display name of the player (the log shows it next to the trophies). */
+  playerName?: string;
   opponentId: string;
   opponentName: string;
   result: BattleLogResult;
@@ -31,6 +33,12 @@ export interface BattleLogEntry {
   opponentDeck: string[];
   /** Game mode id the match ran in. */
   mode: string;
+  /** Set when the match belonged to a tournament (TOURNAMENTS tab). */
+  tournamentId?: string;
+  /** Name of the tournament the match belonged to. */
+  tournamentName?: string;
+  /** True while the replay of this match is still available ("Watch"). */
+  watchable?: boolean;
   /** Trophies of the player right after the match. */
   trophies: number;
   opponentTrophies: number;

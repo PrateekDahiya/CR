@@ -18,6 +18,7 @@
 import type { Server } from "socket.io";
 import { getCardCost } from "./validation.js";
 import { publishState } from "./redis.js";
+import { finishReplay, recordReplayFrame } from "../replays.js";
 import { DEFAULT_GAME_MODE_ID, resolveGameMode, type GameModeConfig } from "../game/modes.js";
 
 // Structural mirror of shared/types.ts (backend tsconfig rootDir=src cannot
@@ -690,6 +691,10 @@ export function startTickLoop(io: Server, matchId: string): void {
       return;
     }
     const status = stepRoom(current);
+    // Replay sampling (the battle log "Watch" button). The recorder drops
+    // samples that arrive faster than its own interval, so this stays O(1)
+    // on the hot path.
+    recordReplayFrame(matchId, current.state, Date.now());
     broadcastState(io, current);
     if (status === "ended") {
       io.to(matchId).emit("match:end", {
@@ -697,6 +702,7 @@ export function startTickLoop(io: Server, matchId: string): void {
         winner: current.state.winner,
         crowns: current.state.crowns,
       });
+      finishReplay(matchId, current.state.winner, Date.now());
       stopTickLoop(matchId);
       // Bot brain (ai.ts) listens for room end and stops thinking.
       onRoomEnded?.(matchId);

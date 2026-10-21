@@ -6,16 +6,42 @@
 ## Pending
 
 ### 2026-10-21 - Battle log polish (battles/tournaments tabs, Practice/Watch, deck rows)
-Status: pending (next session)
+Status: implemented
 Source: "the remaining battle-log polish (battles/tournaments tabs, Practice/Watch
 buttons, deck rows per battle like the Clash Royale reference screenshot)"
-Notes: The Battle Log sheet exists (`backend/src/battleLog.ts`,
-`GET /battle-log/:playerId`) and already has a Practice button, but it still
-needs the Clash Royale reference layout: separate **Battles** and
-**Tournaments** tabs, a **Watch** button next to Practice, and one row per
-battle showing both decks (the reference screenshot shows the deck of each
-side under the result banner). Backend: add the tournament list endpoint and
-the deck of both players to the battle-log payload.
+Notes: The Battle Log sheet now follows the Clash Royale reference layout:
+- **BATTLES / TOURNAMENTS tabs** under the header. The battles tab shows one
+  card per battle: result banner (`VICTORY`/`DEFEAT`/`DRAW`), the crown score
+  (`👑 3 - 0 👑`), my name + trophies on the left, the crossed swords in the
+  middle, the opponent name + trophies on the right, **the deck of BOTH
+  sides** (2 rows of 4 card tiles each, my deck with the per-team FRONT art,
+  the opponent's with the BACK art) and a footer with the trophy delta, the
+  time ago and the **PRACTICE** + **WATCH** buttons.
+- **PRACTICE** starts a real practice match against the AI with the deck the
+  opponent actually played (`/battle?foeDeck=...` -> `match:practice` accepts
+  the opponent deck).
+- **WATCH** opens the new `/replay?matchId=...` viewer: the server samples the
+  authoritative match state every 400 ms (`backend/src/replays.ts`) and the
+  client plays the frames back on the real arena canvas (scrubber, play/pause,
+  1x/2x/4x). The button is greyed out when the replay expired.
+- **TOURNAMENTS tab**: create a tournament, join one, press PLAY. The server
+  pairs the two ready players into a real authoritative match
+  (`tournament:ready` -> `tournament:match`), the result is written back into
+  the bracket (single elimination, champion) and into the battle log, where it
+  shows up in the TOURNAMENTS tab with both decks.
+- Backend: `backend/src/tournaments.ts` (registry + MySQL `tournament` table,
+  O(p) per case, p <= 8), `backend/src/replays.ts` (bounded replay store),
+  `GET /tournaments`, `GET /tournaments/:id`, `POST /tournaments`,
+  `POST /tournaments/:id/join`, `GET /replay/:matchId`; the battle-log payload
+  now carries `playerName`, `tournamentId`, `tournamentName`, `watchable` and
+  always the deck of BOTH players.
+- Verification: `docs/screenshots/battle-log-battles-tab.png`,
+  `battle-log-tournaments-tab.png`, `battle-log-watch-replay.png`;
+  `frontend/tests/battle-log.spec.ts` (5 tests) + `frontend/tests/tournament.spec.ts`
+  (create/join/play + the result in the TOURNAMENTS tab), backend
+  `tests/tournaments.test.ts` + `tests/replays.test.ts` (168 backend tests),
+  frontend + backend `tsc`, the full 107-test Playwright suite and `next build`
+  all pass.
 
 ### 2026-10-20 - Princess/side tower art like the king towers
 Status: implemented (see notes for the part that still needs the artist)
@@ -54,7 +80,7 @@ is a 4 frame cycle (was 2), so the movement is smooth enough to read at arena
 size. See the card asset task below.
 
 ### 2026-10-20 - Card assets for both teams (front + back views, with movement)
-Status: implemented (local worktree; commit not requested)
+Status: implemented
 Source: "i want to start a new session and make it continue with the pending
 task in suggestions and updade the task inside suggestion to search for each
 card asset online front-view and back-view both for red side and blue side

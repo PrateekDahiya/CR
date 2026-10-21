@@ -330,7 +330,7 @@ export interface UseBattle {
   /** Queue for a human opponent, then fall back to the AI after 5s. */
   joinSearch: (difficulty?: "easy" | "medium" | "hard", waitMs?: number) => Promise<void>;
   /** Starts a real authoritative match vs the server-side AI bot. */
-  joinPractice: (difficulty?: "easy" | "medium" | "hard") => Promise<void>;
+  joinPractice: (difficulty?: "easy" | "medium" | "hard", foeDeck?: string[]) => Promise<void>;
   /** Surrender: this player loses, the opponent wins, both get match:end. */
   surrender: () => Promise<void>;
   /** Adopt a known match id/side (matchmaking redirect). */
@@ -481,9 +481,11 @@ export function useBattle({ backendUrl, playerId, deck, levels, towerTroopId, mo
    * Starts a real match against the server-side bot (`match:practice`).
    * Used by the BATTLE button on /battle: PvP needs two clients, so a solo
    * player always gets an authoritative AI game instead of an empty queue.
+   * `foeDeck` makes the bot play a specific deck (the battle log "Practice"
+   * button replays the deck the player faced).
    */
   const joinPractice = useCallback(
-    async (difficulty: "easy" | "medium" | "hard" = "medium") => {
+    async (difficulty: "easy" | "medium" | "hard" = "medium", foeDeck?: string[]) => {
       const id = playerIdRef.current.trim();
       const raw = deckRef.current;
       const d = toBattleDeck(raw);
@@ -501,12 +503,16 @@ export function useBattle({ backendUrl, playerId, deck, levels, towerTroopId, mo
       try {
         const sock = connect(backendUrl);
         setConnected(sock.connected);
-        const sel = await selectDeck(id, d, matchExtrasRef.current);
+        const extras = {
+          ...matchExtrasRef.current,
+          ...(foeDeck !== undefined && foeDeck.length === 8 ? { foeDeck } : {}),
+        };
+        const sel = await selectDeck(id, d, extras);
         if (!sel.ok) {
           setError(sel.error ? `${sel.error.code}: ${sel.error.message}` : "deck:select rejected");
           return;
         }
-        const ack = await joinAiMatch(id, d, difficulty, matchExtrasRef.current);
+        const ack = await joinAiMatch(id, d, difficulty, extras);
         if (!ack.ok) {
           setError(ack.error ? `${ack.error.code}: ${ack.error.message}` : "match:practice rejected");
           return;

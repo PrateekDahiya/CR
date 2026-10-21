@@ -92,3 +92,27 @@ npm start
 - MySQL `card_mechanics` stores versioned JSON effect definitions; `src/mysql.ts` loads all rows before matchmaking and uses the same checked-in seed JSON for local development.
 - When `DB_HOST` is set, startup runs `ensureMysqlDatabase()`: schema migration plus idempotent full seed of cards/stats, 108 catalog rows, mechanics, child templates, menus, and sprites before opening the listener. See `docs/DATABASE_BOOTSTRAP.md`.
 - `src/game/engine.ts` interprets database-defined area damage, status, knockback, clone, splash, and persistent field effects without card-id branches. Full card-by-card implementation remains tracked in `docs/CARD_MECHANICS_PLAN.md`.
+
+## Battle log polish update (2026-10-21, branch card-mechanics)
+- `src/tournaments.ts` — the tournament registry: create/join, the ready pairing
+  (the server pairs the two ready players), the single-elimination bracket
+  (winner advances, loser struck through, champion at the end) and the listing
+  payload. O(p) per case (p <= MAX_PLAYERS = 8), O(t) listing (t <= 50
+  tournaments), persisted in the MySQL `tournament` table (hydrated on boot).
+- `src/replays.ts` — the bounded replay store for the battle log "Watch"
+  button: the room samples the authoritative state every 400 ms (2.5 Hz, not
+  the 10 Hz tick), the frames carry the towers + units + crowns + elixir and
+  the client plays them back on the arena canvas. O(u+t) per sample
+  (u <= 40 units, t = 6 towers), <= 750 frames and <= 8 matches in memory.
+- `src/meta.ts` — new routes: `GET /tournaments`, `GET /tournaments/:id`,
+  `POST /tournaments`, `POST /tournaments/:id/join`, `GET /replay/:matchId`.
+  The battle-log payload now carries `playerName`, `tournamentId`,
+  `tournamentName` and `watchable`, and always the deck of BOTH players (room
+  data -> report payload -> the player's stored deck).
+- `src/index.ts` — socket events `tournament:ready` (pairs the ready players
+  into a normal authoritative room and tells both sides their side) and
+  `player:register` (so the server can reach a player's socket later).
+  `match:practice` now accepts `foeDeck` (practice against the opponent's
+  deck).
+- Tests: `tests/tournaments.test.ts` + `tests/replays.test.ts`; full
+  `npm test` 168/168 PASS; `tsc --noEmit` clean.

@@ -16,6 +16,11 @@ export interface CardArtProps {
   costTestId?: string;
   /** Extra classes on the art box (e.g. battle hand sizing). */
   className?: string;
+  /**
+   * Explicit art url (the battle log uses the per-team art:
+   * /cardart/<card>-front.png / -back.png). Falls back to /cards/<slug>.png.
+   */
+  artUrl?: string;
 }
 
 // Renders CR card art (real PNG from /cards/<slug>.png gitignored folder) with
@@ -32,6 +37,7 @@ export default function CardArt({
   progress,
   costTestId,
   className: extraClass,
+  artUrl,
 }: CardArtProps) {
   const dims = size === "lg" ? "h-28 w-24" : size === "sm" ? "h-12 w-10" : "h-20 w-16";
   const emoji = EMOJI_FALLBACK[name] ?? "🃏";
@@ -49,7 +55,7 @@ export default function CardArt({
       {/* Real art (gitignored /public/cards/<slug>.png; falls back via onError). */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={`/cards/${safeName}.png`}
+        src={artUrl ?? `/cards/${safeName}.png`}
         alt={name}
         onError={(e) => {
           (e.currentTarget as HTMLImageElement).style.display = "none";

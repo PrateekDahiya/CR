@@ -69,6 +69,20 @@ async function main(): Promise<void> {
   }
   // Battle-log rows of players that no longer exist (orphans from test runs).
   await pool.query("DELETE FROM battle_log WHERE player_id NOT IN (?)", [KEEP]);
+  // Tournaments whose roster only holds test players (bracket rows of the
+  // removed accounts).
+  const [trnRows] = await pool.query("SELECT id, payload FROM tournament");
+  for (const row of trnRows as Array<{ id: string; payload: string }>) {
+    let players: Array<{ playerId?: string }> = [];
+    try {
+      const parsed = JSON.parse(row.payload) as { players?: Array<{ playerId?: string }> };
+      players = Array.isArray(parsed.players) ? parsed.players : [];
+    } catch {
+      players = [];
+    }
+    const kept = players.some((p) => KEEP.includes(String(p.playerId)));
+    if (!kept) await pool.query("DELETE FROM tournament WHERE id=?", [row.id]);
+  }
   const [after] = await pool.query("SELECT player_id FROM player_profiles");
   console.log(`remaining: ${(after as unknown[]).map((r) => (r as { player_id: string }).player_id).join(", ")}`);
   await pool.end();
