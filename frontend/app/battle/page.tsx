@@ -313,8 +313,9 @@ export default function BattlePage() {
     reportedRef.current = r.matchId;
     void reportMatch(
       {
-        blueId: side === "blue" ? playerId : "ai-opponent",
-        redId: side === "red" ? playerId : "ai-opponent",
+        // The bot side is reported as null: it is not a player.
+        blueId: side === "blue" ? playerId : null,
+        redId: side === "red" ? playerId : null,
         winner: r.winner === "draw" ? "draw" : r.winner,
         blueCrowns: r.crowns?.blue ?? 0,
         redCrowns: r.crowns?.red ?? 0,
