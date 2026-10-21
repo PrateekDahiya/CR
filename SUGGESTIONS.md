@@ -15,7 +15,10 @@ Notes: The next session replaces the warped single-render strips with real
 animation: one **4x5 sprite sheet per card** (row 1 red walk front, row 2 red
 attack front, row 3 blue walk back, row 4 blue attack back, 96x96 cells). The
 user's image prompt (wizard, red fire / blue ice, strict front/back views) is
-the template - see `docs/card-art/NEXT_SESSION_PROMPT.md`.
+the template - see `docs/card-art/NEXT_SESSION_PROMPT.md`, which also carries
+the worktree instructions (work in `D:\Documents\Projects\CR\.worktrees\
+card-mechanics` on the branch `card-mechanics`, because the preview servers
+run from there; merge into `main` with `--no-ff` from the main worktree).
 Sources researched and documented in `docs/card-art/SOURCES_AND_TOOLS.md`:
 free sprite packs (Quaternius/Kenney/a_klingon CC0, OpenGameArt CC0, Pixel
 Frog, KayKit), 3D -> sheet renderers (Pixor, Blender Sprite Sheet Generator,
