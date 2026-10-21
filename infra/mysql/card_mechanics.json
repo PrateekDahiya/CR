@@ -1,110 +1,2043 @@
 {
-  "archer-queen": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": [{"kind": "status", "status": "invisible", "durationMs": 5000}, {"kind": "status", "status": "rage", "durationMs": 5000}]},
-  "archers": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "arrows": {"version": 1, "attack": "none", "targeting": "all", "movement": null, "onDeploy": [], "onAttack": [{"kind": "areaDamage", "radius": 4, "volleyCount": 3, "intervalMs": 200, "durationMs": 600, "towerMultiplier": 0.4}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "baby-dragon": {"version": 1, "attack": "splash", "targeting": "air+ground", "movement": "flying", "onDeploy": [], "onAttack": [{"kind": "areaDamage", "radius": 1.5, "amount": 0}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "balloon": {"version": 1, "attack": "single", "targeting": "buildings", "movement": "flying", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [{"kind": "areaDamage", "radius": 2}], "periodic": [], "ability": []},
-  "bandit": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "dash", "minimumDistance": 3, "multiplier": 2}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "barbarian-barrel": {"version": 1, "attack": "none", "targeting": "all", "movement": null, "onDeploy": [{"kind": "damage", "projectile": "roll"}], "onAttack": [], "onHit": [], "onDeath": [{"kind": "spawn", "childId": "barbarian", "count": 1}], "periodic": [], "ability": []},
-  "barbarian-hut": {"version": 1, "attack": "none", "targeting": "all", "movement": null, "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [{"kind": "spawn", "childId": "barbarian", "count": 1}], "periodic": [{"kind": "spawn", "childId": "barbarian", "count": 3, "intervalMs": 15000}], "ability": []},
-  "barbarians": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "bats": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": "flying", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "battle-ram": {"version": 1, "attack": "single", "targeting": "buildings", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "dash", "multiplier": 2}], "onHit": [], "onDeath": [{"kind": "spawn", "childId": "barbarian", "count": 2}], "periodic": [], "ability": []},
-  "bomb-tower": {"version": 1, "attack": "splash", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [{"kind": "areaDamage", "radius": 2}], "periodic": [], "ability": []},
-  "bomber": {"version": 1, "attack": "splash", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "areaDamage", "radius": 1.5, "amount": 0}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "boss-bandit": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "dash", "minimumDistance": 3, "multiplier": 2}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "bowler": {"version": 1, "attack": "pierce", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "knockback"}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "cannon": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "cannoneer": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": null, "towerTroop": true, "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "clone": {"version": 1, "attack": "none", "targeting": "friendly", "movement": null, "onDeploy": [{"kind": "clone", "radius": 3, "cloneHp": 1, "excludeBuildings": true}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "dagger-duchess": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": null, "towerTroop": true, "onDeploy": [], "onAttack": [{"kind": "damage", "ammo": 8}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "dark-prince": {"version": 1, "attack": "splash", "targeting": "ground", "movement": "ground", "onDeploy": [{"kind": "status", "status": "shield", "amount": 240, "target": "friendly"}], "onAttack": [{"kind": "areaDamage", "radius": 1.2, "amount": 0}, {"kind": "dash", "multiplier": 2}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "dart-goblin": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "earthquake": {"version": 1, "attack": "none", "targeting": "ground", "movement": null, "onDeploy": [{"kind": "areaDamage", "durationMs": 3000, "intervalMs": 1000, "buildingMultiplier": 3}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "electro-dragon": {"version": 1, "attack": "chain", "targeting": "air+ground", "movement": "flying", "onDeploy": [], "onAttack": [{"kind": "chain", "maxTargets": 3}, {"kind": "status", "status": "stun", "durationMs": 500}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "electro-wizard": {"version": 1, "attack": "chain", "targeting": "air+ground", "movement": "ground", "onDeploy": [{"kind": "areaDamage", "radius": 2}, {"kind": "status", "status": "stun", "durationMs": 500}], "onAttack": [{"kind": "chain", "maxTargets": 2}, {"kind": "status", "status": "stun", "durationMs": 500}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "elite-barbarians": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "elixir-collector": {"version": 1, "attack": "none", "targeting": "none", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [{"kind": "elixir", "amount": 1, "intervalMs": 9000}], "ability": []},
-  "elixir-golem": {"version": 1, "attack": "single", "targeting": "buildings", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [{"kind": "split", "childId": "elixir-golemite", "count": 2}, {"kind": "elixir", "amount": 1}], "periodic": [], "ability": []},
-  "executioner": {"version": 1, "attack": "pierce", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "pierce", "returning": true}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "fire-spirit": {"version": 1, "attack": "suicide", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "areaDamage", "radius": 2}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "fireball": {"version": 1, "attack": "none", "targeting": "all", "movement": null, "onDeploy": [{"kind": "areaDamage", "radius": 2.5, "towerMultiplier": 0.4}, {"kind": "knockback"}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "firecracker": {"version": 1, "attack": "splash", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "areaDamage", "radius": 1.5, "amount": 0}, {"kind": "knockback", "self": true}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "fisherman": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "teleport", "mode": "hook"}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "flying-machine": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": "flying", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "freeze": {"version": 1, "attack": "none", "targeting": "all", "movement": null, "onDeploy": [{"kind": "areaDamage", "radius": 3, "towerMultiplier": 0.4}, {"kind": "status", "status": "freeze", "durationMs": 4000}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "furnace": {"version": 1, "attack": "none", "targeting": "none", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [{"kind": "spawn", "childId": "fire-spirit", "count": 1, "intervalMs": 5000}], "ability": []},
-  "giant": {"version": 1, "attack": "single", "targeting": "buildings", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "giant-skeleton": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [{"kind": "areaDamage", "radius": 2, "delayMs": 1000}], "periodic": [], "ability": []},
-  "giant-snowball": {"version": 1, "attack": "none", "targeting": "all", "movement": null, "onDeploy": [{"kind": "areaDamage", "radius": 2.5, "towerMultiplier": 0.4}, {"kind": "knockback"}, {"kind": "status", "status": "slow", "durationMs": 2000}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "goblin-barrel": {"version": 1, "attack": "none", "targeting": "all", "movement": null, "onDeploy": [{"kind": "spawn", "childId": "goblin", "count": 3}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "goblin-cage": {"version": 1, "attack": "none", "targeting": "none", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [{"kind": "spawn", "childId": "goblin-brawler", "count": 1}], "periodic": [], "ability": []},
-  "goblin-curse": {"version": 1, "attack": "none", "targeting": "all", "movement": null, "onDeploy": [{"kind": "status", "status": "curse", "durationMs": 6000}, {"kind": "areaDamage", "durationMs": 6000, "intervalMs": 1000}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "goblin-demolisher": {"version": 1, "attack": "splash", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [{"kind": "areaDamage", "radius": 2}], "periodic": [], "ability": []},
-  "goblin-drill": {"version": 1, "attack": "none", "targeting": "none", "movement": "burrow", "onDeploy": [{"kind": "spawn", "childId": "goblin", "count": 1}], "onAttack": [], "onHit": [], "onDeath": [{"kind": "spawn", "childId": "goblin", "count": 2}], "periodic": [{"kind": "spawn", "childId": "goblin", "count": 1, "intervalMs": 3000}], "ability": []},
-  "goblin-gang": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": "ground", "onDeploy": [{"kind": "spawn", "childId": "goblin", "count": 3, "replaceSelf": true}, {"kind": "spawn", "childId": "spear-goblin", "count": 3}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "goblin-giant": {"version": 1, "attack": "single", "targeting": "buildings", "movement": "ground", "onDeploy": [{"kind": "spawn", "childId": "spear-goblin", "count": 2}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "goblin-hut": {"version": 1, "attack": "none", "targeting": "none", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [{"kind": "spawn", "childId": "spear-goblin", "count": 1}], "periodic": [{"kind": "spawn", "childId": "spear-goblin", "count": 1, "intervalMs": 2200}], "ability": []},
-  "goblins": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "goblinstein": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": "ground", "onDeploy": [{"kind": "spawn", "childId": "goblinstein-monster", "count": 1}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": [{"kind": "chain", "maxTargets": 3, "towerMultiplier": 0.35}]},
-  "golden-knight": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": [{"kind": "dash", "maxTargets": 10}]},
-  "golem": {"version": 1, "attack": "single", "targeting": "buildings", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [{"kind": "areaDamage", "radius": 2}, {"kind": "split", "childId": "golemite", "count": 2}], "periodic": [], "ability": []},
-  "graveyard": {"version": 1, "attack": "none", "targeting": "all", "movement": null, "onDeploy": [{"kind": "spawn", "childId": "skeleton", "count": 1, "intervalMs": 500, "durationMs": 6000, "maxCount": 12}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "guards": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [{"kind": "status", "status": "shield", "amount": 256, "target": "friendly"}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "hog-rider": {"version": 1, "attack": "single", "targeting": "buildings", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "ice-golem": {"version": 1, "attack": "single", "targeting": "buildings", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [{"kind": "areaDamage", "radius": 2}, {"kind": "status", "status": "slow", "durationMs": 3000}], "periodic": [], "ability": []},
-  "ice-spirit": {"version": 1, "attack": "suicide", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "areaDamage", "radius": 2}, {"kind": "status", "status": "freeze", "durationMs": 1000}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "ice-wizard": {"version": 1, "attack": "splash", "targeting": "air+ground", "movement": "ground", "onDeploy": [{"kind": "status", "status": "slow", "durationMs": 1500}], "onAttack": [{"kind": "status", "status": "slow", "durationMs": 1000}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "inferno-dragon": {"version": 1, "attack": "beam", "targeting": "air+ground", "movement": "flying", "onDeploy": [], "onAttack": [{"kind": "ramp", "resetOnTargetChange": true}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "inferno-tower": {"version": 1, "attack": "beam", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "ramp", "resetOnTargetChange": true}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "knight": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "lava-hound": {"version": 1, "attack": "single", "targeting": "buildings", "movement": "flying", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [{"kind": "split", "childId": "lava-pup", "count": 6}], "periodic": [], "ability": []},
-  "lightning": {"version": 1, "attack": "none", "targeting": "all", "movement": null, "onDeploy": [{"kind": "chain", "maxTargets": 3}, {"kind": "status", "status": "stun", "durationMs": 500}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "little-prince": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": [{"kind": "spawn", "childId": "guardienne", "count": 1}]},
-  "lumberjack": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [{"kind": "spawn", "childId": "rage-field", "count": 1}], "periodic": [], "ability": []},
-  "magic-archer": {"version": 1, "attack": "pierce", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "pierce"}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "mega-knight": {"version": 1, "attack": "splash", "targeting": "ground", "movement": "ground", "onDeploy": [{"kind": "areaDamage", "radius": 2}], "onAttack": [{"kind": "dash", "multiplier": 2}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "mighty-miner": {"version": 1, "attack": "beam", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "ramp"}], "onHit": [], "onDeath": [], "periodic": [], "ability": [{"kind": "teleport"}, {"kind": "areaDamage", "radius": 2}]},
-  "miner": {"version": 1, "attack": "single", "targeting": "all", "movement": "burrow", "onDeploy": [{"kind": "teleport", "anywhere": true}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "mini-pekka": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "minion-horde": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": "flying", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "minions": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": "flying", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "monk": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": [{"kind": "status", "status": "reflect", "durationMs": 4000}]},
-  "mortar": {"version": 1, "attack": "splash", "targeting": "all", "movement": "siege", "onDeploy": [], "onAttack": [{"kind": "damage", "minimumRange": 3}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "mother-witch": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "status", "status": "curse", "childId": "cursed-hog"}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "musketeer": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "night-witch": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [{"kind": "spawn", "childId": "bat", "count": 1}], "periodic": [{"kind": "spawn", "childId": "bat", "count": 2, "intervalMs": 5000}], "ability": []},
-  "pekka": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "phoenix": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": "flying", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [{"kind": "spawn", "childId": "phoenix-egg", "count": 1}], "periodic": [], "ability": []},
-  "poison": {"version": 1, "attack": "none", "targeting": "all", "movement": null, "onDeploy": [{"kind": "areaDamage", "durationMs": 8000, "intervalMs": 1000, "towerMultiplier": 0.4}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "prince": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "dash", "multiplier": 2}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "princess": {"version": 1, "attack": "splash", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "areaDamage", "radius": 3, "amount": 0}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "rage": {"version": 1, "attack": "none", "targeting": "friendly", "movement": null, "onDeploy": [{"kind": "status", "status": "rage", "durationMs": 6000}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "ram-rider": {"version": 1, "attack": "single", "targeting": "buildings", "movement": "ground", "onDeploy": [{"kind": "spawn", "childId": "ram-rider-rider", "count": 1}], "onAttack": [{"kind": "dash", "multiplier": 2}, {"kind": "status", "status": "slow", "durationMs": 1500}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "rascals": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": "ground", "onDeploy": [{"kind": "spawn", "childId": "rascal-boy", "count": 1, "replaceSelf": true}, {"kind": "spawn", "childId": "rascal-girl", "count": 2}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "rocket": {"version": 1, "attack": "none", "targeting": "all", "movement": null, "onDeploy": [{"kind": "areaDamage", "radius": 2, "towerMultiplier": 0.4, "delayMs": 1000}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "royal-chef": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": null, "towerTroop": true, "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [{"kind": "levelUp", "intervalMs": 23000, "excludeBuildings": true, "minHealthRatio": 0.2}], "ability": []},
-  "royal-delivery": {"version": 1, "attack": "none", "targeting": "enemy", "movement": null, "onDeploy": [{"kind": "areaDamage", "radius": 2, "excludeTowers": true}, {"kind": "spawn", "childId": "royal-recruit", "count": 1}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "royal-ghost": {"version": 1, "attack": "splash", "targeting": "ground", "movement": "ground", "onDeploy": [{"kind": "status", "status": "invisible"}], "onAttack": [{"kind": "status", "status": "reveal"}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "royal-giant": {"version": 1, "attack": "single", "targeting": "buildings", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "royal-hogs": {"version": 1, "attack": "single", "targeting": "buildings", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "royal-recruits": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [{"kind": "status", "status": "shield", "amount": 240, "target": "friendly"}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "skeleton-army": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "skeleton-barrel": {"version": 1, "attack": "single", "targeting": "buildings", "movement": "flying", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [{"kind": "spawn", "childId": "skeleton", "count": 7}], "periodic": [], "ability": []},
-  "skeleton-king": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": [{"kind": "spawn", "childId": "skeleton", "count": 10}]},
-  "skeletons": {"version": 1, "attack": "single", "targeting": "ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "sparky": {"version": 1, "attack": "splash", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "status", "status": "chargeUp", "durationMs": 4000}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "spear-goblins": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "tesla": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": "ground", "onDeploy": [{"kind": "status", "status": "buried"}], "onAttack": [{"kind": "status", "status": "reveal"}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "the-log": {"version": 1, "attack": "none", "targeting": "ground", "movement": null, "onDeploy": [{"kind": "damage", "projectile": "roll"}, {"kind": "knockback"}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "tombstone": {"version": 1, "attack": "none", "targeting": "none", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [{"kind": "spawn", "childId": "skeleton", "count": 4}], "periodic": [{"kind": "spawn", "childId": "skeleton", "count": 2, "intervalMs": 4000}], "ability": []},
-  "tornado": {"version": 1, "attack": "none", "targeting": "enemy", "movement": null, "onDeploy": [{"kind": "areaDamage", "radius": 3, "durationMs": 3000, "intervalMs": 500, "towerMultiplier": 0.35}, {"kind": "knockback", "mode": "pull"}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "tower-princess": {"version": 1, "attack": "single", "targeting": "air+ground", "movement": null, "towerTroop": true, "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "valkyrie": {"version": 1, "attack": "splash", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "areaDamage", "radius": 1.2, "amount": 0}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "void": {"version": 1, "attack": "none", "targeting": "all", "movement": null, "onDeploy": [{"kind": "areaDamage", "radius": 2.5, "targetCountScaling": true, "towerMultiplier": 0.4}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "witch": {"version": 1, "attack": "splash", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [{"kind": "spawn", "childId": "skeleton", "count": 4, "intervalMs": 7000}], "ability": []},
-  "wizard": {"version": 1, "attack": "splash", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "areaDamage", "radius": 1.5, "amount": 0}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "x-bow": {"version": 1, "attack": "beam", "targeting": "all", "movement": "siege", "onDeploy": [], "onAttack": [{"kind": "status", "status": "lockOn"}], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "zap": {"version": 1, "attack": "none", "targeting": "all", "movement": null, "onDeploy": [{"kind": "areaDamage", "radius": 2.5, "towerMultiplier": 0.4}, {"kind": "status", "status": "stun", "durationMs": 500}], "onAttack": [], "onHit": [], "onDeath": [], "periodic": [], "ability": []},
-  "zappies": {"version": 1, "attack": "chain", "targeting": "air+ground", "movement": "ground", "onDeploy": [], "onAttack": [{"kind": "status", "status": "stun", "durationMs": 500}], "onHit": [], "onDeath": [], "periodic": [], "ability": []}
+  "archer-queen": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": [
+      {
+        "kind": "status",
+        "status": "invisible",
+        "durationMs": 5000
+      },
+      {
+        "kind": "status",
+        "status": "rage",
+        "durationMs": 5000
+      }
+    ]
+  },
+  "archers": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "arrows": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "all",
+    "movement": null,
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "areaDamage",
+        "radius": 3.5,
+        "volleyCount": 3,
+        "intervalMs": 200,
+        "durationMs": 600,
+        "towerMultiplier": 0.2541
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "baby-dragon": {
+    "version": 1,
+    "attack": "splash",
+    "targeting": "air+ground",
+    "movement": "flying",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": [],
+    "radius": 1.5
+  },
+  "balloon": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "buildings",
+    "movement": "flying",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [
+      {
+        "kind": "areaDamage",
+        "radius": 2.5,
+        "amount": 240.0
+      }
+    ],
+    "periodic": [],
+    "ability": []
+  },
+  "bandit": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "dash",
+        "minimumDistance": 3,
+        "multiplier": 2,
+        "radius": 1.5
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "barbarian-barrel": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "ground",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "damage",
+        "projectile": "roll"
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [
+      {
+        "kind": "spawn",
+        "childId": "barbarian",
+        "count": 1
+      }
+    ],
+    "periodic": [],
+    "ability": []
+  },
+  "barbarian-hut": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "none",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [
+      {
+        "kind": "spawn",
+        "childId": "barbarian",
+        "count": 3,
+        "intervalMs": 15000
+      }
+    ],
+    "ability": []
+  },
+  "barbarians": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "bats": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": "flying",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "battle-ram": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "buildings",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "dash",
+        "multiplier": 2,
+        "radius": 1.5
+      }
+    ],
+    "onHit": [],
+    "onDeath": [
+      {
+        "kind": "spawn",
+        "childId": "barbarian",
+        "count": 2
+      }
+    ],
+    "periodic": [],
+    "ability": []
+  },
+  "bomb-tower": {
+    "version": 1,
+    "attack": "splash",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [
+      {
+        "kind": "areaDamage",
+        "radius": 1.5,
+        "amount": 222.0
+      }
+    ],
+    "periodic": [],
+    "ability": [],
+    "radius": 1.5
+  },
+  "bomber": {
+    "version": 1,
+    "attack": "splash",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": [],
+    "radius": 1.5
+  },
+  "boss-bandit": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "dash",
+        "minimumDistance": 3,
+        "multiplier": 2,
+        "radius": 1.5
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "bowler": {
+    "version": 1,
+    "attack": "pierce",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "knockback"
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "cannon": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "cannoneer": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": null,
+    "towerTroop": true,
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "clone": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "friendly",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "clone",
+        "radius": 3.0,
+        "cloneHp": 1,
+        "excludeBuildings": true
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "dagger-duchess": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": null,
+    "towerTroop": true,
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "damage",
+        "ammo": 8
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "dark-prince": {
+    "version": 1,
+    "attack": "splash",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [
+      {
+        "kind": "status",
+        "status": "shield",
+        "amount": 256.0,
+        "target": "friendly"
+      }
+    ],
+    "onAttack": [
+      {
+        "kind": "dash",
+        "multiplier": 2,
+        "radius": 1.5
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": [],
+    "radius": 1.1
+  },
+  "dart-goblin": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "earthquake": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "ground",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "areaDamage",
+        "durationMs": 3000,
+        "intervalMs": 1000,
+        "buildingMultiplier": 3,
+        "radius": 3.5,
+        "towerMultiplier": 0.631
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "electro-dragon": {
+    "version": 1,
+    "attack": "chain",
+    "targeting": "air+ground",
+    "movement": "flying",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "chain",
+        "maxTargets": 3
+      },
+      {
+        "kind": "status",
+        "status": "stun",
+        "durationMs": 500
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "electro-wizard": {
+    "version": 1,
+    "attack": "chain",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [
+      {
+        "kind": "areaDamage",
+        "radius": 2
+      },
+      {
+        "kind": "status",
+        "status": "stun",
+        "durationMs": 500
+      }
+    ],
+    "onAttack": [
+      {
+        "kind": "chain",
+        "maxTargets": 2
+      },
+      {
+        "kind": "status",
+        "status": "stun",
+        "durationMs": 500
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "elite-barbarians": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "elixir-collector": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "none",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [
+      {
+        "kind": "elixir",
+        "amount": 1,
+        "intervalMs": 13000
+      }
+    ],
+    "ability": []
+  },
+  "elixir-golem": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "buildings",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [
+      {
+        "kind": "split",
+        "childId": "elixir-golemite",
+        "count": 2
+      },
+      {
+        "kind": "elixir",
+        "amount": 1
+      }
+    ],
+    "periodic": [],
+    "ability": []
+  },
+  "executioner": {
+    "version": 1,
+    "attack": "pierce",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "pierce",
+        "returning": true
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "fire-spirit": {
+    "version": 1,
+    "attack": "suicide",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "areaDamage",
+        "radius": 2
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "fireball": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "all",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "areaDamage",
+        "radius": 2.5,
+        "towerMultiplier": 0.2311
+      },
+      {
+        "kind": "knockback"
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "firecracker": {
+    "version": 1,
+    "attack": "splash",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "areaDamage",
+        "radius": 1.5,
+        "amount": 0
+      },
+      {
+        "kind": "knockback",
+        "self": true
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "fisherman": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "teleport",
+        "mode": "hook"
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "flying-machine": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": "flying",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "freeze": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "all",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "areaDamage",
+        "radius": 3.0,
+        "towerMultiplier": 0.3043,
+        "durationMs": 4000
+      },
+      {
+        "kind": "status",
+        "status": "freeze",
+        "durationMs": 4000,
+        "radius": 3.0
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "furnace": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [
+      {
+        "kind": "spawn",
+        "childId": "fire-spirit",
+        "count": 1,
+        "intervalMs": 7000
+      }
+    ],
+    "ability": []
+  },
+  "giant": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "buildings",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "giant-skeleton": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [
+      {
+        "kind": "areaDamage",
+        "radius": 3.0,
+        "delayMs": 1000,
+        "amount": 688.0
+      }
+    ],
+    "periodic": [],
+    "ability": []
+  },
+  "giant-snowball": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "all",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "areaDamage",
+        "radius": 2.5,
+        "towerMultiplier": 0.2514
+      },
+      {
+        "kind": "knockback"
+      },
+      {
+        "kind": "status",
+        "status": "slow",
+        "durationMs": 3000,
+        "radius": 2.5
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "goblin-barrel": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "all",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "spawn",
+        "childId": "goblin",
+        "count": 3
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "goblin-cage": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "none",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [
+      {
+        "kind": "spawn",
+        "childId": "goblin-brawler",
+        "count": 1
+      }
+    ],
+    "periodic": [],
+    "ability": []
+  },
+  "goblin-curse": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "all",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "status",
+        "status": "curse",
+        "durationMs": 6000,
+        "radius": 3.0
+      },
+      {
+        "kind": "areaDamage",
+        "durationMs": 6000,
+        "intervalMs": 1000,
+        "radius": 3.0,
+        "towerMultiplier": 0.2857
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "goblin-demolisher": {
+    "version": 1,
+    "attack": "splash",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [
+      {
+        "kind": "areaDamage",
+        "radius": 2.0,
+        "amount": 404.0
+      }
+    ],
+    "periodic": [],
+    "ability": [],
+    "radius": 1.5
+  },
+  "goblin-drill": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "none",
+    "movement": "ground",
+    "onDeploy": [
+      {
+        "kind": "spawn",
+        "childId": "goblin",
+        "count": 1
+      },
+      {
+        "kind": "areaDamage",
+        "radius": 2.5,
+        "amount": 84.0
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [
+      {
+        "kind": "spawn",
+        "childId": "goblin",
+        "count": 2
+      }
+    ],
+    "periodic": [
+      {
+        "kind": "spawn",
+        "childId": "goblin",
+        "count": 1,
+        "intervalMs": 3000
+      }
+    ],
+    "ability": []
+  },
+  "goblin-gang": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [
+      {
+        "kind": "spawn",
+        "childId": "goblin",
+        "count": 3,
+        "replaceSelf": true
+      },
+      {
+        "kind": "spawn",
+        "childId": "spear-goblin",
+        "count": 3
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "goblin-giant": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "buildings",
+    "movement": "ground",
+    "onDeploy": [
+      {
+        "kind": "spawn",
+        "childId": "spear-goblin",
+        "count": 2
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "goblin-hut": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "none",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [
+      {
+        "kind": "spawn",
+        "childId": "spear-goblin",
+        "count": 1,
+        "intervalMs": 2200
+      }
+    ],
+    "ability": []
+  },
+  "goblins": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "goblinstein": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [
+      {
+        "kind": "spawn",
+        "childId": "goblinstein-monster",
+        "count": 1
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": [
+      {
+        "kind": "chain",
+        "maxTargets": 3,
+        "towerMultiplier": 0.35
+      }
+    ]
+  },
+  "golden-knight": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": [
+      {
+        "kind": "dash",
+        "maxTargets": 10
+      }
+    ]
+  },
+  "golem": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "buildings",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [
+      {
+        "kind": "areaDamage",
+        "radius": 2.0,
+        "amount": 225.0
+      },
+      {
+        "kind": "split",
+        "childId": "golemite",
+        "count": 2
+      }
+    ],
+    "periodic": [],
+    "ability": []
+  },
+  "graveyard": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "all",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "spawn",
+        "childId": "skeleton",
+        "count": 1,
+        "intervalMs": 500,
+        "durationMs": 9000,
+        "maxCount": 15
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "guards": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [
+      {
+        "kind": "status",
+        "status": "shield",
+        "amount": 256.0,
+        "target": "friendly"
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "hog-rider": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "buildings",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "ice-golem": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "buildings",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [
+      {
+        "kind": "areaDamage",
+        "radius": 2.0,
+        "amount": 92.0
+      },
+      {
+        "kind": "status",
+        "status": "slow",
+        "durationMs": 3000
+      }
+    ],
+    "periodic": [],
+    "ability": []
+  },
+  "ice-spirit": {
+    "version": 1,
+    "attack": "suicide",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "areaDamage",
+        "radius": 2
+      },
+      {
+        "kind": "status",
+        "status": "freeze",
+        "durationMs": 1000
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "ice-wizard": {
+    "version": 1,
+    "attack": "splash",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [
+      {
+        "kind": "status",
+        "status": "slow",
+        "durationMs": 1500
+      },
+      {
+        "kind": "areaDamage",
+        "radius": 2.5,
+        "amount": 84.0
+      }
+    ],
+    "onAttack": [
+      {
+        "kind": "status",
+        "status": "slow",
+        "durationMs": 1000
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": [],
+    "radius": 1.5
+  },
+  "inferno-dragon": {
+    "version": 1,
+    "attack": "beam",
+    "targeting": "air+ground",
+    "movement": "flying",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "ramp",
+        "resetOnTargetChange": true,
+        "multipliers": [
+          1.0,
+          2.486,
+          3.429,
+          8.571,
+          12.057,
+          30.143
+        ]
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "inferno-tower": {
+    "version": 1,
+    "attack": "beam",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "ramp",
+        "resetOnTargetChange": true,
+        "multipliers": [
+          1.0,
+          2.488,
+          3.674,
+          9.186,
+          19.698,
+          49.233
+        ]
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "knight": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "lava-hound": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "buildings",
+    "movement": "flying",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [
+      {
+        "kind": "split",
+        "childId": "lava-pup",
+        "count": 6
+      }
+    ],
+    "periodic": [],
+    "ability": []
+  },
+  "lightning": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "all",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "chain",
+        "maxTargets": 3,
+        "radius": 3.5
+      },
+      {
+        "kind": "status",
+        "status": "stun",
+        "durationMs": 500,
+        "radius": 3.5
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "little-prince": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": [
+      {
+        "kind": "spawn",
+        "childId": "guardienne",
+        "count": 1
+      }
+    ]
+  },
+  "lumberjack": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [
+      {
+        "kind": "spawn",
+        "childId": "rage-field",
+        "count": 1
+      }
+    ],
+    "periodic": [],
+    "ability": []
+  },
+  "magic-archer": {
+    "version": 1,
+    "attack": "pierce",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "pierce"
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "mega-knight": {
+    "version": 1,
+    "attack": "splash",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [
+      {
+        "kind": "areaDamage",
+        "radius": 2
+      }
+    ],
+    "onAttack": [
+      {
+        "kind": "dash",
+        "multiplier": 2,
+        "radius": 1.5
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": [],
+    "radius": 1.3
+  },
+  "mighty-miner": {
+    "version": 1,
+    "attack": "beam",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "ramp",
+        "multipliers": [
+          1.0,
+          2.5,
+          5.1,
+          12.75,
+          10.225,
+          25.55
+        ]
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": [
+      {
+        "kind": "teleport"
+      },
+      {
+        "kind": "areaDamage",
+        "radius": 2
+      }
+    ]
+  },
+  "miner": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "burrow",
+    "onDeploy": [
+      {
+        "kind": "teleport",
+        "anywhere": true
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "mini-pekka": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "minion-horde": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": "flying",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "minions": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": "flying",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "monk": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": [
+      {
+        "kind": "status",
+        "status": "reflect",
+        "durationMs": 4000
+      }
+    ]
+  },
+  "mortar": {
+    "version": 1,
+    "attack": "splash",
+    "targeting": "ground",
+    "movement": "siege",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "damage",
+        "minimumRange": 3.5
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": [],
+    "radius": 2.0
+  },
+  "mother-witch": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "status",
+        "status": "curse",
+        "childId": "cursed-hog"
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "musketeer": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "night-witch": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [
+      {
+        "kind": "spawn",
+        "childId": "bat",
+        "count": 1
+      }
+    ],
+    "periodic": [
+      {
+        "kind": "spawn",
+        "childId": "bat",
+        "count": 2,
+        "intervalMs": 5000
+      }
+    ],
+    "ability": []
+  },
+  "pekka": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "phoenix": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": "flying",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [
+      {
+        "kind": "areaDamage",
+        "amount": 163.0,
+        "radius": 2.0
+      },
+      {
+        "kind": "spawn",
+        "childId": "phoenix-egg",
+        "count": 1
+      }
+    ],
+    "periodic": [],
+    "ability": []
+  },
+  "poison": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "all",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "areaDamage",
+        "durationMs": 8000,
+        "intervalMs": 1000,
+        "towerMultiplier": 0.2391,
+        "radius": 3.5
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "prince": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "dash",
+        "multiplier": 2,
+        "radius": 1.5
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "princess": {
+    "version": 1,
+    "attack": "splash",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": [],
+    "radius": 2.0
+  },
+  "rage": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "friendly",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "status",
+        "status": "rage",
+        "durationMs": 4500,
+        "radius": 3.0
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "ram-rider": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "buildings",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "dash",
+        "multiplier": 2,
+        "radius": 1.5
+      },
+      {
+        "kind": "status",
+        "status": "slow",
+        "durationMs": 1500
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "rascals": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [
+      {
+        "kind": "spawn",
+        "childId": "rascal-boy",
+        "count": 1,
+        "replaceSelf": true
+      },
+      {
+        "kind": "spawn",
+        "childId": "rascal-girl",
+        "count": 2
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "rocket": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "all",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "areaDamage",
+        "radius": 2.0,
+        "towerMultiplier": 0.25,
+        "delayMs": 1000
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "royal-chef": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": null,
+    "towerTroop": true,
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [
+      {
+        "kind": "levelUp",
+        "intervalMs": 23000,
+        "excludeBuildings": true,
+        "minHealthRatio": 0.2
+      }
+    ],
+    "ability": []
+  },
+  "royal-delivery": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "enemy",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "areaDamage",
+        "radius": 3.0,
+        "excludeTowers": true,
+        "delayMs": 3000
+      },
+      {
+        "kind": "spawn",
+        "childId": "royal-recruit",
+        "count": 1
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "royal-ghost": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [
+      {
+        "kind": "status",
+        "status": "invisible"
+      }
+    ],
+    "onAttack": [
+      {
+        "kind": "status",
+        "status": "reveal"
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "royal-giant": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "buildings",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "royal-hogs": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "buildings",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "royal-recruits": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [
+      {
+        "kind": "status",
+        "status": "shield",
+        "amount": 240.0,
+        "target": "friendly"
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "skeleton-army": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "skeleton-barrel": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "buildings",
+    "movement": "flying",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [
+      {
+        "kind": "areaDamage",
+        "amount": 145.0,
+        "radius": 2.0
+      },
+      {
+        "kind": "spawn",
+        "childId": "skeleton",
+        "count": 7
+      }
+    ],
+    "periodic": [],
+    "ability": []
+  },
+  "skeleton-king": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": [
+      {
+        "kind": "spawn",
+        "childId": "skeleton",
+        "count": 10
+      }
+    ]
+  },
+  "skeletons": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "sparky": {
+    "version": 1,
+    "attack": "splash",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "status",
+        "status": "chargeUp",
+        "durationMs": 4000
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": [],
+    "radius": 1.8
+  },
+  "spear-goblins": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "tesla": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [
+      {
+        "kind": "status",
+        "status": "buried"
+      }
+    ],
+    "onAttack": [
+      {
+        "kind": "status",
+        "status": "reveal"
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "the-log": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "ground",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "damage",
+        "projectile": "roll"
+      },
+      {
+        "kind": "knockback"
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "tombstone": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "none",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [
+      {
+        "kind": "spawn",
+        "childId": "skeleton",
+        "count": 4
+      }
+    ],
+    "periodic": [
+      {
+        "kind": "spawn",
+        "childId": "skeleton",
+        "count": 2,
+        "intervalMs": 4000
+      }
+    ],
+    "ability": []
+  },
+  "tornado": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "enemy",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "areaDamage",
+        "radius": 5.5,
+        "durationMs": 1050,
+        "intervalMs": 350,
+        "towerMultiplier": 0.3452
+      },
+      {
+        "kind": "knockback",
+        "mode": "pull"
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "tower-princess": {
+    "version": 1,
+    "attack": "single",
+    "targeting": "air+ground",
+    "movement": null,
+    "towerTroop": true,
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "valkyrie": {
+    "version": 1,
+    "attack": "splash",
+    "targeting": "ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": [],
+    "radius": 2.0
+  },
+  "void": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "all",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "areaDamage",
+        "radius": 2.5,
+        "targetCountScaling": true,
+        "towerMultiplier": 0.1394,
+        "durationMs": 4000,
+        "intervalMs": 1333
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "witch": {
+    "version": 1,
+    "attack": "splash",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [
+      {
+        "kind": "spawn",
+        "childId": "skeleton",
+        "count": 3,
+        "intervalMs": 7000
+      }
+    ],
+    "ability": [],
+    "radius": 1.5
+  },
+  "wizard": {
+    "version": 1,
+    "attack": "splash",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": [],
+    "radius": 1.5
+  },
+  "x-bow": {
+    "version": 1,
+    "attack": "beam",
+    "targeting": "ground",
+    "movement": "siege",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "status",
+        "status": "lockOn"
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "zap": {
+    "version": 1,
+    "attack": "none",
+    "targeting": "all",
+    "movement": null,
+    "onDeploy": [
+      {
+        "kind": "areaDamage",
+        "radius": 2.5,
+        "towerMultiplier": 0.25
+      },
+      {
+        "kind": "status",
+        "status": "stun",
+        "durationMs": 500,
+        "radius": 2.5
+      }
+    ],
+    "onAttack": [],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  },
+  "zappies": {
+    "version": 1,
+    "attack": "chain",
+    "targeting": "air+ground",
+    "movement": "ground",
+    "onDeploy": [],
+    "onAttack": [
+      {
+        "kind": "status",
+        "status": "stun",
+        "durationMs": 500
+      }
+    ],
+    "onHit": [],
+    "onDeath": [],
+    "periodic": [],
+    "ability": []
+  }
 }

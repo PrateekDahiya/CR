@@ -27,7 +27,7 @@ test.describe("15.1 siege placement (client mirrors server)", () => {
     for (const id of ["mortar", "x-bow"]) {
       // Forward, in range of the enemy tower (red princess at y=24.5).
       expect(isDeployValid(3.5, 20, "blue", id), `${id} forward deploy`).toBe(true);
-      expect(isDeployValid(13.5, 20, "blue", id)).toBe(true);
+      expect(isDeployValid(14.5, 20, "blue", id)).toBe(true);
     }
   });
 
@@ -88,8 +88,11 @@ test.describe("15.4 tower troops are not deck cards", () => {
 
 test.describe("15.5 / 15.6 targeting data", () => {
   test("air-capable troops are declared air+ground", () => {
-    for (const id of ["bowler", "valkyrie", "sparky", "little-prince", "baby-dragon", "wizard"]) {
+    for (const id of ["little-prince", "baby-dragon", "wizard"]) {
       expect(MECHANICS[id]?.targeting, id).toBe("air+ground");
+    }
+    for (const id of ["bowler", "valkyrie", "sparky"]) {
+      expect(MECHANICS[id]?.targeting, id).toBe("ground");
     }
   });
 

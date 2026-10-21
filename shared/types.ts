@@ -13,6 +13,31 @@ export type TowerKind = 'king' | 'princess';
 /** Player side in a 1v1 match. */
 export type PlayerSide = 'blue' | 'red';
 
+/**
+ * Game mode identifier. Extensible by design: the authoritative registry lives
+ * on the backend (`backend/src/game/modes.ts`); clients receive the resolved
+ * config in every snapshot so adding a mode needs no client rule table.
+ */
+export type GameModeId = string;
+
+/** Resolved game-mode rules carried UI -> socket -> engine -> snapshot. */
+export interface GameModeConfig {
+  id: GameModeId;
+  label: string;
+  description: string;
+  /** Multiplier over the normal 1-per-2.8s elixir rate for the whole match. */
+  elixirRateMultiplier: number;
+  startElixir: number;
+  elixirCap: number;
+  /** Apply the standard double-elixir window at t>=120s (ignored at >1x). */
+  doubleElixir?: boolean;
+  overtime?: boolean;
+  /** Match win rule: crowns at time-up (default) or first tower destroyed. */
+  winCondition?: "crowns" | "first-tower";
+  /** Reserved for future mode constraints (bans, deck limits, timers, ...). */
+  constraints?: Record<string, string | number | boolean>;
+}
+
 /** Minimal 2D position (arena units defined in Phase 2). */
 export interface Vec2 {
   x: number;
@@ -40,6 +65,7 @@ export interface Tower {
   id: string; // e.g. 'blue-king', 'red-princess-left'
   kind: TowerKind;
   owner: PlayerSide;
+  level?: number;
   hitPoints: number;
   maxHitPoints: number;
   position: Vec2;
@@ -51,10 +77,13 @@ export interface Unit {
   id: string; // server-assigned instance id
   cardId: string; // links to Card.id
   owner: PlayerSide;
+  level?: number;
   hitPoints: number;
   maxHitPoints: number;
   position: Vec2;
   targetId?: string; // tower or unit id being attacked
+  /** True when this snapshot's HP loss is only building lifetime wear-down. */
+  decayOnly?: boolean;
 }
 
 /** Authoritative snapshot broadcast at 10-20Hz (Phase 3 tick). */
@@ -63,6 +92,10 @@ export interface GameState {
   tick: number; // monotonically increasing server tick
   serverTimeMs: number; // server clock for interpolation
   elixir: Record<PlayerSide, number>; // 0-10, regen in Phase 3
+  /** Selected game mode (server-resolved; optional for older snapshots). */
+  modeId?: GameModeId;
+  /** Full mode rules so the client can mirror regen/caps without a local table. */
+  mode?: GameModeConfig;
   towers: Tower[];
   units: Unit[];
   crowns: Record<PlayerSide, number>;
@@ -173,11 +206,11 @@ export type CardPlayPayload = DeployRequest & { cardId?: string; at?: Vec2 };
 /** Socket map extension — every key in SocketEvents is kept (Omit avoids conflicting overrides). */
 export interface SocketEventsV2 extends Omit<SocketEvents, 'card:play' | 'state:update'> {
   // client -> server (new canonical)
-  'queue:join': { playerId: string; deck: string[]; levels?: Record<string, number>; towerTroopId?: string };
+  'queue:join': { playerId: string; deck: string[]; levels?: Record<string, number>; towerTroopId?: string; modeId?: GameModeId };
   'queue:leave': { playerId: string };
   'deck:select': { playerId: string; deck: string[]; levels?: Record<string, number>; towerTroopId?: string };
   // server -> client (new canonical)
-  'queue:matched': { matchId: string; opponentId: string; side: PlayerSide; serverTimeMs: number };
+  'queue:matched': { matchId: string; opponentId: string; side: PlayerSide; serverTimeMs: number; modeId?: GameModeId; mode?: GameModeConfig };
   'error': { code: string; message: string; matchId?: string };
   // refined payloads
   'card:play': CardPlayPayload;

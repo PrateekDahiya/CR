@@ -92,6 +92,7 @@ export interface ValidatedCardLevels {
 export function validateCardLevels(
   levels: unknown,
   deck: readonly string[],
+  towerTroopId?: unknown,
 ): ValidatedCardLevels | ValidationResult {
   const result: Record<string, number> = {};
   if (levels !== undefined && (typeof levels !== "object" || levels === null || Array.isArray(levels))) {
@@ -99,7 +100,7 @@ export function validateCardLevels(
   }
   const input = (levels ?? {}) as Record<string, unknown>;
   for (const [cardId, value] of Object.entries(input)) {
-    if (!deck.includes(cardId)) {
+    if (!deck.includes(cardId) && cardId !== towerTroopId && cardId !== "king-tower") {
       return { ok: false, code: "BAD_DECK", message: `level provided for card outside deck: ${cardId}` };
     }
     if (!Number.isInteger(value) || Number(value) < 1 || Number(value) > 16) {
@@ -173,12 +174,12 @@ export interface PocketState {
 
 /** Tower centers (§5.4) for the 1x1 deploy-footprint exclusion. */
 const TOWER_CENTERS: ReadonlyArray<{ x: number; y: number }> = [
-  { x: 8.5, y: 3.5 },
+  { x: 9, y: 3.5 },
   { x: 3.5, y: 6.5 },
-  { x: 13.5, y: 6.5 },
-  { x: 8.5, y: 27.5 },
+  { x: 14.5, y: 6.5 },
+  { x: 9, y: 27.5 },
   { x: 3.5, y: 24.5 },
-  { x: 13.5, y: 24.5 },
+  { x: 14.5, y: 24.5 },
 ];
 
 const FOOTPRINT_RADIUS = 0.75;

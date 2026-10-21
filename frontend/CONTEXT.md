@@ -86,3 +86,37 @@ docker run -p 3000:3000 cr-frontend
 ## Phase 7 update (2026-10-17, branch feature/phase-7-persistence)
 - Meta UI: `app/leaderboard/page.tsx` (exact-CR gold table, season, testids leaderboard-list/row-*) + `lib/api.ts` postGuest/getProfile/getLeaderboard (O(1)/O(n log n) server sort).
 - Backend REST live: /auth/guest, /profile/:id, /leaderboard, /deck, /matches/report, /season (memory fallback db:false, Postgres via Prisma when DATABASE_URL set).
+
+## Battle log polish (2026-10-21, branch card-mechanics)
+- `components/ui/BattleLogPanel.tsx` is now the Clash Royale layout: a
+  `BATTLES` / `TOURNAMENTS` tab bar, one card per battle (result banner,
+  crown score, both names + trophies, the deck of BOTH sides as 2x4 card
+  grids, trophy delta + time ago, `PRACTICE` + `WATCH` buttons).
+- `PRACTICE` opens `/battle?foeDeck=...`; the battle page starts an AI match
+  that plays the opponent's deck (`match:practice` accepts `foeDeck`).
+- `WATCH` opens `/replay?matchId=...` (new route): the server replays the
+  recorded frames on the real arena canvas (scrubber, play/pause, 1x/2x/4x).
+- `TOURNAMENTS` tab: create / join a tournament and press `PLAY`; the server
+  pairs two ready players into a real match (`tournament:ready` ->
+  `tournament:match`) and the result lands in the tab with both decks.
+- New API helpers in `lib/api.ts` (`getTournaments`, `createTournament`,
+  `joinTournament`, `getReplay`), new socket helpers in `lib/socket.ts`
+  (`tournamentReady`, `onTournamentMatch`, `onTournamentWaiting`,
+  `registerPlayer`). `CardArt` accepts an optional `artUrl` (the log uses the
+  per-team front/back art).
+- Tests: `tests/battle-log.spec.ts` (5) + `tests/tournament.spec.ts` (1).
+
+## Per-team card art (2026-10-21, branch card-mechanics)
+- Every card has TWO views, like the towers: `/public/cardart/<card>-front.png`
+  (red team, character seen from the front) and `<card>-back.png` (blue team,
+  seen from behind). Built by `scripts/make_card_art.py` from the wiki sources
+  in `docs/card-art/sources/`.
+- The 2D strips live in `/public/sprites/<card>-<view>.png` (8 frames, 96x96:
+  idle x2, walk x4, attack, death) and are cut by
+  `scripts/make_card_sprites.py`. `/public/sprites/` is gitignored.
+- `lib/battle/spriteAnim.ts` loads the strip of the unit's TEAM and flips it
+  with the unit's facing. Fallback chain: team strip -> old neutral strip ->
+  `/cardart/<card>-<view>.png` -> `/cards/<card>.png` -> emoji glyph.
+- `/animations` shows all 108 cards with the red front view on top and the
+  blue back view below. `tests/card-art.spec.ts` guards both views and the
+  fallback chain.

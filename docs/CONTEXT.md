@@ -18,6 +18,16 @@ and templates that keep the 6-step execution pipeline (MEMORY.md §11) auditable
 - `ISSUES_TEMPLATE.md` — template review agents copy to `docs/ISSUES_<feature>.md`.
 - `ISSUES_<feature>.md` (Phase 3+; review agents) — correctness/security/perf findings with IDs (`ISS-001`…).
 - `TEST_REPORT_<feature>.md` (Phase 3+; test agents) — unit/integration/e2e + docker manual results.
+- `tower-art/` - the tower art sources + contact sheet + the hand-edit list
+  (`scripts/fetch_tower_art.py`, `scripts/make_tower_art.py`,
+  `scripts/prepare_edited_tower_art.py`).
+- `card-art/` - the per-team card art sources (front + back view), the in-game
+  preview clips, two contact sheets and the list of files that still need hand
+  editing (`scripts/fetch_card_art.py`, `scripts/make_card_art.py`,
+  `scripts/make_card_sprites.py`, `scripts/prepare_edited_card_art.py`).
+- `UI_REFERENCE.md` - the Clash Royale look, broken down per screen (§7 now
+  covers the battle log sheet: battles/tournaments tabs, the per-battle deck
+  rows and the Practice/Watch buttons).
 
 ## How to run / test
 Docs need no build. Conventions check (manual):

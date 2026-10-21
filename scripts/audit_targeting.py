@@ -24,8 +24,8 @@ BUILDINGS_ONLY = {
     "elixir-blob",
 }
 
-# Seeks buildings AND troops (Miner can hit either).
-BUILDINGS_AND_TROOPS = {"miner"}
+# Seeks buildings AND ground troops (Miner cannot hit air).
+BUILDINGS_AND_GROUND_TROOPS = {"miner"}
 
 # Never attacks: buildings that only spawn, and spells (which use area masks).
 NON_ATTACKING = {"goblin-drill", "elixir-collector", "rage", "clone", "void", "goblin-curse"}
@@ -35,13 +35,14 @@ GROUND_ONLY = {
     "giant", "royal-giant", "hog-rider", "golem", "elixir-golem", "goblin-giant",
     "battle-ram", "ram-rider", "knight", "mini-pekka", "pekka", "barbarians",
     "elite-barbarians", "goblins", "bomber", "prince", "dark-prince", "bandit",
+    "bowler", "valkyrie", "sparky",
 }
 
 # Must be able to target flying units.
 AIR_CAPABLE = {
-    "baby-dragon", "wizard", "valkyrie", "bowler", "electro-dragon", "musketeer",
+    "baby-dragon", "wizard", "electro-dragon", "musketeer",
     "archers", "dart-goblin", "firecracker", "zappies", "minions", "bats",
-    "minion-horde", "flying-machine", "inferno-dragon", "sparky",
+    "minion-horde", "flying-machine", "inferno-dragon",
     "executioner", "magic-archer", "little-prince", "spear-goblins",
 }
 
@@ -60,8 +61,8 @@ def main() -> int:
 
         if card_id in BUILDINGS_ONLY and targeting != "buildings":
             problems.append(f"{card_id}: must target buildings only, declared '{targeting}'")
-        if card_id in BUILDINGS_AND_TROOPS and targeting != "all":
-            problems.append(f"{card_id}: must target buildings AND troops, declared '{targeting}'")
+        if card_id in BUILDINGS_AND_GROUND_TROOPS and targeting not in ("ground", "all"):
+            problems.append(f"{card_id}: must target buildings AND ground troops, declared '{targeting}'")
         if card_id in GROUND_ONLY and targeting == "air+ground":
             problems.append(f"{card_id}: ground-only troop declared 'air+ground'")
         if card_id in AIR_CAPABLE and targeting in ("ground", "buildings"):

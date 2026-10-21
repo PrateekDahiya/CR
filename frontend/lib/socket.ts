@@ -17,6 +17,7 @@
  */
 
 import { io, type Socket } from "socket.io-client";
+import type { GameModeConfig } from "../../shared/types";
 
 export type PlayerSide = "blue" | "red";
 
@@ -41,6 +42,9 @@ export interface StateUpdate {
   crowns: Record<PlayerSide, number>;
   winner?: PlayerSide | "draw";
   endsAtMs?: number;
+  /** Server-resolved game mode (id + rules) for the running match. */
+  modeId?: string;
+  mode?: GameModeConfig;
 }
 
 export interface QueueMatched {
@@ -48,6 +52,8 @@ export interface QueueMatched {
   opponentId: string;
   side: PlayerSide;
   serverTimeMs: number;
+  modeId?: string;
+  mode?: GameModeConfig;
 }
 
 export interface MatchEnd {
@@ -104,13 +110,22 @@ export function getSocket(): Socket | null {
 // Auto-connect singleton used by matchmaking loader / home Battle. Returns a
 // stable wrapper that exposes joinQueue / leaveQueue / selectDeck / onMatched
 // / onGameError, hiding the underlying Socket.io instance.
+export interface MatchExtras {
+  levels?: Record<string, number>;
+  towerTroopId?: string;
+  /** Selected game-mode id (registry: backend /game-modes). */
+  modeId?: string;
+  /** Deck the bot must play (practice against a previous opponent). */
+  foeDeck?: string[];
+}
+
 export interface SocketClient {
   socket: Socket | null;
-  joinQueue: (playerId: string, deck?: string[]) => void;
+  joinQueue: (playerId: string, deck?: string[], extras?: MatchExtras) => void;
   /** Instant real match vs the server-side bot (match:practice). */
-  joinAiMatch: (playerId: string, deck: string[], difficulty?: "easy" | "medium" | "hard") => void;
+  joinAiMatch: (playerId: string, deck: string[], difficulty?: "easy" | "medium" | "hard", extras?: MatchExtras) => void;
   leaveQueue: (playerId?: string) => void;
-  selectDeck: (playerId: string, deck: string[]) => void;
+  selectDeck: (playerId: string, deck: string[], extras?: MatchExtras) => void;
   onMatched: (cb: (matchId: string, side: "blue" | "red", opponentId?: string) => void) => Unsubscribe;
   onGameError: (cb: (code: string, message: string) => void) => Unsubscribe;
   close: () => void;
@@ -119,23 +134,39 @@ export interface SocketClient {
 function wrapSocket(s: Socket | null): SocketClient {
   return {
     socket: s,
-    joinQueue: (playerId, deck) => {
+    joinQueue: (playerId, deck, extras) => {
       if (!s) return;
       const payload: Record<string, unknown> = { playerId };
       if (deck) payload.deck = deck;
+      if (extras?.levels) payload.levels = extras.levels;
+      if (extras?.towerTroopId) payload.towerTroopId = extras.towerTroopId;
+      if (extras?.modeId) payload.modeId = extras.modeId;
       s.emit("queue:join", payload);
     },
-    joinAiMatch: (playerId, deck, difficulty) => {
+    joinAiMatch: (playerId, deck, difficulty, extras) => {
       if (!s) return;
-      s.emit("match:practice", { playerId, deck, ...(difficulty ? { difficulty } : {}) });
+      s.emit("match:practice", {
+        playerId,
+        deck,
+        ...(difficulty ? { difficulty } : {}),
+        ...(extras?.levels ? { levels: extras.levels } : {}),
+        ...(extras?.towerTroopId ? { towerTroopId: extras.towerTroopId } : {}),
+        ...(extras?.modeId ? { modeId: extras.modeId } : {}),
+        ...(extras?.foeDeck ? { foeDeck: extras.foeDeck } : {}),
+      });
     },
     leaveQueue: (playerId) => {
       if (!s) return;
       s.emit("queue:leave", playerId ? { playerId } : {});
     },
-    selectDeck: (playerId, deck) => {
+    selectDeck: (playerId, deck, extras) => {
       if (!s) return;
-      s.emit("deck:select", { playerId, deck });
+      s.emit("deck:select", {
+        playerId,
+        deck,
+        ...(extras?.levels ? { levels: extras.levels } : {}),
+        ...(extras?.towerTroopId ? { towerTroopId: extras.towerTroopId } : {}),
+      });
     },
     onMatched: (cb) => {
       if (!s) return () => {};
@@ -273,8 +304,14 @@ function emitWithAck(event: string, payload: unknown, timeoutMs = 5000): Promise
 }
 
 /** Request matchmaking. Deck must be 8 distinct card ids (GAME_DESIGN §4/§11). */
-export function joinQueue(playerId: string, deck: string[]): Promise<Ack> {
-  return emitWithAck("queue:join", { playerId, deck });
+export function joinQueue(playerId: string, deck: string[], extras?: MatchExtras): Promise<Ack> {
+  return emitWithAck("queue:join", {
+    playerId,
+    deck,
+    ...(extras?.levels ? { levels: extras.levels } : {}),
+    ...(extras?.towerTroopId ? { towerTroopId: extras.towerTroopId } : {}),
+    ...(extras?.modeId ? { modeId: extras.modeId } : {}),
+  });
 }
 
 /**
@@ -286,8 +323,17 @@ export function joinAiMatch(
   playerId: string,
   deck: string[],
   difficulty: "easy" | "medium" | "hard" = "medium",
+  extras?: MatchExtras,
 ): Promise<Ack> {
-  return emitWithAck("match:practice", { playerId, deck, difficulty });
+  return emitWithAck("match:practice", {
+    playerId,
+    deck,
+    difficulty,
+    ...(extras?.levels ? { levels: extras.levels } : {}),
+    ...(extras?.towerTroopId ? { towerTroopId: extras.towerTroopId } : {}),
+    ...(extras?.modeId ? { modeId: extras.modeId } : {}),
+    ...(extras?.foeDeck ? { foeDeck: extras.foeDeck } : {}),
+  });
 }
 
 /** Leave matchmaking. Idempotent — server acks ok even if not queued. */
@@ -296,8 +342,13 @@ export function leaveQueue(playerId: string): Promise<Ack> {
 }
 
 /** Lock/select deck pre-queue (lobby/deck-builder). Validates without queueing. */
-export function selectDeck(playerId: string, deck: string[]): Promise<Ack> {
-  return emitWithAck("deck:select", { playerId, deck });
+export function selectDeck(playerId: string, deck: string[], extras?: MatchExtras): Promise<Ack> {
+  return emitWithAck("deck:select", {
+    playerId,
+    deck,
+    ...(extras?.levels ? { levels: extras.levels } : {}),
+    ...(extras?.towerTroopId ? { towerTroopId: extras.towerTroopId } : {}),
+  });
 }
 
 /** Core gameplay intent — validated + applied on the next 10 Hz server tick. */
@@ -422,5 +473,68 @@ export function onGameError(cb: (e: GameError) => void): Unsubscribe {
   return () => {
     s.off("error", handler);
     s.off("error:game", handler);
+  };
+}
+
+/** Identify this socket with a player id so the server can reach it later. */
+export function registerPlayer(playerId: string): void {
+  if (playerId.length === 0) return;
+  const s = requireSocket();
+  s.emit("player:register", { playerId });
+}
+
+/** A tournament match the server paired the player into. */
+export interface TournamentMatchInfo {
+  matchId: string;
+  side: PlayerSide;
+  opponentId: string;
+  tournamentId?: string;
+}
+
+/**
+ * Tell the server the player is ready to play a tournament match. The server
+ * pairs two ready players and answers with `tournament:match` on BOTH
+ * sockets; until then it answers `tournament:waiting`.
+ */
+export function tournamentReady(args: {
+  tournamentId: string;
+  playerId: string;
+  deck: string[];
+  levels?: Record<string, number>;
+  towerTroopId?: string;
+  modeId?: string;
+}): Promise<Ack> {
+  return emitWithAck("tournament:ready", {
+    tournamentId: args.tournamentId,
+    playerId: args.playerId,
+    deck: args.deck,
+    ...(args.levels ? { levels: args.levels } : {}),
+    ...(args.towerTroopId ? { towerTroopId: args.towerTroopId } : {}),
+    ...(args.modeId ? { modeId: args.modeId } : {}),
+  });
+}
+
+/** Subscribe to the tournament pairing result. */
+export function onTournamentMatch(cb: (m: TournamentMatchInfo) => void): Unsubscribe {
+  const s = requireSocket();
+  const handler = (m: TournamentMatchInfo): void => {
+    if (typeof m?.matchId !== "string" || m.matchId.length === 0) return;
+    cb(m);
+  };
+  s.on("tournament:match", handler);
+  return () => {
+    s.off("tournament:match", handler);
+  };
+}
+
+/** Subscribe to "waiting for an opponent" (the tournament has no rival yet). */
+export function onTournamentWaiting(cb: (info: { tournamentId: string }) => void): Unsubscribe {
+  const s = requireSocket();
+  const handler = (info: { tournamentId: string }): void => {
+    cb(info);
+  };
+  s.on("tournament:waiting", handler);
+  return () => {
+    s.off("tournament:waiting", handler);
   };
 }

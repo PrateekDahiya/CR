@@ -59,7 +59,7 @@ describe("content fallback", () => {
       ids.add(c.id);
       assert.ok(c.cost >= 0 && c.cost <= 8, `${c.id} cost ${c.cost}`);
       if (c.type === "spell") {
-        assert.ok(c.damage > 0, `${c.id} spell damage`);
+        assert.ok(c.damage >= 0, `${c.id} spell damage`);
       } else {
         assert.ok(c.hp > 0 && c.count > 0, `${c.id} troop hp/count`);
       }

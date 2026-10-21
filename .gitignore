@@ -53,3 +53,4 @@ npm-debug.log*
 # reference captures + user-supplied art (never commit - MEMORY#23)
 docs/gameUI/
 frontend/public/cards/
+frontend/public/sprites/

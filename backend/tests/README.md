@@ -54,7 +54,7 @@ Expected:
 | `createGame` | `(matchId, blueDeck, redDeck, opts?) => EngineState` | 8 distinct ids, ≤2 spells; start 5 elixir, 6 towers (1400/2400, king inactive), crowns 0–0 |
 | `playCard` | `(state, side, { handIndex, x, y, ... }) => { ok, cardId?, unitIds? } \| { ok: false, code, message }` | `NO_ELIXIR` / `BAD_POSITION` / `BAD_HAND_INDEX` / `CARD_REJECTED` / `STALE_TICK` / `RATE_LIMITED`; no mutation on reject |
 | `tickGame` | `(state, dtSec = 0.1) => state` | 10 Hz: elixir (float, cap 10; double from t≥120s) → move → combat (towers first) → clock/win |
-| `ELIXIR_START/CAP/SINGLE_SEC/DOUBLE_SEC` | `5 / 10 / 2.8 / 1.4` | normative §7 numbers, asserted literally |
+| `ELIXIR_START/CAP/SINGLE_SEC/DOUBLE_SEC` | `8 / 10 / 2.8 / 1.4` | normative §7 numbers, asserted literally |
 | State | `EngineState` | towers carry `hp/maxHp/active/destroyed` + `x/y`; hands/decks/queue drive the 4-card rotation |
 
 Normative numbers: `docs/GAME_DESIGN.md` §0 table + `shared/types.ts`.

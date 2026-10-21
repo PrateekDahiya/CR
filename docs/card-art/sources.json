@@ -1,0 +1,876 @@
+{
+ "archer-queen": {
+  "title": "Archer Queen",
+  "front": "sources/archer-queen-front.png",
+  "preview": null,
+  "frontWiki": "File:Archer Queen card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/a/a5/Archer_Queen_card_render.png/revision/latest?cb=20220609201429"
+ },
+ "archers": {
+  "title": "Archers",
+  "front": "sources/archers-front.png",
+  "preview": null,
+  "frontWiki": "File:Archers Card Render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/e/e7/Archers_Card_Render.png/revision/latest?cb=20240330201901"
+ },
+ "arrows": {
+  "title": "Arrows",
+  "front": "sources/arrows-front.png",
+  "preview": null,
+  "frontWiki": "File:Arrows card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/c/cf/Arrows_card_render.png/revision/latest?cb=20220710045852"
+ },
+ "baby-dragon": {
+  "title": "Baby Dragon",
+  "front": "sources/baby-dragon-front.png",
+  "preview": "sources/baby-dragon-preview.webp",
+  "frontWiki": "File:Baby Dragon card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/f/f7/Baby_Dragon_card_render.png/revision/latest?cb=20220930092517",
+  "previewWiki": "File:Baby Dragon Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/e/e5/Baby_Dragon_Preview.gif/revision/latest?cb=20250916092433"
+ },
+ "balloon": {
+  "title": "Balloon",
+  "front": "sources/balloon-front.png",
+  "preview": null,
+  "frontWiki": "File:Balloon card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/d/df/Balloon_card_render.png/revision/latest?cb=20220930092620"
+ },
+ "bandit": {
+  "title": "Bandit",
+  "front": "sources/bandit-front.png",
+  "preview": "sources/bandit-preview.webp",
+  "frontWiki": "File:Bandit card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/2/28/Bandit_card_render.png/revision/latest?cb=20221003154243",
+  "previewWiki": "File:Bandit Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/d/d5/Bandit_Preview.gif/revision/latest?cb=20250916081609"
+ },
+ "barbarian-barrel": {
+  "title": "Barbarian Barrel",
+  "front": "sources/barbarian-barrel-front.png",
+  "preview": "sources/barbarian-barrel-preview.webp",
+  "frontWiki": "File:Barbarian Barrel card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/5/54/Barbarian_Barrel_card_render.png/revision/latest?cb=20220930092729",
+  "previewWiki": "File:Barbarian Barrel Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/a/ac/Barbarian_Barrel_Preview.gif/revision/latest?cb=20250831125014"
+ },
+ "barbarian-hut": {
+  "title": "Barbarian Hut",
+  "front": "sources/barbarian-hut-front.png",
+  "preview": null,
+  "frontWiki": "File:BarbarianHutCard.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/6/63/BarbarianHutCard.png/revision/latest?cb=20171212203409"
+ },
+ "barbarians": {
+  "title": "Barbarians",
+  "front": "sources/barbarians-front.png",
+  "preview": null,
+  "frontWiki": "File:Barbarians card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/f/f9/Barbarians_card_render.png/revision/latest?cb=20230628143753"
+ },
+ "bats": {
+  "title": "Bats",
+  "front": "sources/bats-front.png",
+  "preview": "sources/bats-preview.webp",
+  "frontWiki": "File:Bats card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/2/20/Bats_card_render.png/revision/latest?cb=20220812114717",
+  "previewWiki": "File:Bats Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/f/f4/Bats_Preview.gif/revision/latest?cb=20250831121418"
+ },
+ "battle-ram": {
+  "title": "Battle Ram",
+  "front": "sources/battle-ram-front.png",
+  "preview": "sources/battle-ram-preview.webp",
+  "frontWiki": "File:Battle Ram card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/c/ce/Battle_Ram_card_render.png/revision/latest?cb=20220826041728",
+  "previewWiki": "File:Battle Ram Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/8/85/Battle_Ram_Preview.gif/revision/latest?cb=20250830130235"
+ },
+ "bomb-tower": {
+  "title": "Bomb Tower",
+  "front": "sources/bomb-tower-front.png",
+  "preview": "sources/bomb-tower-preview.webp",
+  "frontWiki": "File:Bomb Tower card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/5/53/Bomb_Tower_card_render.png/revision/latest?cb=20221018163942",
+  "previewWiki": "File:Bomb Tower Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/9/93/Bomb_Tower_Preview.gif/revision/latest?cb=20250916091951"
+ },
+ "bomber": {
+  "title": "Bomber",
+  "front": "sources/bomber-front.png",
+  "preview": "sources/bomber-preview.webp",
+  "frontWiki": "File:Bomber card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/4/43/Bomber_card_render.png/revision/latest?cb=20220812114733",
+  "previewWiki": "File:Bomber Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/a/a7/Bomber_Preview.gif/revision/latest?cb=20250831153530"
+ },
+ "boss-bandit": {
+  "title": "Boss Bandit",
+  "front": "sources/boss-bandit-front.png",
+  "preview": null,
+  "frontWiki": "File:Boss Bandit card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/5/5e/Boss_Bandit_card_render.png/revision/latest?cb=20250331123552"
+ },
+ "bowler": {
+  "title": "Bowler",
+  "front": "sources/bowler-front.png",
+  "preview": null,
+  "frontWiki": "File:Bowler card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/b/b4/Bowler_card_render.png/revision/latest?cb=20220930092743"
+ },
+ "cannon": {
+  "title": "Cannon",
+  "front": "sources/cannon-front.png",
+  "preview": "sources/cannon-preview.webp",
+  "frontWiki": "File:Cannon card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/0/02/Cannon_card_render.png/revision/latest?cb=20241109220725",
+  "previewWiki": "File:Cannon Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/d/d7/Cannon_Preview.gif/revision/latest?cb=20250906151938"
+ },
+ "cannoneer": {
+  "title": "Cannoneer",
+  "front": "sources/cannoneer-front.png",
+  "preview": "sources/cannoneer-preview.webp",
+  "frontWiki": "File:Cannoneer card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/8/86/Cannoneer_card_render.png/revision/latest?cb=20250111131450",
+  "previewWiki": "File:Cannoneer Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/f/f6/Cannoneer_Preview.gif/revision/latest?cb=20250830125425"
+ },
+ "clone": {
+  "title": "Clone",
+  "front": "sources/clone-front.png",
+  "preview": "sources/clone-preview.webp",
+  "frontWiki": "File:Clone card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/5/54/Clone_card_render.png/revision/latest?cb=20221021214751",
+  "previewWiki": "File:Clone Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/5/58/Clone_Preview.gif/revision/latest?cb=20250916081946"
+ },
+ "dagger-duchess": {
+  "title": "Dagger Duchess",
+  "front": "sources/dagger-duchess-front.png",
+  "preview": "sources/dagger-duchess-preview.webp",
+  "frontWiki": "File:Dagger Duchess card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/b/b8/Dagger_Duchess_card_render.png/revision/latest?cb=20250111130757",
+  "previewWiki": "File:Dagger Duchess Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/2/2c/Dagger_Duchess_Preview.gif/revision/latest?cb=20250830124045"
+ },
+ "dark-prince": {
+  "title": "Dark Prince",
+  "front": "sources/dark-prince-front.png",
+  "preview": "sources/dark-prince-preview.webp",
+  "frontWiki": "File:Dark Prince card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/e/e1/Dark_Prince_card_render.png/revision/latest?cb=20220826041538",
+  "previewWiki": "File:Dark Prince Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/c/c1/Dark_Prince_Preview.gif/revision/latest?cb=20250916154509"
+ },
+ "dart-goblin": {
+  "title": "Dart Goblin",
+  "front": "sources/dart-goblin-front.png",
+  "preview": "sources/dart-goblin-preview.webp",
+  "frontWiki": "File:Dart Goblin card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/0/03/Dart_Goblin_card_render.png/revision/latest?cb=20221016083303",
+  "previewWiki": "File:Dart Goblin Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/9/9d/Dart_Goblin_Preview.gif/revision/latest?cb=20250906155427"
+ },
+ "earthquake": {
+  "title": "Earthquake",
+  "front": "sources/earthquake-front.png",
+  "preview": "sources/earthquake-preview.webp",
+  "frontWiki": "File:Earthquake card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/4/46/Earthquake_card_render.png/revision/latest?cb=20221021214835",
+  "previewWiki": "File:Earthquake Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/a/a0/Earthquake_Preview.gif/revision/latest?cb=20250916081303"
+ },
+ "electro-dragon": {
+  "title": "Electro Dragon",
+  "front": "sources/electro-dragon-front.png",
+  "preview": null,
+  "frontWiki": "File:Electro Dragon card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/1/17/Electro_Dragon_card_render.png/revision/latest?cb=20220930092805"
+ },
+ "electro-wizard": {
+  "title": "Electro Wizard",
+  "front": "sources/electro-wizard-front.png",
+  "preview": "sources/electro-wizard-preview.webp",
+  "frontWiki": "File:Electro Wizard card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/f/f3/Electro_Wizard_card_render.png/revision/latest?cb=20221003154321",
+  "previewWiki": "File:Electro Wizard Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/e/e3/Electro_Wizard_Preview.gif/revision/latest?cb=20250916155753"
+ },
+ "elite-barbarians": {
+  "title": "Elite Barbarians",
+  "front": "sources/elite-barbarians-front.png",
+  "preview": null,
+  "frontWiki": "File:Elite Barbarians card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/0/08/Elite_Barbarians_card_render.png/revision/latest?cb=20220826041829"
+ },
+ "elixir-collector": {
+  "title": "Elixir Collector",
+  "front": "sources/elixir-collector-front.png",
+  "preview": null,
+  "frontWiki": "File:Elixir Collector card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/d/db/Elixir_Collector_card_render.png/revision/latest?cb=20250903140357"
+ },
+ "elixir-golem": {
+  "title": "Elixir Golem",
+  "front": "sources/elixir-golem-front.png",
+  "preview": "sources/elixir-golem-preview.webp",
+  "frontWiki": "File:Elixir Golem card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/4/4d/Elixir_Golem_card_render.png/revision/latest?cb=20220826090757",
+  "previewWiki": "File:Elixir Golem Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/2/2e/Elixir_Golem_Preview.gif/revision/latest?cb=20250916081754"
+ },
+ "executioner": {
+  "title": "Executioner",
+  "front": "sources/executioner-front.png",
+  "preview": null,
+  "frontWiki": "File:Executioner card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/1/16/Executioner_card_render.png/revision/latest?cb=20221017122751"
+ },
+ "fire-spirit": {
+  "title": "Fire Spirit",
+  "front": "sources/fire-spirit-front.png",
+  "preview": "sources/fire-spirit-preview.webp",
+  "frontWiki": "File:Fire Spirit card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/e/ec/Fire_Spirit_card_render.png/revision/latest?cb=20250707114813",
+  "previewWiki": "File:Fire Spirit Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/7/74/Fire_Spirit_Preview.gif/revision/latest?cb=20250830141557"
+ },
+ "fireball": {
+  "title": "Fireball",
+  "front": "sources/fireball-front.png",
+  "preview": "sources/fireball-preview.webp",
+  "frontWiki": "File:FireballCard.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/f/f4/FireballCard.png/revision/latest?cb=20171212204724",
+  "previewWiki": "File:Fireball Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/f/f0/Fireball_Preview.gif/revision/latest?cb=20250916082743"
+ },
+ "firecracker": {
+  "title": "Firecracker",
+  "front": "sources/firecracker-front.png",
+  "preview": "sources/firecracker-preview.webp",
+  "frontWiki": "File:Firecracker card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/9/91/Firecracker_card_render.png/revision/latest?cb=20230728110740",
+  "previewWiki": "File:Firecracker Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/8/82/Firecracker_Preview.gif/revision/latest?cb=20250906161226"
+ },
+ "fisherman": {
+  "title": "Fisherman",
+  "front": "sources/fisherman-front.png",
+  "preview": "sources/fisherman-preview.webp",
+  "frontWiki": "File:Fisherman card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/2/25/Fisherman_card_render.png/revision/latest?cb=20221003154349",
+  "previewWiki": "File:Fisherman Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/4/4e/Fisherman_Preview.gif/revision/latest?cb=20250916082116"
+ },
+ "flying-machine": {
+  "title": "Flying Machine",
+  "front": "sources/flying-machine-front.png",
+  "preview": "sources/flying-machine-preview.webp",
+  "frontWiki": "File:Flying Machine card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/f/fe/Flying_Machine_card_render.png/revision/latest?cb=20220713211228",
+  "previewWiki": "File:Flying Machine Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/3/3f/Flying_Machine_Preview.gif/revision/latest?cb=20250916092341"
+ },
+ "freeze": {
+  "title": "Freeze",
+  "front": "sources/freeze-front.png",
+  "preview": null,
+  "frontWiki": "File:Freeze Card Render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/6/60/Freeze_Card_Render.png/revision/latest?cb=20251202135753"
+ },
+ "furnace": {
+  "title": "Furnace",
+  "front": "sources/furnace-front.png",
+  "preview": "sources/furnace-preview.webp",
+  "frontWiki": "File:Furnace card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/5/53/Furnace_card_render.png/revision/latest?cb=20250903140855",
+  "previewWiki": "File:Furnace Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/7/74/Furnace_Preview.gif/revision/latest?cb=20250830131514"
+ },
+ "giant": {
+  "title": "Giant",
+  "front": "sources/giant-front.png",
+  "preview": null,
+  "frontWiki": "File:Giant Card Render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/b/be/Giant_Card_Render.png/revision/latest?cb=20220708092645"
+ },
+ "giant-skeleton": {
+  "title": "Giant Skeleton",
+  "front": "sources/giant-skeleton-front.png",
+  "preview": null,
+  "frontWiki": "File:Giant Skeleton card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/0/00/Giant_Skeleton_card_render.png/revision/latest?cb=20221018163917"
+ },
+ "giant-snowball": {
+  "title": "Giant Snowball",
+  "front": "sources/giant-snowball-front.png",
+  "preview": "sources/giant-snowball-preview.webp",
+  "frontWiki": "File:GiantSnowballCard.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/7/7e/GiantSnowballCard.png/revision/latest?cb=20180618175737",
+  "previewWiki": "File:Giant Snowball Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/4/41/Giant_Snowball_Preview.gif/revision/latest?cb=20250831122758"
+ },
+ "goblin-barrel": {
+  "title": "Goblin Barrel",
+  "front": "sources/goblin-barrel-front.png",
+  "preview": "sources/goblin-barrel-preview.webp",
+  "frontWiki": "File:Goblin Barrel card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/4/42/Goblin_Barrel_card_render.png/revision/latest?cb=20220930092848",
+  "previewWiki": "File:Goblin Barrel Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/4/41/Goblin_Barrel_Preview.gif/revision/latest?cb=20250906153702"
+ },
+ "goblin-cage": {
+  "title": "Goblin Cage",
+  "front": "sources/goblin-cage-front.png",
+  "preview": "sources/goblin-cage-preview.webp",
+  "frontWiki": "File:Goblin Cage card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/c/c1/Goblin_Cage_card_render.png/revision/latest?cb=20220828091835",
+  "previewWiki": "File:Goblin Cage Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/c/cf/Goblin_Cage_Preview.gif/revision/latest?cb=20250916082658"
+ },
+ "goblin-curse": {
+  "title": "Goblin Curse",
+  "front": "sources/goblin-curse-front.png",
+  "preview": "sources/goblin-curse-preview.webp",
+  "frontWiki": "File:Goblin Curse card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/c/c9/Goblin_Curse_card_render.png/revision/latest?cb=20240619135935",
+  "previewWiki": "File:Goblin Curse Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/2/2c/Goblin_Curse_Preview.gif/revision/latest?cb=20250831155313"
+ },
+ "goblin-demolisher": {
+  "title": "Goblin Demolisher",
+  "front": "sources/goblin-demolisher-front.png",
+  "preview": "sources/goblin-demolisher-preview.webp",
+  "frontWiki": "File:Goblin Demolisher card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/a/a5/Goblin_Demolisher_card_render.png/revision/latest?cb=20240619135805",
+  "previewWiki": "File:Goblin Demolisher Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/0/01/Goblin_Demolisher_Preview.gif/revision/latest?cb=20250916155853"
+ },
+ "goblin-drill": {
+  "title": "Goblin Drill",
+  "front": "sources/goblin-drill-front.png",
+  "preview": null,
+  "frontWiki": "File:Goblin Drill card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/e/ea/Goblin_Drill_card_render.png/revision/latest?cb=20220930092859"
+ },
+ "goblin-gang": {
+  "title": "Goblin Gang",
+  "front": "sources/goblin-gang-front.png",
+  "preview": "sources/goblin-gang-preview.webp",
+  "frontWiki": "File:Goblin Gang card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/a/ac/Goblin_Gang_card_render.png/revision/latest?cb=20220817102448",
+  "previewWiki": "File:Goblin Gang Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/5/54/Goblin_Gang_Preview.gif/revision/latest?cb=20250906154315"
+ },
+ "goblin-giant": {
+  "title": "Goblin Giant",
+  "front": "sources/goblin-giant-front.png",
+  "preview": null,
+  "frontWiki": "File:Goblin Giant card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/f/fb/Goblin_Giant_card_render.png/revision/latest?cb=20220930092909"
+ },
+ "goblin-hut": {
+  "title": "Goblin Hut",
+  "front": "sources/goblin-hut-front.png",
+  "preview": "sources/goblin-hut-preview.webp",
+  "frontWiki": "File:Goblin Hut card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/f/fd/Goblin_Hut_card_render.png/revision/latest?cb=20221018163901",
+  "previewWiki": "File:Goblin Hut Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/3/35/Goblin_Hut_Preview.gif/revision/latest?cb=20250916082528"
+ },
+ "goblins": {
+  "title": "Goblins",
+  "front": "sources/goblins-front.png",
+  "preview": "sources/goblins-preview.webp",
+  "frontWiki": "File:Goblins card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/9/90/Goblins_card_render.png/revision/latest?cb=20220812114817",
+  "previewWiki": "File:Goblins Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/b/b1/Goblins_Preview.gif/revision/latest?cb=20250831152316"
+ },
+ "goblinstein": {
+  "title": "Goblinstein",
+  "front": "sources/goblinstein-front.png",
+  "preview": "sources/goblinstein-preview.webp",
+  "frontWiki": "File:Goblinstein Card Render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/6/6b/Goblinstein_Card_Render.png/revision/latest?cb=20250111194239",
+  "previewWiki": "File:Goblinstein Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/b/bd/Goblinstein_Preview.gif/revision/latest?cb=20251203195936"
+ },
+ "golden-knight": {
+  "title": "Golden Knight",
+  "front": "sources/golden-knight-front.png",
+  "preview": null,
+  "frontWiki": "File:Golden Knight card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/f/fb/Golden_Knight_card_render.png/revision/latest?cb=20220609201444"
+ },
+ "golem": {
+  "title": "Golem",
+  "front": "sources/golem-front.png",
+  "preview": null,
+  "frontWiki": "File:Golem card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/3/31/Golem_card_render.png/revision/latest?cb=20230112193834"
+ },
+ "graveyard": {
+  "title": "Graveyard",
+  "front": "sources/graveyard-front.png",
+  "preview": null,
+  "frontWiki": "File:Graveyard card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/2/23/Graveyard_card_render.png/revision/latest?cb=20221018164003"
+ },
+ "guards": {
+  "title": "Guards",
+  "front": "sources/guards-front.png",
+  "preview": "sources/guards-preview.webp",
+  "frontWiki": "File:Guards card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/2/24/Guards_card_render.png/revision/latest?cb=20221017122642",
+  "previewWiki": "File:Guards Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/e/e2/Guards_Preview.gif/revision/latest?cb=20250906153348"
+ },
+ "hog-rider": {
+  "title": "Hog Rider",
+  "front": "sources/hog-rider-front.png",
+  "preview": "sources/hog-rider-preview.webp",
+  "frontWiki": "File:Hog Rider card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/0/0c/Hog_Rider_card_render.png/revision/latest?cb=20220826041923",
+  "previewWiki": "File:Hog Rider Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/4/4e/Hog_Rider_Preview.gif/revision/latest?cb=20250916092256"
+ },
+ "ice-golem": {
+  "title": "Ice Golem",
+  "front": "sources/ice-golem-front.png",
+  "preview": "sources/ice-golem-preview.webp",
+  "frontWiki": "File:Ice Golem card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/6/69/Ice_Golem_card_render.png/revision/latest?cb=20220826090847",
+  "previewWiki": "File:Ice Golem Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/5/50/Ice_Golem_Preview.gif/revision/latest?cb=20250831123849"
+ },
+ "ice-spirit": {
+  "title": "Ice Spirit",
+  "front": "sources/ice-spirit-front.png",
+  "preview": "sources/ice-spirit-preview.webp",
+  "frontWiki": "File:Ice Spirit card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/0/0d/Ice_Spirit_card_render.png/revision/latest?cb=20220812114839",
+  "previewWiki": "File:Ice Spirit Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/3/38/Ice_Spirit_Preview.gif/revision/latest?cb=20250830143340"
+ },
+ "ice-wizard": {
+  "title": "Ice Wizard",
+  "front": "sources/ice-wizard-front.png",
+  "preview": "sources/ice-wizard-preview.webp",
+  "frontWiki": "File:Ice Wizard card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/4/41/Ice_Wizard_card_render.png/revision/latest?cb=20221003154428",
+  "previewWiki": "File:Ice Wizard Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/1/1f/Ice_Wizard_Preview.gif/revision/latest?cb=20250916081350"
+ },
+ "inferno-dragon": {
+  "title": "Inferno Dragon",
+  "front": "sources/inferno-dragon-front.png",
+  "preview": "sources/inferno-dragon-preview.webp",
+  "frontWiki": "File:Inferno Dragon card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/a/af/Inferno_Dragon_card_render.png/revision/latest?cb=20220826041643",
+  "previewWiki": "File:Inferno Dragon Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/e/e1/Inferno_Dragon_Preview.gif/revision/latest?cb=20250916155606"
+ },
+ "inferno-tower": {
+  "title": "Inferno Tower",
+  "front": "sources/inferno-tower-front.png",
+  "preview": null,
+  "frontWiki": "File:InfernoTowerCard.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/3/34/InfernoTowerCard.png/revision/latest?cb=20171212204928"
+ },
+ "knight": {
+  "title": "Knight",
+  "front": "sources/knight-front.png",
+  "preview": null,
+  "frontWiki": "File:Knight Card Render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/7/76/Knight_Card_Render.png/revision/latest?cb=20220712161727"
+ },
+ "lava-hound": {
+  "title": "Lava Hound",
+  "front": "sources/lava-hound-front.png",
+  "preview": null,
+  "frontWiki": "File:Lava Hound card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/1/10/Lava_Hound_card_render.png/revision/latest?cb=20220709131407"
+ },
+ "lightning": {
+  "title": "Lightning",
+  "front": "sources/lightning-front.png",
+  "preview": null,
+  "frontWiki": "File:Lightning Card Render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/2/2e/Lightning_Card_Render.png/revision/latest?cb=20251124215428"
+ },
+ "little-prince": {
+  "title": "Little Prince",
+  "front": "sources/little-prince-front.png",
+  "preview": "sources/little-prince-preview.webp",
+  "frontWiki": "File:Little Prince card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/0/0f/Little_Prince_card_render.png/revision/latest?cb=20231106140622",
+  "previewWiki": "File:Little Prince Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/a/a3/Little_Prince_Preview.gif/revision/latest?cb=20250916082212"
+ },
+ "lumberjack": {
+  "title": "Lumberjack",
+  "front": "sources/lumberjack-front.png",
+  "preview": null,
+  "frontWiki": "File:Lumberjack card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/0/07/Lumberjack_card_render.png/revision/latest?cb=20221003154454"
+ },
+ "magic-archer": {
+  "title": "Magic Archer",
+  "front": "sources/magic-archer-front.png",
+  "preview": null,
+  "frontWiki": "File:Magic Archer card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/d/d8/Magic_Archer_card_render.png/revision/latest?cb=20230215160719"
+ },
+ "mega-knight": {
+  "title": "Mega Knight",
+  "front": "sources/mega-knight-front.png",
+  "preview": "sources/mega-knight-preview.webp",
+  "frontWiki": "File:Mega Knight card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/8/86/Mega_Knight_card_render.png/revision/latest?cb=20221003154556",
+  "previewWiki": "File:Mega Knight Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/4/43/Mega_Knight_Preview.gif/revision/latest?cb=20250830134832"
+ },
+ "mighty-miner": {
+  "title": "Mighty Miner",
+  "front": "sources/mighty-miner-front.png",
+  "preview": null,
+  "frontWiki": "File:Mighty Miner card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/0/05/Mighty_Miner_card_render.png/revision/latest?cb=20221117144146"
+ },
+ "miner": {
+  "title": "Miner",
+  "front": "sources/miner-front.png",
+  "preview": "sources/miner-preview.webp",
+  "frontWiki": "File:Miner card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/3/3c/Miner_card_render.png/revision/latest?cb=20221022123923",
+  "previewWiki": "File:Miner Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/5/53/Miner_Preview.gif/revision/latest?cb=20250906160417"
+ },
+ "mini-pekka": {
+  "title": "Mini P.E.K.K.A.",
+  "front": "sources/mini-pekka-front.png",
+  "preview": null,
+  "frontWiki": "File:Mini P.E.K.K.A. Card Render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/d/dd/Mini_P.E.K.K.A._Card_Render.png/revision/latest?cb=20220708092744"
+ },
+ "minion-horde": {
+  "title": "Minion Horde",
+  "front": "sources/minion-horde-front.png",
+  "preview": null,
+  "frontWiki": "File:Minion Horde card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/9/95/Minion_Horde_card_render.png/revision/latest?cb=20220812114900"
+ },
+ "minions": {
+  "title": "Minions",
+  "front": "sources/minions-front.png",
+  "preview": null,
+  "frontWiki": "File:Minions Card Render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/a/a1/Minions_Card_Render.png/revision/latest?cb=20220812114918"
+ },
+ "monk": {
+  "title": "Monk",
+  "front": "sources/monk-front.png",
+  "preview": null,
+  "frontWiki": "File:Monk card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/9/91/Monk_card_render.png/revision/latest?cb=20221027052450"
+ },
+ "mortar": {
+  "title": "Mortar",
+  "front": "sources/mortar-front.png",
+  "preview": "sources/mortar-preview.webp",
+  "frontWiki": "File:Mortar card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/a/af/Mortar_card_render.png/revision/latest?cb=20220721160416",
+  "previewWiki": "File:Mortar Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/4/4e/Mortar_Preview.gif/revision/latest?cb=20250916092148"
+ },
+ "mother-witch": {
+  "title": "Mother Witch",
+  "front": "sources/mother-witch-front.png",
+  "preview": null,
+  "frontWiki": "File:Mother Witch card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/c/cc/Mother_Witch_card_render.png/revision/latest?cb=20220826041752"
+ },
+ "musketeer": {
+  "title": "Musketeer",
+  "front": "sources/musketeer-front.png",
+  "preview": null,
+  "frontWiki": "File:Musketeer Card Render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/5/55/Musketeer_Card_Render.png/revision/latest?cb=20221016083029"
+ },
+ "night-witch": {
+  "title": "Night Witch",
+  "front": "sources/night-witch-front.png",
+  "preview": null,
+  "frontWiki": "File:Night Witch card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/5/5b/Night_Witch_card_render.png/revision/latest?cb=20221003154625"
+ },
+ "pekka": {
+  "title": "P.E.K.K.A.",
+  "front": "sources/pekka-front.png",
+  "preview": "sources/pekka-preview.webp",
+  "frontWiki": "File:P.E.K.K.A. card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/5/5d/P.E.K.K.A._card_render.png/revision/latest?cb=20221001145004",
+  "previewWiki": "File:P.E.K.K.A. Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/c/ce/P.E.K.K.A._Preview.gif/revision/latest?cb=20250830133320"
+ },
+ "phoenix": {
+  "title": "Phoenix",
+  "front": "sources/phoenix-front.png",
+  "preview": "sources/phoenix-preview.webp",
+  "frontWiki": "File:Phoenix card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/6/66/Phoenix_card_render.png/revision/latest?cb=20221024141335",
+  "previewWiki": "File:Phoenix Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/d/da/Phoenix_Preview.gif/revision/latest?cb=20250916155932"
+ },
+ "poison": {
+  "title": "Poison",
+  "front": "sources/poison-front.png",
+  "preview": "sources/poison-preview.webp",
+  "frontWiki": "File:PoisonCard.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/8/89/PoisonCard.png/revision/latest?cb=20171212203628",
+  "previewWiki": "File:Poison Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/8/84/Poison_Preview.gif/revision/latest?cb=20250916155139"
+ },
+ "prince": {
+  "title": "Prince",
+  "front": "sources/prince-front.png",
+  "preview": null,
+  "frontWiki": "File:Prince card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/2/2e/Prince_card_render.png/revision/latest?cb=20220930092944"
+ },
+ "princess": {
+  "title": "Princess",
+  "front": "sources/princess-front.png",
+  "preview": "sources/princess-preview.webp",
+  "frontWiki": "File:Princess card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/4/44/Princess_card_render.png/revision/latest?cb=20221003154714",
+  "previewWiki": "File:Princess Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/9/97/Princess_Preview.gif/revision/latest?cb=20250906160052"
+ },
+ "rage": {
+  "title": "Rage",
+  "front": "sources/rage-front.png",
+  "preview": "sources/rage-preview.webp",
+  "frontWiki": "File:RageCard.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/1/1c/RageCard.png/revision/latest?cb=20171212203637",
+  "previewWiki": "File:Rage Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/e/e1/Rage_Preview.gif/revision/latest?cb=20250831154934"
+ },
+ "ram-rider": {
+  "title": "Ram Rider",
+  "front": "sources/ram-rider-front.png",
+  "preview": null,
+  "frontWiki": "File:Ram Rider card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/8/89/Ram_Rider_card_render.png/revision/latest?cb=20220709131437"
+ },
+ "rascals": {
+  "title": "Rascals",
+  "front": "sources/rascals-front.png",
+  "preview": null,
+  "frontWiki": "File:Rascals card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/7/7b/Rascals_card_render.png/revision/latest?cb=20220812114939"
+ },
+ "rocket": {
+  "title": "Rocket",
+  "front": "sources/rocket-front.png",
+  "preview": null,
+  "frontWiki": "File:Rocket card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/f/fd/Rocket_card_render.png/revision/latest?cb=20220826090906"
+ },
+ "royal-chef": {
+  "title": "Royal Chef",
+  "front": "sources/royal-chef-front.png",
+  "preview": null,
+  "frontWiki": "File:RoyalChefCard.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/b/b5/RoyalChefCard.png/revision/latest?cb=20251019191241"
+ },
+ "royal-delivery": {
+  "title": "Royal Delivery",
+  "front": "sources/royal-delivery-front.png",
+  "preview": "sources/royal-delivery-preview.webp",
+  "frontWiki": "File:Royal Delivery card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/5/5a/Royal_Delivery_card_render.png/revision/latest?cb=20220812115010",
+  "previewWiki": "File:Royal Delivery Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/e/e6/Royal_Delivery_Preview.gif/revision/latest?cb=20250916081652"
+ },
+ "royal-ghost": {
+  "title": "Royal Ghost",
+  "front": "sources/royal-ghost-front.png",
+  "preview": "sources/royal-ghost-preview.webp",
+  "frontWiki": "File:Royal Ghost card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/6/6b/Royal_Ghost_card_render.png/revision/latest?cb=20220826041811",
+  "previewWiki": "File:Royal Ghost Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/0/00/Royal_Ghost_Preview.gif/revision/latest?cb=20250916081521"
+ },
+ "royal-giant": {
+  "title": "Royal Giant",
+  "front": "sources/royal-giant-front.png",
+  "preview": null,
+  "frontWiki": "File:Royal Giant card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/b/b4/Royal_Giant_card_render.png/revision/latest?cb=20220902223619"
+ },
+ "royal-hogs": {
+  "title": "Royal Hogs",
+  "front": "sources/royal-hogs-front.png",
+  "preview": null,
+  "frontWiki": "File:Royal Hogs card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/0/03/Royal_Hogs_card_render.png/revision/latest?cb=20220826090940"
+ },
+ "royal-recruits": {
+  "title": "Royal Recruits",
+  "front": "sources/royal-recruits-front.png",
+  "preview": null,
+  "frontWiki": "File:Royal Recruits card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/4/4d/Royal_Recruits_card_render.png/revision/latest?cb=20220812115026"
+ },
+ "skeleton-army": {
+  "title": "Skeleton Army",
+  "front": "sources/skeleton-army-front.png",
+  "preview": "sources/skeleton-army-preview.webp",
+  "frontWiki": "File:Skeleton Army card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/a/a0/Skeleton_Army_card_render.png/revision/latest?cb=20221017122444",
+  "previewWiki": "File:Skeleton Army Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/6/63/Skeleton_Army_Preview.gif/revision/latest?cb=20250906153003"
+ },
+ "skeleton-barrel": {
+  "title": "Skeleton Barrel",
+  "front": "sources/skeleton-barrel-front.png",
+  "preview": "sources/skeleton-barrel-preview.webp",
+  "frontWiki": "File:Skeleton Barrel card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/1/17/Skeleton_Barrel_card_render.png/revision/latest?cb=20220810092904",
+  "previewWiki": "File:Skeleton Barrel Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/1/15/Skeleton_Barrel_Preview.gif/revision/latest?cb=20250906154719"
+ },
+ "skeleton-king": {
+  "title": "Skeleton King",
+  "front": "sources/skeleton-king-front.png",
+  "preview": null,
+  "frontWiki": "File:Skeleton King card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/3/38/Skeleton_King_card_render.png/revision/latest?cb=20220609201457"
+ },
+ "skeletons": {
+  "title": "Skeletons",
+  "front": "sources/skeletons-front.png",
+  "preview": "sources/skeletons-preview.webp",
+  "frontWiki": "File:Skeletons card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/a/ac/Skeletons_card_render.png/revision/latest?cb=20220801225357",
+  "previewWiki": "File:Skeletons Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/7/7f/Skeletons_Preview.gif/revision/latest?cb=20250830141004"
+ },
+ "sparky": {
+  "title": "Sparky",
+  "front": "sources/sparky-front.png",
+  "preview": null,
+  "frontWiki": "File:Sparky card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/2/26/Sparky_card_render.png/revision/latest?cb=20220826041558"
+ },
+ "spear-goblins": {
+  "title": "Spear Goblins",
+  "front": "sources/spear-goblins-front.png",
+  "preview": "sources/spear-goblins-preview.webp",
+  "frontWiki": "File:Spear Goblins card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/b/ba/Spear_Goblins_card_render.png/revision/latest?cb=20220702171210",
+  "previewWiki": "File:Spear Goblins Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/3/3d/Spear_Goblins_Preview.gif/revision/latest?cb=20250831152918"
+ },
+ "tesla": {
+  "title": "Tesla",
+  "front": "sources/tesla-front.png",
+  "preview": "sources/tesla-preview.webp",
+  "frontWiki": "File:Tesla card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/e/e9/Tesla_card_render.png/revision/latest?cb=20220721161039",
+  "previewWiki": "File:Tesla Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/3/3c/Tesla_Preview.gif/revision/latest?cb=20250916155311"
+ },
+ "the-log": {
+  "title": "The Log",
+  "front": "sources/the-log-front.png",
+  "preview": "sources/the-log-preview.webp",
+  "frontWiki": "File:The Log card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/b/b8/The_Log_card_render.png/revision/latest?cb=20221003154747",
+  "previewWiki": "File:The Log Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/c/c7/The_Log_Preview.gif/revision/latest?cb=20250831125401"
+ },
+ "tombstone": {
+  "title": "Tombstone",
+  "front": "sources/tombstone-front.png",
+  "preview": "sources/tombstone-preview.webp",
+  "frontWiki": "File:Tombstone card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/4/4f/Tombstone_card_render.png/revision/latest?cb=20221018163828",
+  "previewWiki": "File:Tombstone Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/1/19/Tombstone_Preview.gif/revision/latest?cb=20250906151634"
+ },
+ "tornado": {
+  "title": "Tornado",
+  "front": "sources/tornado-front.png",
+  "preview": null,
+  "frontWiki": "File:Tornado card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/a/ae/Tornado_card_render.png/revision/latest?cb=20220930092956"
+ },
+ "tower-princess": {
+  "title": "Tower Princess",
+  "front": "sources/tower-princess-front.png",
+  "preview": null,
+  "frontWiki": "File:Tower Princess Card Render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/c/c0/Tower_Princess_Card_Render.png/revision/latest?cb=20250111131321"
+ },
+ "valkyrie": {
+  "title": "Valkyrie",
+  "front": "sources/valkyrie-front.png",
+  "preview": "sources/valkyrie-preview.webp",
+  "frontWiki": "File:Valkyrie card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/3/3e/Valkyrie_card_render.png/revision/latest?cb=20220708092826",
+  "previewWiki": "File:Valkyrie Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/0/06/Valkyrie_Preview.gif/revision/latest?cb=20250916082922"
+ },
+ "void": {
+  "title": "Void",
+  "front": "sources/void-front.png",
+  "preview": "sources/void-preview.webp",
+  "frontWiki": "File:Void card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/3/30/Void_card_render.png/revision/latest?cb=20241129225713",
+  "previewWiki": "File:Void Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/4/48/Void_Preview.gif/revision/latest?cb=20250916082026"
+ },
+ "witch": {
+  "title": "Witch",
+  "front": "sources/witch-front.png",
+  "preview": null,
+  "frontWiki": "File:Witch card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/4/4f/Witch_card_render.png/revision/latest?cb=20221017122540"
+ },
+ "wizard": {
+  "title": "Wizard",
+  "front": "sources/wizard-front.png",
+  "preview": null,
+  "frontWiki": "File:Wizard card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/c/c9/Wizard_card_render.png/revision/latest?cb=20220826091049"
+ },
+ "x-bow": {
+  "title": "X-Bow",
+  "front": "sources/x-bow-front.png",
+  "preview": null,
+  "frontWiki": "File:X-Bow card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/e/ed/X-Bow_card_render.png/revision/latest?cb=20250903140439"
+ },
+ "zap": {
+  "title": "Zap",
+  "front": "sources/zap-front.png",
+  "preview": "sources/zap-preview.webp",
+  "frontWiki": "File:Zap card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/3/35/Zap_card_render.png/revision/latest?cb=20221021214936",
+  "previewWiki": "File:Zap Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/7/71/Zap_Preview.gif/revision/latest?cb=20250831121810"
+ },
+ "zappies": {
+  "title": "Zappies",
+  "front": "sources/zappies-front.png",
+  "preview": "sources/zappies-preview.webp",
+  "frontWiki": "File:Zappies card render.png",
+  "frontUrl": "https://static.wikia.nocookie.net/clashroyale/images/b/ba/Zappies_card_render.png/revision/latest?cb=20220828091849",
+  "previewWiki": "File:Zappies Preview.gif",
+  "previewUrl": "https://static.wikia.nocookie.net/clashroyale/images/0/0a/Zappies_Preview.gif/revision/latest?cb=20250916155346"
+ }
+}

@@ -9,8 +9,10 @@ Endpoints:
   GET  /balance/cards  -> {cards: [{name, win_rate, pick_rate}], ...}
 """
 
+import json
 import random
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI
@@ -37,6 +39,16 @@ CARD_COSTS: Dict[str, float] = {
     "zap": 2,
     "cannon": 3,
 }
+
+# Extend costs with the full 108-card snapshot so substitution works for any
+# hand the authoritative server sends.
+try:
+    with Path(__file__).with_name("cards_data.json").open(encoding="utf-8") as _fh:
+        _CATALOG_COSTS = json.load(_fh)
+    for _cid, _row in _CATALOG_COSTS.items():
+        CARD_COSTS.setdefault(str(_cid), float(_row.get("cost") or 3.0))
+except (OSError, ValueError):
+    pass
 
 VALID_DIFFICULTIES = ("easy", "medium", "hard")
 

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { hydrateMechanicsFromMysql, hydrateSpawnTemplatesFromMysql } from "../src/mysql.js";
 import { createGame, playCard, tickGame } from "../src/game/engine.js";
 import { CARDS, getSpawnTemplate } from "../src/game/cards.js";
+import { getLevelStats } from "../src/game/levelStats.js";
 import { forceInHand } from "./deckHelpers.js";
 
 /**
@@ -34,8 +35,8 @@ describe("building lifetimes", () => {
   it("uses tournament-standard lifetimes", () => {
     assert.equal(getSpawnTemplate("cannon")?.durationMs, 30000);
     assert.equal(getSpawnTemplate("barbarian-hut")?.durationMs, 30000);
-    assert.equal(getSpawnTemplate("tesla")?.durationMs, 40000);
-    assert.equal(getSpawnTemplate("inferno-tower")?.durationMs, 40000);
+    assert.equal(getSpawnTemplate("tesla")?.durationMs, 25000);
+    assert.equal(getSpawnTemplate("inferno-tower")?.durationMs, 30000);
     assert.equal(getSpawnTemplate("x-bow")?.durationMs, 30000);
     assert.equal(getSpawnTemplate("mortar")?.durationMs, 30000);
   });
@@ -45,7 +46,7 @@ describe("building lifetimes", () => {
     state.elixir.blue = 10;
     const played = playCard(state, "blue", {
       handIndex: forceInHand(state, "blue", "cannon"),
-      x: 13.5,
+      x: 14.5,
       y: 4,
     });
     assert.equal(played.ok, true);
@@ -67,7 +68,7 @@ describe("building lifetimes", () => {
   it("removes the building when its timer expires", () => {
     const state = createGame("lifetime-expire", deckWith("cannon"), FILLER);
     state.elixir.blue = 10;
-    playCard(state, "blue", { handIndex: forceInHand(state, "blue", "cannon"), x: 13.5, y: 4 });
+    playCard(state, "blue", { handIndex: forceInHand(state, "blue", "cannon"), x: 14.5, y: 4 });
     assert.equal(state.units.filter((u) => u.cardId === "cannon").length, 1);
 
     for (let i = 0; i < 400; i++) tickGame(state);
@@ -91,7 +92,7 @@ describe("spawners", () => {
     state.elixir.blue = 10;
     const played = playCard(state, "blue", {
       handIndex: forceInHand(state, "blue", "barbarian-hut"),
-      x: 13.5,
+      x: 14.5,
       y: 10,
     });
     assert.equal(played.ok, true);
@@ -104,7 +105,8 @@ describe("spawners", () => {
     assert.ok(spawned.length > 0, "the hut must have spawned barbarians");
     // Spawned children use the child-template stats, not derived deck stats.
     const template = getSpawnTemplate("barbarian");
-    assert.equal(spawned[0]?.maxHp, template?.hp);
+    assert.ok(template);
+    assert.equal(spawned[0]?.maxHp, getLevelStats(template, 1).hitPoints);
     assert.equal(spawned[0]?.owner, "blue");
   });
 
@@ -124,8 +126,10 @@ describe("spawners", () => {
           `${spawnerId} references missing child template "${child}"`,
         );
       }
-      // Spawners are temporary like every other building.
-      assert.ok(card.durationMs !== undefined, `${spawnerId} has no lifetime`);
+      // Spawners that are buildings are temporary; Furnace is now a troop.
+      if (card.type === "building") {
+        assert.ok(card.durationMs !== undefined, `${spawnerId} has no lifetime`);
+      }
     }
   });
 
@@ -134,7 +138,7 @@ describe("spawners", () => {
     state.elixir.blue = 10;
     playCard(state, "blue", {
       handIndex: forceInHand(state, "blue", "barbarian-hut"),
-      x: 13.5,
+      x: 14.5,
       y: 10,
     });
 
@@ -164,10 +168,12 @@ describe("spawners", () => {
     state.elixir.blue = 10;
     playCard(state, "blue", {
       handIndex: forceInHand(state, "blue", "goblin-cage"),
-      x: 13.5,
+      x: 14.5,
       y: 10,
     });
-    for (let i = 0; i < 400; i++) tickGame(state);
+    // The cage expires at 20 s; check just after it releases its Goblin
+    // Brawler (later the brawler may walk off and die to towers).
+    for (let i = 0; i < 220; i++) tickGame(state);
     assert.equal(state.units.filter((u) => u.cardId === "goblin-cage").length, 0);
     assert.ok(
       state.units.some((u) => u.cardId === "goblin-brawler"),
@@ -180,7 +186,7 @@ describe("spawners", () => {
     state.elixir.blue = 10;
     playCard(state, "blue", {
       handIndex: forceInHand(state, "blue", "barbarian-hut"),
-      x: 13.5,
+      x: 14.5,
       y: 10,
     });
     for (let i = 0; i < 200; i++) tickGame(state);

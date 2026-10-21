@@ -9,15 +9,31 @@
  */
 
 import { CARDS, CARD_LIST } from "./game/cards.js";
+import {
+  savePlayerDecks,
+  savePlayerProfile,
+  type StoredDeck,
+  type StoredPlayer,
+} from "./playerStore.js";
 
 export const DECK_SIZE = 8;
 const isBattleCard = (id: string): boolean => CARDS[id] !== undefined;
 
-/** Starter deck (same list as the frontend fallback). */
-const DECK_FALLBACK: string[] = CARD_LIST
-  .filter((card) => card.type !== "tower")
-  .slice(0, DECK_SIZE)
-  .map((card) => card.id);
+/**
+ * Starter deck: 8 cards from the starter collection (all owned on day one).
+ * Keep this in sync with the frontend `STARTER_DECK_BALANCED` list.
+ */
+const DECK_FALLBACK: string[] = [
+  "knight",
+  "archers",
+  "musketeer",
+  "baby-dragon",
+  "giant",
+  "skeletons",
+  "fireball",
+  "cannon",
+];
+const STARTER_CARD_LEVEL = 9;
 
 export interface Player {
   playerId: string;
@@ -28,11 +44,16 @@ export interface Player {
   wins: number;
   losses: number;
   draws: number;
-  /** Card id -> level (1..15). Owned cards only. */
+  /** Card id -> level (1..16). Owned cards only. */
   cards: Record<string, number>;
+  /** Crown-tower troop id -> level (1..16); progressed independently. */
+  towerLevels: Record<string, number>;
+  /** King Tower level. Side towers cannot exceed this. */
+  kingLevel: number;
   decks: Deck[];
   activeDeckId: string | null;
   createdAtMs: number;
+  lastSeenMs: number;
 }
 
 export interface Deck {
@@ -64,7 +85,12 @@ function defaultName(playerId: string): string {
 }
 
 function starterDeck(name = "Battle Deck"): Deck {
-  return { id: nextId("deck"), name, cards: [...DECK_FALLBACK], levels: Object.fromEntries(DECK_FALLBACK.map((id) => [id, 1])) };
+  return {
+    id: nextId("deck"),
+    name,
+    cards: [...DECK_FALLBACK],
+    levels: Object.fromEntries(DECK_FALLBACK.map((id) => [id, STARTER_CARD_LEVEL])),
+  };
 }
 
 /**
@@ -90,7 +116,14 @@ const STARTER_COLLECTION: string[] = [
 /** Creates on first sight. O(1). */
 export function ensurePlayer(playerId: string): Player {
   const existing = players.get(playerId);
-  if (existing !== undefined) return existing;
+  if (existing !== undefined) {
+    const now = Date.now();
+    if (now - existing.lastSeenMs > 60_000) {
+      existing.lastSeenMs = now;
+      markDirty(playerId);
+    }
+    return existing;
+  }
   const deck = starterDeck();
   const player: Player = {
     playerId,
@@ -107,12 +140,116 @@ export function ensurePlayer(playerId: string): Player {
     // dead. The deck builder remains card-agnostic, so all 108 cards stay
     // usable in battle; the shop simply has inventory again.
     cards: Object.fromEntries(STARTER_COLLECTION.map((id) => [id, 9])),
+    towerLevels: Object.fromEntries(
+      Object.values(CARDS)
+        .filter((card) => card.type === "tower")
+        .map((card) => [card.id, 1]),
+    ),
+    kingLevel: 1,
     decks: [deck],
     activeDeckId: deck.id,
     createdAtMs: Date.now(),
+    lastSeenMs: Date.now(),
   };
   players.set(playerId, player);
+  markDirty(playerId);
   return player;
+}
+
+/** Rebuild the in-memory store from MySQL rows at startup. */
+export function hydratePlayers(profiles: StoredPlayer[], decks: StoredDeck[]): number {
+  const byPlayer = new Map<string, Deck[]>();
+  for (const row of decks) {
+    const list = byPlayer.get(row.playerId) ?? [];
+    list.push({
+      id: row.id,
+      name: row.name,
+      cards: [...row.cards],
+      levels: { ...row.levels },
+      ...(row.towerTroopId ? { towerTroopId: row.towerTroopId } : {}),
+    });
+    byPlayer.set(row.playerId, list);
+  }
+  for (const row of profiles) {
+    const towerDefaults = Object.fromEntries(
+      Object.values(CARDS)
+        .filter((card) => card.type === "tower")
+        .map((card) => [card.id, 1]),
+    );
+    const restoredDecks = byPlayer.get(row.playerId) ?? [];
+    const player: Player = {
+      playerId: row.playerId,
+      name: row.name,
+      trophies: row.trophies,
+      coins: row.coins,
+      gems: row.gems,
+      wins: row.wins,
+      losses: row.losses,
+      draws: row.draws,
+      cards: { ...row.cards },
+      towerLevels: { ...towerDefaults, ...row.towerLevels },
+      kingLevel: Math.max(1, Math.min(CARD_MAX_LEVEL, row.kingLevel || 1)),
+      decks: restoredDecks.length > 0 ? restoredDecks : [starterDeck()],
+      activeDeckId:
+        row.activeDeckId !== null && restoredDecks.some((deck) => deck.id === row.activeDeckId)
+          ? row.activeDeckId
+          : restoredDecks[0]?.id ?? null,
+      createdAtMs: row.createdAtMs || Date.now(),
+      lastSeenMs: row.lastSeenMs || Date.now(),
+    };
+    players.set(row.playerId, player);
+  }
+  return players.size;
+}
+
+function toStoredPlayer(player: Player): StoredPlayer {
+  return {
+    playerId: player.playerId,
+    name: player.name,
+    trophies: player.trophies,
+    coins: player.coins,
+    gems: player.gems,
+    wins: player.wins,
+    losses: player.losses,
+    draws: player.draws,
+    cards: { ...player.cards },
+    towerLevels: { ...player.towerLevels },
+    kingLevel: player.kingLevel,
+    activeDeckId: player.activeDeckId,
+    createdAtMs: player.createdAtMs,
+    lastSeenMs: player.lastSeenMs,
+  };
+}
+
+const dirty = new Set<string>();
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Coalesced write-through persistence (O(1) mutation, batched DB writes). */
+function markDirty(playerId: string): void {
+  dirty.add(playerId);
+  if (flushTimer !== null) return;
+  flushTimer = setTimeout(() => {
+    flushTimer = null;
+    const ids = [...dirty];
+    dirty.clear();
+    for (const id of ids) {
+      const player = players.get(id);
+      if (player === undefined) continue;
+      savePlayerProfile(toStoredPlayer(player));
+      savePlayerDecks(
+        id,
+        player.decks.map((deck) => ({
+          id: deck.id,
+          playerId: id,
+          name: deck.name,
+          cards: deck.cards,
+          levels: deck.levels,
+          ...(deck.towerTroopId ? { towerTroopId: deck.towerTroopId } : {}),
+        })),
+      );
+    }
+  }, 200);
+  (flushTimer as unknown as { unref?: () => void }).unref?.();
 }
 
 export function getPlayer(playerId: string): Player | undefined {
@@ -123,6 +260,7 @@ export function setName(playerId: string, name: string): Player {
   const p = ensurePlayer(playerId);
   const clean = name.trim().slice(0, 16);
   if (clean.length > 0) p.name = clean;
+  markDirty(playerId);
   return p;
 }
 
@@ -154,6 +292,7 @@ export function createDeck(playerId: string, name?: string, cards?: string[]): D
   };
   p.decks.push(deck);
   if (p.activeDeckId === null) p.activeDeckId = deck.id;
+  markDirty(playerId);
   return { ...deck, cards: [...deck.cards], levels: { ...deck.levels } };
 }
 
@@ -178,6 +317,7 @@ export function updateDeck(
   }
   if (patch.levels !== undefined) deck.levels = { ...deck.levels, ...patch.levels };
   if (patch.towerTroopId !== undefined) deck.towerTroopId = patch.towerTroopId;
+  markDirty(playerId);
   return { ...deck, cards: [...deck.cards], levels: { ...deck.levels } };
 }
 
@@ -187,7 +327,8 @@ export function selectDeck(playerId: string, deckId: string): Deck | null {
   if (!p.decks.some((d) => d.id === deckId)) return null;
   p.activeDeckId = deckId;
   const deck = p.decks.find((d) => d.id === deckId);
-  return deck === undefined ? null : { ...deck, cards: [...deck.cards] };
+  markDirty(playerId);
+  return deck === undefined ? null : { ...deck, cards: [...deck.cards], levels: { ...deck.levels } };
 }
 
 export function deleteDeck(playerId: string, deckId: string): boolean {
@@ -197,6 +338,7 @@ export function deleteDeck(playerId: string, deckId: string): boolean {
   if (idx === -1) return false;
   p.decks.splice(idx, 1);
   if (p.activeDeckId === deckId) p.activeDeckId = p.decks[0]?.id ?? null;
+  markDirty(playerId);
   return true;
 }
 
@@ -227,6 +369,7 @@ export function adjustWallet(
   if (p.coins + coins < 0 || p.gems + gems < 0) return false;
   p.coins += coins;
   p.gems += gems;
+  markDirty(playerId);
   return true;
 }
 
@@ -235,8 +378,9 @@ export function grantCards(playerId: string, ids: string[], level = 1): void {
   const p = ensurePlayer(playerId);
   for (const id of ids) {
     if (!isBattleCard(id)) continue;
-    p.cards[id] = Math.min(15, (p.cards[id] ?? 0) + level);
+    p.cards[id] = Math.min(CARD_MAX_LEVEL, (p.cards[id] ?? 0) + level);
   }
+  markDirty(playerId);
 }
 
 export function ownsCard(playerId: string, cardId: string): boolean {
@@ -248,6 +392,67 @@ export const CARD_MAX_LEVEL = 16;
 /** Coin cost to take a card from `level` to `level + 1`. O(1). */
 export function cardUpgradeCost(level: number): number {
   return Math.round(200 * Math.pow(1.35, Math.max(0, level - 1)));
+}
+
+export type TowerUpgradeResult =
+  | { ok: true; towerId: string; level: number; cost: number; coins: number; kingLevel: number }
+  | {
+      ok: false;
+      code: "BAD_TOWER" | "MAX_LEVEL" | "NO_COINS" | "KING_LEVEL_REQUIRED";
+      message: string;
+      level: number;
+      cost: number;
+      kingLevel: number;
+    };
+
+/**
+ * Upgrade the King Tower (`towerId === "king"`) or a selected side tower.
+ * Side towers are capped at the King Tower level, so the King must be upgraded
+ * first before side towers can exceed it.
+ */
+export function upgradeTower(playerId: string, towerId: string): TowerUpgradeResult {
+  const p = ensurePlayer(playerId);
+  const kingLevel = p.kingLevel;
+
+  if (towerId === "king") {
+    if (kingLevel >= CARD_MAX_LEVEL) {
+      return { ok: false, code: "MAX_LEVEL", message: "king tower is already at max level", level: kingLevel, cost: 0, kingLevel };
+    }
+    const cost = cardUpgradeCost(kingLevel);
+    if (p.coins < cost) {
+      return { ok: false, code: "NO_COINS", message: "not enough coins", level: kingLevel, cost, kingLevel };
+    }
+    p.coins -= cost;
+    p.kingLevel = kingLevel + 1;
+    markDirty(playerId);
+    return { ok: true, towerId, level: p.kingLevel, cost, coins: p.coins, kingLevel: p.kingLevel };
+  }
+
+  if (CARDS[towerId]?.type !== "tower") {
+    return { ok: false, code: "BAD_TOWER", message: "unknown tower troop", level: 0, cost: 0, kingLevel };
+  }
+  const current = p.towerLevels[towerId] ?? 1;
+  if (current >= CARD_MAX_LEVEL) {
+    return { ok: false, code: "MAX_LEVEL", message: "tower is already at max level", level: current, cost: 0, kingLevel };
+  }
+  if (current >= kingLevel) {
+    return {
+      ok: false,
+      code: "KING_LEVEL_REQUIRED",
+      message: "Upgrade the King Tower first",
+      level: current,
+      cost: 0,
+      kingLevel,
+    };
+  }
+  const cost = cardUpgradeCost(current);
+  if (p.coins < cost) {
+    return { ok: false, code: "NO_COINS", message: "not enough coins", level: current, cost, kingLevel };
+  }
+  p.coins -= cost;
+  p.towerLevels[towerId] = current + 1;
+  markDirty(playerId);
+  return { ok: true, towerId, level: current + 1, cost, coins: p.coins, kingLevel };
 }
 
 export type UpgradeResult =
@@ -278,6 +483,7 @@ export function upgradeCard(playerId: string, cardId: string): UpgradeResult {
   for (const deck of p.decks) {
     if (deck.cards.includes(cardId)) deck.levels[cardId] = next;
   }
+  markDirty(playerId);
   return { ok: true, cardId, level: next, cost, coins: p.coins };
 }
 
@@ -301,6 +507,7 @@ export function applyMatchResult(input: {
     if (result === "win") p.wins += 1;
     else if (result === "loss") p.losses += 1;
     else p.draws += 1;
+    markDirty(pid);
     out.push({ playerId: pid, trophyDelta: reward.trophies, coinDelta: reward.coins });
   };
   if (input.winner === "draw") {
@@ -332,6 +539,140 @@ export function playerTable(limit = 50): Array<
     });
 }
 
+export interface AdminPlayerRow {
+  playerId: string;
+  name: string;
+  trophies: number;
+  coins: number;
+  gems: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  cardsOwned: number;
+  decks: number;
+  kingLevel: number;
+  createdAtMs: number;
+  lastSeenMs: number;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  activeToday: number;
+  newToday: number;
+  totalCoins: number;
+  totalGems: number;
+  totalCards: number;
+  totalDecks: number;
+  totalGames: number;
+  topPlayers: AdminPlayerRow[];
+}
+
+function adminRow(player: Player): AdminPlayerRow {
+  return {
+    playerId: player.playerId,
+    name: player.name,
+    trophies: player.trophies,
+    coins: player.coins,
+    gems: player.gems,
+    wins: player.wins,
+    losses: player.losses,
+    draws: player.draws,
+    cardsOwned: Object.keys(player.cards).length,
+    decks: player.decks.length,
+    kingLevel: player.kingLevel,
+    createdAtMs: player.createdAtMs,
+    lastSeenMs: player.lastSeenMs,
+  };
+}
+
+/** Admin dashboard rows, sorted by trophies then name. O(n log n). */
+export function listAdminPlayers(limit = 100): AdminPlayerRow[] {
+  return [...players.values()]
+    .sort((a, b) => b.trophies - a.trophies || a.name.localeCompare(b.name))
+    .slice(0, limit)
+    .map(adminRow);
+}
+
+export function getAdminStats(): AdminStats {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const dayStart = startOfDay.getTime();
+  let activeToday = 0;
+  let newToday = 0;
+  let totalCoins = 0;
+  let totalGems = 0;
+  let totalCards = 0;
+  let totalDecks = 0;
+  let totalGames = 0;
+  for (const player of players.values()) {
+    if (player.lastSeenMs >= dayStart) activeToday += 1;
+    if (player.createdAtMs >= dayStart) newToday += 1;
+    totalCoins += player.coins;
+    totalGems += player.gems;
+    totalCards += Object.keys(player.cards).length;
+    totalDecks += player.decks.length;
+    totalGames += player.wins + player.losses + player.draws;
+  }
+  return {
+    totalUsers: players.size,
+    activeToday,
+    newToday,
+    totalCoins,
+    totalGems,
+    totalCards,
+    totalDecks,
+    totalGames,
+    topPlayers: listAdminPlayers(10),
+  };
+}
+
+/** Set absolute wallet/trophy values from the admin panel. O(1). */
+export function adminUpdatePlayer(
+  playerId: string,
+  patch: { coins?: number; gems?: number; trophies?: number; name?: string },
+): Player | null {
+  const player = players.get(playerId);
+  if (player === undefined) return null;
+  if (patch.coins !== undefined && Number.isFinite(patch.coins)) {
+    player.coins = Math.max(0, Math.trunc(patch.coins));
+  }
+  if (patch.gems !== undefined && Number.isFinite(patch.gems)) {
+    player.gems = Math.max(0, Math.trunc(patch.gems));
+  }
+  if (patch.trophies !== undefined && Number.isFinite(patch.trophies)) {
+    player.trophies = Math.max(0, Math.trunc(patch.trophies));
+  }
+  if (typeof patch.name === "string" && patch.name.trim().length > 0) {
+    player.name = patch.name.trim().slice(0, 16);
+  }
+  markDirty(playerId);
+  return player;
+}
+
+/**
+ * Server-authoritative battle levels: profile values win over the submitted
+ * map. Prevents a client race (BATTLE pressed before profile hydration) from
+ * creating a level-1 match for a level-16 account. O(deck).
+ */
+export function battleLevelsFor(
+  playerId: string,
+  deck: readonly string[],
+  towerTroopId: unknown,
+  submitted: Record<string, number>,
+): Record<string, number> {
+  const profile = ensurePlayer(playerId);
+  const out: Record<string, number> = {};
+  for (const id of deck) out[id] = profile.cards[id] ?? submitted[id] ?? 1;
+  const kingLevel = Math.max(1, Math.min(16, Math.trunc(profile.kingLevel ?? 1)));
+  out["king-tower"] = kingLevel;
+  const towerId = typeof towerTroopId === "string" ? towerTroopId : "tower-princess";
+  out[towerId] = Math.max(
+    kingLevel,
+    Math.min(16, Math.trunc(profile.towerLevels?.[towerId] ?? kingLevel)),
+  );
+  return out;
+}
+
 /** Convenience for shop cards: every engine card id. O(1) array copy. */
 export function allCardIds(): string[] {
   return Object.keys(CARDS);
@@ -339,5 +680,10 @@ export function allCardIds(): string[] {
 
 export function resetPlayers(): void {
   players.clear();
+  dirty.clear();
+  if (flushTimer !== null) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
   seq = 0;
 }

@@ -7,6 +7,7 @@
 import { CARDS, SPAWN_TEMPLATES, hydrateCardMechanics, hydrateSpawnTemplates, type CardDef } from "./game/cards.js";
 import { parseCardMechanicSpec, type CardMechanicSpec } from "./game/cardMechanics.js";
 import { fallbackLevelStats, hydrateLevelStats, type LevelStats } from "./game/levelStats.js";
+import { GENERATED_CARD_LEVELS } from "./game/cardLevels.generated.js";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -53,6 +54,7 @@ export interface CatalogEntry {
   radius: number;
   flying: boolean;
   towerDamage?: number;
+  description?: string;
 }
 
 export interface CardMechanicsContent {
@@ -163,6 +165,11 @@ function getPool(): Pool | null {
   }
 }
 
+/** Persistence layer accessor (playerStore). Null when MySQL is unconfigured. */
+export function getMysqlPool(): Pool | null {
+  return getPool();
+}
+
 export function isMysqlConfigured(): boolean {
   // O(1): env presence only, no I/O.
   return env("DB_HOST").length > 0;
@@ -239,6 +246,12 @@ export async function ensureMysqlDatabase(): Promise<{ tables: boolean; cards: n
       if (dbError.code !== "ER_DUP_FIELDNAME" && dbError.errno !== 1060) throw error;
     }
   }
+  try {
+    await p.query("ALTER TABLE player_profiles ADD COLUMN last_seen_ms BIGINT NOT NULL DEFAULT 0");
+  } catch (error) {
+    const dbError = error as { code?: string; errno?: number };
+    if (dbError.code !== "ER_DUP_FIELDNAME" && dbError.errno !== 1060) throw error;
+  }
 
   const cardRows = Object.values(CARDS);
   const mechanics = jsonFile("card_mechanics.json");
@@ -254,11 +267,14 @@ export async function ensureMysqlDatabase(): Promise<{ tables: boolean; cards: n
       "INSERT INTO card_catalog (name,card_type,elixir,rarity,playable,note,hp,damage,hit_speed_ms,dps,speed,range_tiles,sight_range,targets,unit_count,radius_tiles,flying,tower_damage) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE card_type=VALUES(card_type),elixir=VALUES(elixir),rarity=VALUES(rarity),playable=VALUES(playable),hp=VALUES(hp),damage=VALUES(damage),hit_speed_ms=VALUES(hit_speed_ms),dps=VALUES(dps),speed=VALUES(speed),range_tiles=VALUES(range_tiles),sight_range=VALUES(sight_range),targets=VALUES(targets),unit_count=VALUES(unit_count),radius_tiles=VALUES(radius_tiles),flying=VALUES(flying),tower_damage=VALUES(tower_damage)",
       [card.id, card.type, card.cost, card.rarity, 1, "full catalog card", card.hp, card.damage, Math.round(card.hitSpeed * 1000), card.dps, card.speed, card.range, card.sightRange, card.targets, card.count, card.radius, card.flying ? 1 : 0, card.towerDamage ?? null],
     );
+    const levelTable = GENERATED_CARD_LEVELS[card.id] ?? [];
     for (let level = 1; level <= 16; level += 1) {
-      const levelDamage = scale(card.damage, level);
-      const levelHp = scale(card.hp, level);
+      const exact = levelTable.find((row) => row.level === level);
+      const levelDamage = exact?.damage ?? scale(card.damage, level);
+      const levelHp = exact?.hitPoints ?? scale(card.hp, level);
       const levelDeathBurst = scale(card.deathBurst ?? 0, level);
-      const levelTowerDamage = card.towerDamage === undefined ? null : scale(card.towerDamage, level);
+      const levelTowerDamage =
+        exact?.towerDamage ?? (card.towerDamage === undefined ? null : scale(card.towerDamage, level));
       const hitSpeedMs = Math.round(card.hitSpeed * 1000);
       await p.query(
         "INSERT INTO card_level_stats (card_id,level,mode,stat_version,hit_points,damage,hit_speed_ms,dps,move_speed,range_tiles,sight_range,radius_tiles,unit_count,duration_ms,deploy_delay_ms,tower_damage,death_burst,death_burst_radius,flying,targets,attack_pattern,source,is_approximation,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE hit_points=VALUES(hit_points),damage=VALUES(damage),hit_speed_ms=VALUES(hit_speed_ms),dps=VALUES(dps),move_speed=VALUES(move_speed),range_tiles=VALUES(range_tiles),sight_range=VALUES(sight_range),radius_tiles=VALUES(radius_tiles),unit_count=VALUES(unit_count),duration_ms=VALUES(duration_ms),deploy_delay_ms=VALUES(deploy_delay_ms),tower_damage=VALUES(tower_damage),death_burst=VALUES(death_burst),death_burst_radius=VALUES(death_burst_radius),flying=VALUES(flying),targets=VALUES(targets),attack_pattern=VALUES(attack_pattern),source=VALUES(source),is_approximation=VALUES(is_approximation),notes=VALUES(notes)",

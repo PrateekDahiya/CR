@@ -273,13 +273,16 @@ const idA = new URL(a.url()).searchParams.get("matchId");
 
   // Both deploy on their own half (same screen position for each player).
   const deploy = async (page: Page) => {
-    // Wait for enough elixir (slot 1 costs 4) so the play is not rejected.
+    // Wait for a full bar so the play cannot race a second click/network retry
+    // and get rejected for NO_ELIXIR while this test checks pairing/sides.
     await expect
       .poll(async () => Number((await page.getByTestId("elixir-count").textContent()) ?? "0"), {
-        timeout: 20000,
+        timeout: 30000,
       })
-      .toBeGreaterThanOrEqual(5);
+      .toBeGreaterThanOrEqual(10);
     await page.getByTestId("card-hand-1").click();
+    // Let React commit the selected card before the arena tap is dispatched.
+    await page.waitForTimeout(350);
     await page.locator('[data-testid="arena-canvas"]').evaluate((el) => {
       const r = el.getBoundingClientRect();
       el.dispatchEvent(

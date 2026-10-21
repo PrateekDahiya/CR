@@ -151,8 +151,10 @@ function fallbackMove(room: Room, side: PlayerSide): BotMove | null {
     if (tags.includes("tank") && enemyTank === null) score += 3;
 
     // --- elixir discipline: keep a reserve unless the play is urgent ---
+    // Fast-regeneration modes (Infinite Elixir, 2x) should not hoard elixir.
     const urgent = enemyAir !== null || enemyWinCondition !== null || enemyTank !== null;
-    if (!urgent && elixir - card.cost < 1) score -= 3;
+    const rateMultiplier = room.state.mode?.elixirRateMultiplier ?? 1;
+    if (!urgent && rateMultiplier <= 1 && elixir - card.cost < 1) score -= 3;
 
     // Small controlled randomness so matches are not identical.
     score += Math.random() * 2.5;
@@ -195,7 +197,30 @@ export function costOf(cardId: string): number | null {
   return COSTS[cardId] ?? null;
 }
 
-function toHandPayload(room: Room, side: PlayerSide): Array<{ card: string; handIndex: number; cost: number }> {
+export type HandEntry = { card: string; handIndex: number; cost: number };
+
+/**
+ * The AI service may answer with a stale/aliased card name while returning a
+ * valid handIndex. The hand slot is authoritative, so the server always plays
+ * the card that is actually in that slot.
+ */
+export function normalizeBotMove(
+  hand: readonly HandEntry[],
+  data: { card?: string; handIndex?: number; x?: number; y?: number },
+): BotMove | null {
+  const idx = typeof data.handIndex === "number" ? data.handIndex : -1;
+  if (!Number.isInteger(idx) || idx < 0 || idx >= hand.length) return null;
+  const handCard = hand[idx]?.card;
+  if (handCard === undefined) return null;
+  return {
+    card: handCard,
+    handIndex: idx,
+    x: typeof data.x === "number" ? data.x : 9,
+    y: typeof data.y === "number" ? data.y : 18,
+  };
+}
+
+function toHandPayload(room: Room, side: PlayerSide): HandEntry[] {
   const hand = getHand(room, side);
   const out: Array<{ card: string; handIndex: number; cost: number }> = [];
   for (let i = 0; i < hand.length; i += 1) {
@@ -228,20 +253,14 @@ export async function requestBotMove(
         hand,
         elixir: room.state.elixir[side],
         side,
+        mode: room.state.mode,
+        modeId: room.state.modeId,
       }),
       signal: controller.signal,
     });
     if (!res.ok) return fallbackMove(room, side);
     const data = (await res.json()) as { card?: string; handIndex?: number; x?: number; y?: number };
-    const idx = typeof data.handIndex === "number" ? data.handIndex : -1;
-    const card = typeof data.card === "string" ? data.card : hand[0]?.card;
-    if (card === undefined || idx < 0 || idx >= hand.length) return fallbackMove(room, side);
-    return {
-      card,
-      handIndex: idx,
-      x: typeof data.x === "number" ? data.x : 9,
-      y: typeof data.y === "number" ? data.y : 18,
-    };
+    return normalizeBotMove(hand, data) ?? fallbackMove(room, side);
   } catch {
     return fallbackMove(room, side);
   } finally {
@@ -249,8 +268,45 @@ export async function requestBotMove(
   }
 }
 
-const BOT_THINK_MS = 700;
+const BOT_THINK_MS = 900;
+const BOT_ELIXIR_RESERVE = 1;
 const timers = new Map<string, ReturnType<typeof setInterval>>();
+const busy = new Set<string>();
+
+/**
+ * Think cadence per elixir rate (game modes). A faster-regenerating match
+ * (Infinite Elixir 8x, 2x Elixir) must not leave the bot hoarding elixir, so
+ * the brain wakes up more often as the rate grows.
+ * O(1) - one multiply + clamp.
+ */
+export function botThinkMsFor(rateMultiplier: number): number {
+  if (!Number.isFinite(rateMultiplier) || rateMultiplier <= 1) return BOT_THINK_MS;
+  return Math.max(300, Math.round(BOT_THINK_MS / rateMultiplier));
+}
+
+/**
+ * Elixir the bot keeps in reserve. Fast-regeneration modes spend down to the
+ * cap instead of hoarding a fixed reserve.
+ * O(1).
+ */
+export function botReserveFor(rateMultiplier: number, elixir: number, cap: number): number {
+  if (rateMultiplier <= 1) return BOT_ELIXIR_RESERVE;
+  return elixir >= cap ? 0 : BOT_ELIXIR_RESERVE;
+}
+
+/** Emergency if enemy troops are on the bot half or a tower is below 55%. */
+function botUrgent(room: Room, side: PlayerSide): boolean {
+  const ownHalfLimit = side === "red" ? 17.5 : 14.5;
+  for (const unit of room.state.units) {
+    if (unit.owner === side || unit.hitPoints <= 0) continue;
+    if (side === "red" ? unit.position.y < ownHalfLimit : unit.position.y > ownHalfLimit) return true;
+  }
+  for (const tower of room.state.towers) {
+    if (tower.owner !== side || tower.destroyed) continue;
+    if (tower.hitPoints / Math.max(1, tower.maxHitPoints) < 0.55) return true;
+  }
+  return false;
+}
 
 /** Cheapest card currently in the bot's hand (O(h)); 0 when the hand is empty. */
 function cheapestInHand(room: Room, side: PlayerSide): number {
@@ -271,36 +327,48 @@ export function startBotLoop(io: Server, room: Room, difficulty = "medium"): voi
   if (timers.has(room.matchId)) return;
   const botSide: PlayerSide = "red";
   const tick = setInterval(() => {
+    if (busy.has(room.matchId)) return;
+    busy.add(room.matchId);
     void (async () => {
-      const current = getRoomSafe(room.matchId);
-      if (current === undefined || current.state.winner !== undefined) {
-        stopBotLoop(room.matchId);
-        return;
-      }
-      const minCost = cheapestInHand(current, botSide);
-      // Cheap guard: never burn an AI call when nothing is affordable yet.
-      if (minCost === 99 || current.state.elixir[botSide] < minCost) return;
-      const move = await requestBotMove(current, botSide, difficulty);
-      if (move === null) return;
-      const played = applyEnginePlay(
-        current,
-        botSide,
-        move.handIndex,
-        move.x,
-        move.y,
-        move.card,
-        current.matchId,
-        "bot",
-      );
-      if (played.ok) {
-        io.to(current.matchId).emit("bot:played", {
-          matchId: current.matchId,
-          card: move.card,
-          side: botSide,
-        });
+      try {
+        const current = getRoomSafe(room.matchId);
+        if (current === undefined || current.state.winner !== undefined) {
+          stopBotLoop(room.matchId);
+          return;
+        }
+        const minCost = cheapestInHand(current, botSide);
+        const mode = current.state.mode;
+        const rate = mode?.elixirRateMultiplier ?? 1;
+        const cap = mode?.elixirCap ?? 10;
+        const reserve = botUrgent(current, botSide) ? 0 : botReserveFor(rate, current.state.elixir[botSide], cap);
+        // Never spend below the reserve unless the base is actually threatened.
+        if (minCost === 99 || current.state.elixir[botSide] < minCost + reserve) return;
+        const move = await requestBotMove(current, botSide, difficulty);
+        if (move === null) return;
+        const played = applyEnginePlay(
+          current,
+          botSide,
+          move.handIndex,
+          move.x,
+          move.y,
+          move.card,
+          current.matchId,
+          "bot",
+        );
+        if (played.ok) {
+          io.to(current.matchId).emit("bot:played", {
+            matchId: current.matchId,
+            card: move.card,
+            side: botSide,
+            x: move.x,
+            y: move.y,
+          });
+        }
+      } finally {
+        busy.delete(room.matchId);
       }
     })();
-  }, BOT_THINK_MS);
+  }, botThinkMsFor(room.state.mode?.elixirRateMultiplier ?? 1));
   (tick as unknown as { unref?: () => void }).unref?.();
   timers.set(room.matchId, tick);
 }

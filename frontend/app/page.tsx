@@ -1,16 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  PageShell,
-  CardTile,
-  CRButton,
-  MatchmakingLoader,
-  CardInfoOverlay,
-  type CardInfoOverlayProps,
-} from "../components/ui";
-import { backendUrl, getCatalog, getProfile, type CatalogEntry, type ProfileResponse } from "../lib/api";
+import Link from "next/link";
+import { PageShell, CRButton, MatchmakingLoader, CardArt } from "../components/ui";
+import { cardRoles, providesWinCondition } from "../lib/cardRoles";
+import { backendUrl, getCatalog, getGameModes, getProfile, type CatalogEntry, type ProfileResponse } from "../lib/api";
+import type { GameModeConfig } from "../../shared/types";
 import { useDeckState } from "../lib/useDeck";
+import { usePlayer } from "../lib/playerContext";
 
 // Home: matches docs/gameUI/03-home-battle-tab.png + 04-game-modes-sheet.png
 // (knight hero, big gold BATTLE, Game Modes sheet, Pass Royale widget).
@@ -21,8 +18,11 @@ export default function Home() {
   const [status, setStatus] = useState<"checking" | "online" | "offline">("checking");
   const [matchmaking, setMatchmaking] = useState<null | "pvp" | "ai">(null);
   const [modesOpen, setModesOpen] = useState(false);
-  const [info, setInfo] = useState<{ name: string; rarity: CardInfoOverlayProps["rarity"]; cardType: CardInfoOverlayProps["cardType"]; elixir: number } | null>(null);
+  /** Authoritative mode registry (backend /game-modes) + the picked mode. */
+  const [modes, setModes] = useState<GameModeConfig[]>([]);
+  const [selectedModeId, setSelectedModeId] = useState("standard");
   const { deck } = useDeckState();
+  const { profile: ownedProfile } = usePlayer();
 
   useEffect(() => {
     let cancelled = false;
@@ -60,25 +60,41 @@ export default function Home() {
     };
   }, []);
 
-  const playable = catalog.filter((c) => c.playable);
-  const playableByName = new Map(playable.map((c) => [c.name, c]));
-  const factsByName = new Map(catalog.map((c) => [c.name, c]));
-  // Playing Deck = the real saved deck (My Deck), 4 per row like /decks.
-  const playingDeck = deck.filter(Boolean);
-  const avgElixir = playingDeck.length
-    ? (playingDeck.reduce((a, n) => a + (factsByName.get(n)?.elixir ?? 0), 0) / 8).toFixed(1)
-    : "—";
+  // Mode registry comes from the backend (single source of truth): adding a
+  // mode there is enough for the picker to show it.
+  useEffect(() => {
+    let cancelled = false;
+    getGameModes(backendUrl())
+      .then((r) => {
+        if (cancelled) return;
+        const list = Array.isArray(r?.modes) ? r.modes : [];
+        setModes(list);
+        setSelectedModeId((current) =>
+          list.some((m) => m.id === current) ? current : (list[0]?.id ?? "standard"),
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const showInfo = (name: string) => {
-    const f = factsByName.get(name);
-    if (!f) return;
-    setInfo({
-      name: f.name,
-      rarity: f.rarity as CardInfoOverlayProps["rarity"],
-      cardType: f.cardType as CardInfoOverlayProps["cardType"],
-      elixir: f.elixir,
-    });
-  };
+  const playable = catalog.filter((c) => c.playable);
+  const playingDeck = deck.filter(Boolean);
+  const deckName = ownedProfile?.activeDeck?.name ?? "My Deck";
+  const pretty = (id: string) =>
+    id
+      .split("-")
+      .map((w) => (w[0] ? w[0].toUpperCase() + w.slice(1) : w))
+      .join(" ");
+  // Primary win condition, then a tank fallback, then the first deck card.
+  const winCondition =
+    playingDeck.find(providesWinCondition) ??
+    playingDeck.find((id) => cardRoles(id).includes("tank")) ??
+    playingDeck[0];
+  const hasWinCondition = playingDeck.some(providesWinCondition);
+  const winLabel = winCondition ? pretty(winCondition) : "No win condition";
+
 
   return (
     <PageShell
@@ -137,68 +153,55 @@ export default function Home() {
           </div>
         </section>
 
-        {/* BATTLE button -> matchmaking loader. */}
-        <button
-          type="button"
-          data-testid="home-battle"
-onClick={() => setMatchmaking("pvp")}
-          className="mt-3 block w-full rounded-2xl border-b-4 border-amber-800 bg-gradient-to-b from-amber-300 to-amber-600 px-4 py-3 text-center text-2xl font-extrabold uppercase tracking-wider text-amber-950 shadow-md active:translate-y-0.5"
-        >
-          ⚔️ Battle
-        </button>
-
-        {/* Playing-deck preview (the real My Deck) - click a card for info. */}
-        <section
-          data-testid="home-playing-deck"
-          className="mt-3 rounded-xl border-2 border-amber-600/50 bg-[#12224a]/80 p-2 shadow-[0_2px_0_rgba(0,0,0,0.4)]"
-        >
-          <header className="mb-1.5 flex items-center justify-between">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-100">
-              Playing Deck
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="text-[11px] font-bold text-fuchsia-300">🟣 {avgElixir} / 10</span>
-              <a
-                href="/decks"
-                data-testid="home-edit-deck"
-                className="rounded-md border border-sky-800 bg-gradient-to-b from-sky-400 to-sky-600 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white"
-              >
-                Edit
-              </a>
-            </span>
-          </header>
-          {playingDeck.length === 0 ? (
-            <p className="py-3 text-center text-xs text-slate-400" data-testid="home-playing-empty">
-              Loading deck…
-            </p>
-          ) : (
-            <div className="grid grid-cols-4 gap-2" data-testid="home-playing-grid">
-              {Array.from({ length: 8 }).map((_, i) => {
-                const name = playingDeck[i];
-                const f = name ? factsByName.get(name) : null;
-                return f ? (
-                  <CardTile
-                    key={`${f.name}-${i}`}
-                    name={f.name}
-                    rarity={f.rarity}
-                    cost={f.elixir}
-                    level={15}
-                    testId={`home-playing-${f.name}`}
-                    ariaLabel={f.name}
-                    onClick={() => showInfo(f.name)}
+        {/* Deck shortcut + BATTLE. The small card stack links to /decks. */}
+        <div className="mt-3 flex items-stretch gap-2">
+          <Link
+            href="/decks"
+            data-testid="home-deck-stack"
+            aria-label={`Edit deck ${deckName}`}
+            className="relative w-28 shrink-0 outline-none"
+          >
+            <span className="absolute inset-x-2 inset-y-1 rotate-[-7deg] rounded-lg border border-slate-500/60 bg-slate-700/70" aria-hidden="true" />
+            <span className="absolute inset-x-1 inset-y-0.5 rotate-[-3deg] rounded-lg border border-slate-400/60 bg-slate-600/80" aria-hidden="true" />
+            <span className="relative flex h-full min-h-[72px] flex-col justify-between rounded-lg border-2 border-amber-500/70 bg-gradient-to-b from-[#1b2f5c] to-[#0a1730] p-1.5 text-left shadow-[0_2px_0_rgba(0,0,0,0.5)]">
+              <span className="text-[8px] font-extrabold uppercase tracking-wider text-slate-400">Deck</span>
+              <span data-testid="home-deck-name" className="truncate text-[11px] font-extrabold leading-tight text-white">
+                {deckName}
+              </span>
+              <span className="mt-1 flex items-center gap-1 border-t border-slate-600/70 pt-1">
+                {winCondition && (
+                  <CardArt
+                    name={winCondition}
+                    level={0}
+                    showLevel={false}
+                    showCost={false}
+                    size="sm"
+                    className="!h-8 !w-7 shrink-0"
                   />
-                ) : (
-                  <div
-                    key={`empty-${i}`}
-                    className="grid h-20 w-16 place-items-center rounded-lg border-2 border-dashed border-slate-500/70 bg-slate-800/40 text-sm text-slate-400"
+                )}
+                <span className="min-w-0">
+                  <span className="block text-[7px] font-bold uppercase tracking-wide text-slate-400">
+                    {hasWinCondition ? "Win condition" : "Fallback"}
+                  </span>
+                  <span
+                    data-testid="home-win-condition"
+                    className={`block truncate text-[10px] font-extrabold ${hasWinCondition ? "text-amber-200" : "text-slate-300"}`}
                   >
-                    +
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
+                    {winLabel}
+                  </span>
+                </span>
+              </span>
+            </span>
+          </Link>
+          <button
+            type="button"
+            data-testid="home-battle"
+            onClick={() => setMatchmaking("pvp")}
+            className="flex-1 rounded-2xl border-b-4 border-amber-800 bg-gradient-to-b from-amber-300 to-amber-600 px-4 py-3 text-center text-2xl font-extrabold uppercase tracking-wider text-amber-950 shadow-md active:translate-y-0.5"
+          >
+            Battle
+          </button>
+        </div>
 
         {/* Game modes + Pass Royale widget. */}
         <section
@@ -218,12 +221,27 @@ onClick={() => setMatchmaking("pvp")}
           </header>
           {modesOpen ? (
             <div className="grid grid-cols-2 gap-2" data-testid="home-modes-grid">
-              <ModeTile title="Trophy Road" subtitle="Ranked Ladder" tone="blue" />
-              <ModeTile title="Casual 1v1" subtitle="Free play" tone="gray" />
-              <ModeTile title="Path of Legends" subtitle="Ranked ladder" tone="purple" />
-              <ModeTile title="Trophy Rush" subtitle="Coming soon" tone="gray" />
+              {modes.map((mode) => (
+                <ModeTile
+                  key={mode.id}
+                  id={mode.id}
+                  title={mode.label}
+                  subtitle={mode.description}
+                  tone={modeTone(mode.id)}
+                  selected={mode.id === selectedModeId}
+                  onSelect={() => setSelectedModeId(mode.id)}
+                />
+              ))}
+              {modes.length === 0 ? (
+                <p className="col-span-2 text-[11px] text-slate-400" data-testid="home-modes-empty">
+                  Modes unavailable (backend offline).
+                </p>
+              ) : null}
             </div>
           ) : null}
+          <p className="mt-2 text-[11px] text-slate-300" data-testid="home-selected-mode">
+            Selected: {modes.find((m) => m.id === selectedModeId)?.label ?? "Standard"}
+          </p>
         </section>
 
         {/* Quick play vs AI shortcut (kept from Phase 11). */}
@@ -244,41 +262,54 @@ onClick={() => setMatchmaking("pvp")}
       {matchmaking ? (
         <MatchmakingLoader
           mode={matchmaking}
+          gameModeId={selectedModeId}
           onCancel={() => setMatchmaking(null)}
         />
       ) : null}
-
-      {info
-        ? (() => {
-            const inDeck = playingDeck.includes(info.name);
-            return (
-              <CardInfoOverlay
-                name={info.name}
-                rarity={info.rarity}
-                cardType={info.cardType}
-                elixir={info.elixir}
-                level={15}
-                onClose={() => setInfo(null)}
-                onUse={() => setInfo(null)}
-                inDeck={inDeck}
-              />
-            );
-          })()
-        : null}
     </PageShell>
   );
 }
 
-function ModeTile({ title, subtitle, tone }: { title: string; subtitle: string; tone: "blue" | "purple" | "gray" }) {
+/** Visual tone for a registry mode id (UI-only, no gameplay meaning). */
+function modeTone(id: string): "blue" | "purple" | "gray" {
+  if (id.includes("elixir")) return "purple";
+  if (id.includes("takedown")) return "gray";
+  return "blue";
+}
+
+function ModeTile({
+  id,
+  title,
+  subtitle,
+  tone,
+  selected,
+  onSelect,
+}: {
+  id: string;
+  title: string;
+  subtitle: string;
+  tone: "blue" | "purple" | "gray";
+  selected: boolean;
+  onSelect: () => void;
+}) {
   const toneClass = tone === "purple" ? "from-purple-600 to-purple-800" : tone === "gray" ? "from-slate-500 to-slate-700" : "from-sky-500 to-blue-700";
   return (
     <button
       type="button"
-      data-testid={`home-mode-${title.toLowerCase().replace(/\s+/g, "-")}`}
-      className={`rounded-xl border-b-4 border-black/30 bg-gradient-to-b ${toneClass} p-3 text-left font-extrabold text-white shadow-md active:translate-y-0.5`}
+      data-testid={`home-mode-${id}`}
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={`rounded-xl border-b-4 p-3 text-left font-extrabold text-white shadow-md active:translate-y-0.5 ${
+        selected
+          ? "border-amber-400 bg-gradient-to-b from-amber-300 to-amber-600 text-amber-950 ring-2 ring-amber-300"
+          : `border-black/30 bg-gradient-to-b ${toneClass}`
+      }`}
     >
       <div className="text-sm">{title}</div>
       <div className="text-[11px] opacity-80">{subtitle}</div>
+      {selected ? (
+        <div className="mt-1 text-[10px] font-extrabold uppercase tracking-wide">Selected</div>
+      ) : null}
     </button>
   );
 }

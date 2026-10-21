@@ -20,10 +20,12 @@ export interface CardTileProps {
   onClick?: () => void;
   /** Marks cards already in the deck (used by the collection grid). */
   inDeck?: boolean;
+  /** Hide the level bar (tower cards show their level next to the tile). */
+  showLevel?: boolean;
   /** Selected state (battle hand): sets data-selected + aria-pressed and the gold ring. */
   selected?: boolean;
   dimmed?: boolean;
-  /** Display-only card (not usable in battles yet): dimmed with a "Soon" chip. */
+  /** Locked card (not owned): dimmed with a "Locked" chip. */
   locked?: boolean;
   testId?: string;
   className?: string;
@@ -42,6 +44,7 @@ export default function CardTile({
   size = "md",
   showName = false,
   showCost,
+  showLevel,
   costTestId,
   artClassName,
   onClick,
@@ -72,7 +75,7 @@ export default function CardTile({
         rarity={rarity as CardRarity}
         cost={cost}
         level={level}
-        showLevel={level > 0}
+        showLevel={showLevel ?? level > 0}
         showCost={showCost ?? cost > 0}
         costTestId={costTestId}
         className={artClassName}
@@ -87,16 +90,18 @@ export default function CardTile({
           className="absolute inset-x-0 bottom-0 rounded-b-lg bg-slate-900/85 py-0.5 text-center text-[8px] font-black uppercase tracking-wide text-slate-200"
           aria-hidden="true"
         >
-          soon
+          locked
         </span>
       )}
       {inDeck && (
         <span
           data-testid={`card-tile-in-deck-${name}`}
-          className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full border border-amber-300 bg-emerald-500 text-[10px] font-black text-white shadow"
+          className="card-in-deck-glow pointer-events-none absolute inset-0 rounded-lg ring-2 ring-emerald-300/90"
           aria-hidden="true"
         >
-          ✓
+          <span className="absolute -right-px -top-px rounded-bl-md rounded-tr-lg border border-emerald-200/80 bg-gradient-to-b from-emerald-300 to-emerald-600 px-1 py-0.5 text-[7px] font-black uppercase tracking-wider text-emerald-950 shadow">
+            Deck
+          </span>
         </span>
       )}
     </button>

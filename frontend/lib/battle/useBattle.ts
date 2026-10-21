@@ -43,6 +43,7 @@ import {
 } from "../socket";
 import { getCard } from "../cards";
 import { toBattleDeck } from "../battleDeck";
+import type { GameModeConfig } from "../../../shared/types";
 
 export type BattlePhase = "idle" | "searching" | "in-match" | "ended";
 
@@ -50,11 +51,13 @@ export interface InterpolatedUnit {
   id: string;
   cardId: string;
   owner: PlayerSide;
+  level?: number;
   hitPoints: number;
   maxHitPoints: number;
   x: number;
   y: number;
   targetId?: string;
+  decayOnly?: boolean;
 }
 
 export interface RenderState {
@@ -73,6 +76,12 @@ export interface UseBattleOptions {
   backendUrl: string;
   playerId: string;
   deck: string[];
+  /** Owned-card levels sent with match creation (server validates). */
+  levels?: Record<string, number>;
+  /** Selected crown-tower troop profile. */
+  towerTroopId?: string;
+  /** Selected game mode id (server registry). Carried into queue/practice. */
+  modeId?: string;
 }
 
 export interface DeployResult {
@@ -104,9 +113,13 @@ const _prevById = new Map<string, unknown>();
  * Elixir regen rate (elixir/sec) for a match elapsed time.
  * 1x for the first two minutes, 2x for the last regulation minute, 3x in
  * overtime (sudden death) — matching the in-game rate hints.
+ * A mode with a fixed multiplier (e.g. Infinite Elixir 8x) overrides the
+ * window entirely: the same rate applies for the whole match.
  * O(1) time/space - pure thresholds. PERF: no alloc.
  */
-export function elixirRateFor(elapsedMs: number): number {
+export function elixirRateFor(elapsedMs: number, mode?: GameModeConfig | null): number {
+  const multiplier = mode?.elixirRateMultiplier ?? 1;
+  if (multiplier !== 1) return (1 / 2.8) * multiplier;
   if (elapsedMs >= OVERTIME_AT_MS) return 1 / (2.8 / 3);
   if (elapsedMs >= DOUBLE_ELIXIR_AT_MS) return 1 / 1.4;
   return 1 / 2.8;
@@ -209,11 +222,13 @@ function toRenderUnits(
         id: String(u.id),
         cardId: String(u.cardId),
         owner: u.owner as PlayerSide,
+        level: Number(u.level ?? 1),
         hitPoints: Number(u.hitPoints ?? 0),
         maxHitPoints: Number(u.maxHitPoints ?? 1),
         x: Number(u.position?.x ?? 0),
         y: Number(u.position?.y ?? 0),
         targetId: u.targetId !== undefined ? String(u.targetId) : undefined,
+        ...(u.decayOnly === true ? { decayOnly: true } : {}),
       };
     }
     return out;
@@ -239,14 +254,38 @@ function toRenderUnits(
       id: String(u.id),
       cardId: String(u.cardId),
       owner: u.owner as PlayerSide,
+      level: Number(u.level ?? 1),
       hitPoints: Number(u.hitPoints ?? 0),
       maxHitPoints: Number(u.maxHitPoints ?? 1),
       x: px + (cx - px) * alpha,
       y: py + (cy - py) * alpha,
       targetId: u.targetId !== undefined ? String(u.targetId) : undefined,
+      ...(u.decayOnly === true ? { decayOnly: true } : {}),
     };
   }
   return out;
+}
+
+/**
+ * Discrete elixir gain detection.
+ *
+ * The passive regen between two snapshots is known (rate * dt), so anything
+ * above that came from a card (Elixir Collector pump, Elixir Golem payout).
+ * Returns the gained amount, or 0 when the change is pure regen.
+ * O(1) time/space - pure arithmetic.
+ */
+export function detectElixirGain(args: {
+  before: number;
+  after: number;
+  dtMs: number;
+  elapsedMs: number;
+  mode?: GameModeConfig | null;
+}): number {
+  const { before, after, dtMs, elapsedMs, mode } = args;
+  const dt = Math.max(0, dtMs / 1000);
+  const expected = elixirRateFor(elapsedMs, mode ?? null) * dt;
+  const extra = after - before - expected;
+  return extra >= 0.5 ? Math.round(extra) : 0;
 }
 
 export interface UseBattle {
@@ -274,8 +313,16 @@ export interface UseBattle {
   isOvertime: boolean;
   /** Double-elixir rate window: t>=120s through end of OT (GAME_DESIGN §7). */
   isDoubleElixir: boolean;
-  /** 1 normal, 2 in the double-elixir window, 3 during overtime. */
-  elixirMultiplier: 1 | 2 | 3;
+  /** 1 normal, 2 in the double-elixir window, 3 during overtime, or the
+   *  mode's fixed multiplier (e.g. 8 for Infinite Elixir). */
+  elixirMultiplier: number;
+  /** Last discrete elixir gain (collector pump, golem payout): { amount, id }. */
+  elixirGain: { amount: number; id: number } | null;
+  /** Server-resolved game-mode rules for the running match (null until the
+   *  first snapshot arrives). */
+  mode: GameModeConfig | null;
+  /** Id of the running match's game mode. */
+  modeId: string | null;
   result: MatchEnd | null;
   error: string | null;
   clearError: () => void;
@@ -283,7 +330,7 @@ export interface UseBattle {
   /** Queue for a human opponent, then fall back to the AI after 5s. */
   joinSearch: (difficulty?: "easy" | "medium" | "hard", waitMs?: number) => Promise<void>;
   /** Starts a real authoritative match vs the server-side AI bot. */
-  joinPractice: (difficulty?: "easy" | "medium" | "hard") => Promise<void>;
+  joinPractice: (difficulty?: "easy" | "medium" | "hard", foeDeck?: string[]) => Promise<void>;
   /** Surrender: this player loses, the opponent wins, both get match:end. */
   surrender: () => Promise<void>;
   /** Adopt a known match id/side (matchmaking redirect). */
@@ -292,7 +339,7 @@ export interface UseBattle {
   resync: () => void;
 }
 
-export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): UseBattle {
+export function useBattle({ backendUrl, playerId, deck, levels, towerTroopId, modeId }: UseBattleOptions): UseBattle {
   const [phase, setPhase] = useState<BattlePhase>("idle");
   const [connected, setConnected] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
@@ -304,11 +351,13 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
   const [prevSnapshot, setPrevSnapshot] = useState<StateUpdate | null>(null);
   const [renderState, setRenderState] = useState<RenderState | null>(null);
   const [serverNowMs, setServerNowMs] = useState(0);
-  const [displayElixir, setDisplayElixir] = useState(5);
+  const [displayElixir, setDisplayElixir] = useState(8);
   const [elixirProgress, setElixirProgress] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [result, setResult] = useState<MatchEnd | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Discrete elixir gain (collector pump / golem payout) for the +N popup. */
+  const [elixirGain, setElixirGain] = useState<{ amount: number; id: number } | null>(null);
 
   // Opening hand comes from the per-match randomized deck order (shared rule with
   // the server: lib/cardCycle.ts matchCycle seeded by `matchId:side`). Before a
@@ -320,6 +369,8 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
   const matchStartMsRef = useRef(0);
   const lastServerMsRef = useRef(0);
   const lastLocalAtRef = useRef(0);
+  /** Monotonic id so the UI can re-trigger the "+N" popup for repeated gains. */
+  const elixirGainIdRef = useRef(0);
   const sideRef = useRef<PlayerSide>("blue");
   sideRef.current = side;
   const matchIdRef = useRef<string | null>(null);
@@ -345,6 +396,8 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
   playerIdRef.current = playerId;
   const deckRef = useRef(deck);
   deckRef.current = deck;
+  const matchExtrasRef = useRef<{ levels?: Record<string, number>; towerTroopId?: string; modeId?: string }>({ levels, towerTroopId, modeId });
+  matchExtrasRef.current = { levels, towerTroopId, modeId };
   // Ref mirrors for the 60fps loop + deploy (ISS-F5-006: read refs/locals outside
   // setState updaters so no nested setState runs inside another updater).
   const snapshotRef = useRef<StateUpdate | null>(null);
@@ -407,12 +460,12 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
     try {
       const sock = connect(backendUrl);
       setConnected(sock.connected);
-      const sel = await selectDeck(id, d);
+      const sel = await selectDeck(id, d, matchExtrasRef.current);
       if (!sel.ok) {
         setError(sel.error ? `${sel.error.code}: ${sel.error.message}` : "deck:select rejected");
         return;
       }
-      const ack = await joinQueue(id, d);
+      const ack = await joinQueue(id, d, matchExtrasRef.current);
       if (!ack.ok) {
         setError(ack.error ? `${ack.error.code}: ${ack.error.message}` : "queue:join rejected");
         return;
@@ -428,9 +481,11 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
    * Starts a real match against the server-side bot (`match:practice`).
    * Used by the BATTLE button on /battle: PvP needs two clients, so a solo
    * player always gets an authoritative AI game instead of an empty queue.
+   * `foeDeck` makes the bot play a specific deck (the battle log "Practice"
+   * button replays the deck the player faced).
    */
   const joinPractice = useCallback(
-    async (difficulty: "easy" | "medium" | "hard" = "medium") => {
+    async (difficulty: "easy" | "medium" | "hard" = "medium", foeDeck?: string[]) => {
       const id = playerIdRef.current.trim();
       const raw = deckRef.current;
       const d = toBattleDeck(raw);
@@ -448,12 +503,16 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
       try {
         const sock = connect(backendUrl);
         setConnected(sock.connected);
-        const sel = await selectDeck(id, d);
+        const extras = {
+          ...matchExtrasRef.current,
+          ...(foeDeck !== undefined && foeDeck.length === 8 ? { foeDeck } : {}),
+        };
+        const sel = await selectDeck(id, d, extras);
         if (!sel.ok) {
           setError(sel.error ? `${sel.error.code}: ${sel.error.message}` : "deck:select rejected");
           return;
         }
-        const ack = await joinAiMatch(id, d, difficulty);
+        const ack = await joinAiMatch(id, d, difficulty, extras);
         if (!ack.ok) {
           setError(ack.error ? `${ack.error.code}: ${ack.error.message}` : "match:practice rejected");
           return;
@@ -485,12 +544,12 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
       try {
         const sock = connect(backendUrl);
         setConnected(sock.connected);
-        const sel = await selectDeck(id, d);
+        const sel = await selectDeck(id, d, matchExtrasRef.current);
         if (!sel.ok) {
           setError(sel.error ? `${sel.error.code}: ${sel.error.message}` : "deck:select rejected");
           return;
         }
-        const ack = await joinQueue(id, d);
+        const ack = await joinQueue(id, d, matchExtrasRef.current);
         if (!ack.ok) {
           // Queue rejected (e.g. BAD_DECK) -> straight to a playable AI game.
           await joinPractice(difficulty);
@@ -620,6 +679,30 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
         }
         snapshotRef.current = s;
         setSnapshot(s);
+        // Discrete elixir gain detection: the passive regen between two
+        // snapshots is known (rate * dt), so anything above that came from a
+        // card (Elixir Collector pump, Elixir Golem payout).
+        {
+          const prev = prevSnapshotRef.current;
+          if (prev && prev.matchId === s.matchId) {
+            const mySide = sideRef.current;
+            const prevElapsed =
+              matchStartMsRef.current > 0
+                ? Math.max(0, Number(prev.serverTimeMs ?? 0) - matchStartMsRef.current)
+                : 0;
+            const gained = detectElixirGain({
+              before: Number(prev.elixir?.[mySide] ?? 0),
+              after: Number(s.elixir?.[mySide] ?? 0),
+              dtMs: Number(s.serverTimeMs ?? 0) - Number(prev.serverTimeMs ?? 0),
+              elapsedMs: prevElapsed,
+              mode: prev.mode ?? s.mode ?? null,
+            });
+            if (gained > 0) {
+              elixirGainIdRef.current += 1;
+              setElixirGain({ amount: gained, id: elixirGainIdRef.current });
+            }
+          }
+        }
         // Adopting a snapshot means we are IN that match. Without this the
         // matchId stays null when the page mounts after match:start (the usual
         // case when arriving from the matchmaking loader) and every deploy is
@@ -720,11 +803,14 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
       if (cur.winner !== undefined) lastSettledTick = cur.tick;
       if (cur) {
         const mySide = sideRef.current;
-        const snapElixir = Number(cur.elixir?.[mySide] ?? 5);
+        const snapElixir = Number(cur.elixir?.[mySide] ?? 8);
         const elapsed = matchStartMsRef.current > 0 ? Math.max(0, serverNow - matchStartMsRef.current) : 0;
-        const rate = elixirRateFor(elapsed);
+        // Mode rules come from the server snapshot (no client-side mode table).
+        const mode = cur.mode ?? null;
+        const rate = elixirRateFor(elapsed, mode);
+        const cap = mode?.elixirCap ?? 10;
         const dtSec = Math.max(0, (serverNow - Number(cur.serverTimeMs ?? serverNow)) / 1000);
-        const interp = Math.min(10, snapElixir + rate * dtSec);
+        const interp = Math.min(cap, snapElixir + rate * dtSec);
         setDisplayElixir(Math.floor(interp * 100) / 100);
         setElixirProgress(interp - Math.floor(interp));
         const prev = prevSnapshotRef.current;
@@ -841,11 +927,23 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
 
   const nextCard = queue.length > 0 ? queue[0] : null;
 
+  /** Server-resolved mode rules (the client never hard-codes a mode table). */
+  const mode = (snapshot?.mode ?? null) as GameModeConfig | null;
+  const activeModeId = snapshot?.modeId ?? null;
+
   /**
    * Elixir speed hint shown under the timer: 1x normal, 2x in the last
-   * regulation minute, 3x during sudden-death overtime.
+   * regulation minute, 3x during sudden-death overtime. A mode with a fixed
+   * multiplier (Infinite Elixir 8x, 2x Elixir) always shows its own value.
    */
-  const elixirMultiplier = isOvertime ? 3 : isDoubleElixir ? 2 : 1;
+  const elixirMultiplier =
+    mode !== null && mode.elixirRateMultiplier !== 1
+      ? mode.elixirRateMultiplier
+      : isOvertime
+        ? 3
+        : isDoubleElixir
+          ? 2
+          : 1;
 
   return {
     phase,
@@ -869,6 +967,9 @@ export function useBattle({ backendUrl, playerId, deck }: UseBattleOptions): Use
     isOvertime,
     isDoubleElixir,
     elixirMultiplier,
+    elixirGain,
+    mode,
+    modeId: activeModeId,
     result,
     error,
     clearError,

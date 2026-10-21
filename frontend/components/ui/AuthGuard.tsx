@@ -14,6 +14,7 @@ export default function AuthGuard() {
 
   useEffect(() => {
     const onLoginRoute = pathname?.startsWith("/login") === true;
+    const onAdminRoute = pathname?.startsWith("/admin") === true;
     let id = "";
     try {
       id = window.localStorage.getItem("cr-player-id") ?? "";
@@ -21,7 +22,7 @@ export default function AuthGuard() {
       id = "";
     }
     const signedIn = id.length > 0;
-    if (!signedIn && !onLoginRoute) {
+    if (!signedIn && !onLoginRoute && !onAdminRoute) {
       router.replace("/login");
       return;
     }
@@ -33,6 +34,6 @@ export default function AuthGuard() {
   }, [pathname, router]);
 
   // Render nothing until the check settles to avoid flashing a protected page.
-  if (!checked && pathname?.startsWith("/login") !== true) return null;
+  if (!checked && pathname?.startsWith("/login") !== true && pathname?.startsWith("/admin") !== true) return null;
   return null;
 }

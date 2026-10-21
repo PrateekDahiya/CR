@@ -12,6 +12,8 @@
  * Sibling note (MEMORY#16): transport only — no UI imports here.
  */
 
+import type { GameModeConfig } from "../../shared/types";
+
 export const DEFAULT_BACKEND_URL = "http://localhost:4000";
 export const DEFAULT_AI_URL = "http://localhost:8000";
 
@@ -109,8 +111,13 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
-function postJson<T>(url: string, body: unknown): Promise<T> {
-  return fetchJson<T>(url, { method: "POST", body: JSON.stringify(body) });
+function postJson<T>(url: string, body: unknown, init?: RequestInit): Promise<T> {
+  return fetchJson<T>(url, {
+    ...init,
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: { ...(init?.headers ?? {}) },
+  });
 }
 
 function putJson<T>(url: string, body: unknown): Promise<T> {
@@ -121,10 +128,126 @@ function delJson<T>(url: string): Promise<T> {
   return fetchJson<T>(url, { method: "DELETE" });
 }
 
+// --- Client cache -----------------------------------------------------------
+// In-memory TTL cache + in-flight dedupe + optional sessionStorage persistence.
+// Content endpoints are cached so page/tab navigation renders instantly instead
+// of waiting on the backend each time.
+
+interface CacheEntry {
+  value: unknown;
+  expires: number;
+}
+
+const memoryCache = new Map<string, CacheEntry>();
+const inFlight = new Map<string, Promise<unknown>>();
+
+function storageKey(key: string): string {
+  return `cr-cache-${key}`;
+}
+
+function readPersisted<T>(key: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(storageKey(key));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CacheEntry;
+    if (typeof parsed.expires === "number" && parsed.expires > Date.now()) return parsed.value as T;
+    window.sessionStorage.removeItem(storageKey(key));
+  } catch {
+    // ignore storage errors
+  }
+  return null;
+}
+
+function writeCache(key: string, value: unknown, ttlMs: number, persist: boolean): void {
+  const entry: CacheEntry = { value, expires: Date.now() + ttlMs };
+  memoryCache.set(key, entry);
+  if (!persist || typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(storageKey(key), JSON.stringify(entry));
+  } catch {
+    // quota/private mode
+  }
+}
+
+function peekCache<T>(key: string, persist: boolean): T | null {
+  const hit = memoryCache.get(key);
+  if (hit !== undefined && hit.expires > Date.now()) return hit.value as T;
+  if (persist) {
+    const saved = readPersisted<T>(key);
+    if (saved !== null) {
+      memoryCache.set(key, { value: saved, expires: Date.now() + 30_000 });
+      return saved;
+    }
+  }
+  return null;
+}
+
+async function cachedGet<T>(
+  key: string,
+  url: string,
+  ttlMs: number,
+  persist: boolean,
+  force = false,
+): Promise<T> {
+  if (!force) {
+    const hit = peekCache<T>(key, persist);
+    if (hit !== null) return hit;
+    const pending = inFlight.get(key);
+    if (pending !== undefined) return pending as Promise<T>;
+  }
+  const request = fetchJson<T>(url)
+    .then((value) => {
+      writeCache(key, value, ttlMs, persist);
+      return value;
+    })
+    .finally(() => inFlight.delete(key));
+  inFlight.set(key, request);
+  return request;
+}
+
+/** Drop cached player-dependent responses after a mutation/refresh. */
+export function invalidateApiCache(prefix?: string): void {
+  if (prefix === undefined) {
+    memoryCache.clear();
+    inFlight.clear();
+    if (typeof window !== "undefined") {
+      try {
+        for (const key of Object.keys(window.sessionStorage)) {
+          if (key.startsWith("cr-cache-")) window.sessionStorage.removeItem(key);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return;
+  }
+  for (const key of Array.from(memoryCache.keys())) {
+    if (key.startsWith(prefix)) memoryCache.delete(key);
+  }
+  for (const key of Array.from(inFlight.keys())) {
+    if (key.startsWith(prefix)) inFlight.delete(key);
+  }
+  if (typeof window === "undefined") return;
+  try {
+    for (const key of Object.keys(window.sessionStorage)) {
+      if (key.startsWith(`cr-cache-${prefix}`)) window.sessionStorage.removeItem(key);
+    }
+  } catch {
+    // ignore storage errors
+  }
+}
+
 /** GET {base}/health — liveness probe for backend (default) or ai-service. */
 export function getHealth(baseUrl?: string): Promise<HealthResponse> {
   const base = backendUrl(baseUrl);
   return fetchJson<HealthResponse>(`${base.replace(/\/$/, "")}/health`);
+}
+
+/** GET {backend}/game-modes - authoritative selectable mode registry. O(m). */
+export function getGameModes(baseUrl?: string): Promise<{ modes: GameModeConfig[] }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return cachedGet("game-modes", `${base}/game-modes`, 60_000, true);
 }
 
 /** GET {ai}/health — liveness probe for the ai-service. */
@@ -224,13 +347,13 @@ export interface ContentCard {
 /** GET {backend}/content/cards — same CR roster, MySQL live or local fallback. O(c) c=12. */
 export function getContentCards(baseUrl?: string): Promise<{ cards: ContentCard[]; source: string; count: number }> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
-  return fetchJson(`${base}/content/cards`);
+  return cachedGet("content-cards", `${base}/content/cards`, 5 * 60_000, true);
 }
 
 /** GET {backend}/content/menus — same CR menu labels/routes, MySQL or fallback. O(m) m=7. */
 export function getContentMenus(baseUrl?: string): Promise<{ menus: { label: string; route: string; icon: string; sortOrder: number }[]; source: string; count: number }> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
-  return fetchJson(`${base}/content/menus`);
+  return cachedGet("content-menus", `${base}/content/menus`, 10 * 60_000, true);
 }
 
 export interface CatalogEntry {
@@ -244,7 +367,7 @@ export interface CatalogEntry {
 /** GET {backend}/content/catalog — full CR catalog facts (108+ cards). O(n) n≈108. */
 export function getCatalog(baseUrl?: string): Promise<{ catalog: CatalogEntry[]; source: string; count: number; playable: number }> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
-  return fetchJson(`${base}/content/catalog`);
+  return cachedGet("content-catalog", `${base}/content/catalog`, 5 * 60_000, true);
 }
 
 export interface CardLevelStats {
@@ -275,7 +398,12 @@ export interface CardLevelStats {
 
 export function getCardLevels(cardId: string, mode = "ladder", statVersion = 1, baseUrl?: string): Promise<{ cardId: string; mode: string; statVersion: number; levels: CardLevelStats[]; count: number }> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
-  return fetchJson(`${base}/content/cards/${encodeURIComponent(cardId)}/levels?mode=${encodeURIComponent(mode)}&statVersion=${statVersion}`);
+  return cachedGet(
+    `card-levels-${cardId}-${mode}-${statVersion}`,
+    `${base}/content/cards/${encodeURIComponent(cardId)}/levels?mode=${encodeURIComponent(mode)}&statVersion=${statVersion}`,
+    10 * 60_000,
+    true,
+  );
 }
 
 /** GET {backend}/leaderboard — legacy rows (kept for older clients). O(n log n). */
@@ -298,6 +426,9 @@ export interface PlayerProfile {
   decks: DeckRecord[];
   activeDeck: DeckRecord;
   cards: Record<string, number>;
+  towerLevels?: Record<string, number>;
+  kingLevel?: number;
+  admin?: boolean;
   season: string;
 }
 
@@ -305,6 +436,8 @@ export interface DeckRecord {
   id: string;
   name: string;
   cards: string[];
+  levels?: Record<string, number>;
+  towerTroopId?: string;
 }
 
 export interface PlayerRow {
@@ -321,9 +454,20 @@ export interface PlayerRow {
 }
 
 /** GET /profile/:id — full player state (name, trophies, wallet, decks). O(1). */
-export function getPlayerProfile(playerId: string, baseUrl?: string): Promise<PlayerProfile> {
+/** Instant profile from cache (no network) for first paint/tab switches. */
+export function peekPlayerProfile(playerId: string): PlayerProfile | null {
+  return peekCache<PlayerProfile>(`profile-${playerId}`, true);
+}
+
+export function getPlayerProfile(playerId: string, baseUrl?: string, force = false): Promise<PlayerProfile> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
-  return fetchJson(`${base}/profile/${encodeURIComponent(playerId)}`);
+  return cachedGet(
+    `profile-${playerId}`,
+    `${base}/profile/${encodeURIComponent(playerId)}`,
+    15_000,
+    true,
+    force,
+  );
 }
 
 /** POST /profile/:id/name */
@@ -341,9 +485,36 @@ export interface UpgradeCardResponse {
 }
 
 /** POST /profile/:id/cards/:cardId/upgrade — one level for the listed coin cost. */
-export function upgradePlayerCard(playerId: string, cardId: string, baseUrl?: string): Promise<UpgradeCardResponse> {
+export async function upgradePlayerCard(playerId: string, cardId: string, baseUrl?: string): Promise<UpgradeCardResponse> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
-  return postJson(`${base}/profile/${encodeURIComponent(playerId)}/cards/${encodeURIComponent(cardId)}/upgrade`, {});
+  const res = await postJson<UpgradeCardResponse>(
+    `${base}/profile/${encodeURIComponent(playerId)}/cards/${encodeURIComponent(cardId)}/upgrade`,
+    {},
+  );
+  invalidateApiCache("profile-");
+  invalidateApiCache("shop");
+  return res;
+}
+
+export interface UpgradeTowerResponse {
+  ok: true;
+  towerId: string;
+  level: number;
+  cost: number;
+  coins: number;
+  kingLevel: number;
+}
+
+/** POST /profile/:id/towers/:towerId/upgrade — crown-tower progression. */
+export async function upgradePlayerTower(playerId: string, towerId: string, baseUrl?: string): Promise<UpgradeTowerResponse> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  const res = await postJson<UpgradeTowerResponse>(
+    `${base}/profile/${encodeURIComponent(playerId)}/towers/${encodeURIComponent(towerId)}/upgrade`,
+    {},
+  );
+  invalidateApiCache("profile-");
+  invalidateApiCache("shop");
+  return res;
 }
 
 /** GET /players — the player table (rank, trophies, W/L, win rate). O(n log n). */
@@ -367,7 +538,12 @@ export function createPlayerDeck(playerId: string, name?: string, cards?: string
   });
 }
 
-export function updatePlayerDeck(playerId: string, deckId: string, patch: { name?: string; cards?: string[] }, baseUrl?: string): Promise<DeckRecord> {
+export function updatePlayerDeck(
+  playerId: string,
+  deckId: string,
+  patch: { name?: string; cards?: string[]; levels?: Record<string, number>; towerTroopId?: string },
+  baseUrl?: string,
+): Promise<DeckRecord> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
   return putJson(`${base}/decks/${encodeURIComponent(playerId)}/${deckId}`, patch);
 }
@@ -429,9 +605,210 @@ export function reportMatch(input: {
   blueCrowns?: number;
   redCrowns?: number;
   durationMs?: number;
+  /** Match id (used as the battle-log entry key). */
+  matchId?: string;
+  /** Game mode id the match ran in. */
+  mode?: string;
+  /** Decks that were played (the server prefers its own room data). */
+  blueDeck?: string[];
+  redDeck?: string[];
 }, baseUrl?: string): Promise<{ deltas: { playerId: string; trophyDelta: number; coinDelta: number }[] }> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
   return postJson(`${base}/matches/report`, input);
+}
+
+export interface BattleLogEntry {
+  id: string;
+  matchId: string;
+  playerId: string;
+  /** Display name of the player (the log shows it beside the trophies). */
+  playerName?: string;
+  opponentId: string;
+  opponentName: string;
+  result: "win" | "loss" | "draw";
+  crowns: number;
+  opponentCrowns: number;
+  deck: string[];
+  opponentDeck: string[];
+  mode: string;
+  /** Set when the match belonged to a tournament (TOURNAMENTS tab). */
+  tournamentId?: string;
+  tournamentName?: string;
+  /** True while the replay of this match can still be watched. */
+  watchable?: boolean;
+  trophies: number;
+  opponentTrophies: number;
+  trophyDelta: number;
+  durationMs: number;
+  createdAtMs: number;
+}
+
+/** GET /battle-log/:playerId - recent battles, newest first. */
+export function getBattleLog(playerId: string, baseUrl?: string): Promise<{ entries: BattleLogEntry[] }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/battle-log/${encodeURIComponent(playerId)}`);
+}
+
+// --- Tournaments (the TOURNAMENTS tab of the battle log) -------------------
+
+export interface TournamentPlayerRow {
+  playerId: string;
+  name: string;
+  trophies: number;
+  wins: number;
+  losses: number;
+  eliminated: boolean;
+}
+
+export interface TournamentMatchRow {
+  matchId: string;
+  blueId: string;
+  redId: string;
+  winner: "blue" | "red" | "draw";
+  blueCrowns: number;
+  redCrowns: number;
+  createdAtMs: number;
+}
+
+export interface TournamentSummary {
+  id: string;
+  name: string;
+  status: "open" | "finished";
+  maxPlayers: number;
+  playerCount: number;
+  createdAtMs: number;
+  joined: boolean;
+  championId?: string;
+  championName?: string;
+  players: TournamentPlayerRow[];
+  matches: TournamentMatchRow[];
+}
+
+/** GET /tournaments?playerId= - the tournament list (open first). */
+export function getTournaments(
+  playerId?: string,
+  baseUrl?: string,
+): Promise<{ tournaments: TournamentSummary[] }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  const query = playerId !== undefined && playerId.length > 0 ? `?playerId=${encodeURIComponent(playerId)}` : "";
+  return fetchJson(`${base}/tournaments${query}`);
+}
+
+/** POST /tournaments - create a tournament (the creator joins it). */
+export function createTournament(
+  input: { playerId: string; name: string; deck: string[]; maxPlayers?: number },
+  baseUrl?: string,
+): Promise<{ tournament: TournamentSummary }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return postJson(`${base}/tournaments`, input);
+}
+
+/** POST /tournaments/:id/join - join a tournament with the current deck. */
+export function joinTournament(
+  tournamentId: string,
+  input: { playerId: string; deck: string[] },
+  baseUrl?: string,
+): Promise<{ tournament: TournamentSummary }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return postJson(`${base}/tournaments/${encodeURIComponent(tournamentId)}/join`, input);
+}
+
+// --- Replays (the "Watch" button) -----------------------------------------
+
+export interface ReplayTower {
+  id: string;
+  kind: "king" | "princess";
+  owner: "blue" | "red";
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  destroyed: boolean;
+}
+
+export interface ReplayUnit {
+  /** Stable unit id (units are matched across frames by id). */
+  id: string;
+  cardId: string;
+  owner: "blue" | "red";
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  level: number;
+}
+
+export interface ReplayFrame {
+  t: number;
+  elixirBlue: number;
+  elixirRed: number;
+  crownsBlue: number;
+  crownsRed: number;
+  towers: ReplayTower[];
+  units: ReplayUnit[];
+}
+
+export interface MatchReplay {
+  matchId: string;
+  startedAtMs: number;
+  endedAtMs: number;
+  winner?: "blue" | "red" | "draw";
+  frames: ReplayFrame[];
+}
+
+/** GET /replay/:matchId - the sampled frames of a finished match. */
+export function getReplay(matchId: string, baseUrl?: string): Promise<{ replay: MatchReplay }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/replay/${encodeURIComponent(matchId)}`);
+}
+
+// --- Admin ------------------------------------------------------------------
+
+export interface AdminPlayerRow {
+  playerId: string;
+  name: string;
+  trophies: number;
+  coins: number;
+  gems: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  cardsOwned: number;
+  decks: number;
+  kingLevel: number;
+  createdAtMs: number;
+  lastSeenMs: number;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  activeToday: number;
+  newToday: number;
+  totalCoins: number;
+  totalGems: number;
+  totalCards: number;
+  totalDecks: number;
+  totalGames: number;
+  topPlayers: AdminPlayerRow[];
+}
+
+export function getAdminStats(baseUrl?: string): Promise<AdminStats> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/admin/stats`);
+}
+
+export function getAdminPlayers(q = "", baseUrl?: string): Promise<{ players: AdminPlayerRow[]; count: number }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return fetchJson(`${base}/admin/players?limit=200&q=${encodeURIComponent(q)}`);
+}
+
+export function adminSetWallet(
+  playerId: string,
+  patch: { coins?: number; gems?: number; trophies?: number; name?: string },
+  baseUrl?: string,
+): Promise<{ ok: boolean; player: { playerId: string; name: string; coins: number; gems: number; trophies: number } }> {
+  const base = backendUrl(baseUrl).replace(/\/$/, "");
+  return postJson(`${base}/admin/players/${encodeURIComponent(playerId)}/wallet`, patch);
 }
 
 // --- Shop -------------------------------------------------------------------
@@ -439,7 +816,7 @@ export function reportMatch(input: {
 export interface ShopItem {
   id: string;
   name: string;
-  kind: "coins" | "gems" | "cards";
+  kind: "coins" | "gems" | "cards" | "gold";
   amount: number;
   cardId?: string;
   price: number;
@@ -453,14 +830,21 @@ export interface ShopData {
   items: ShopItem[];
   wallet: { coins: number; gems: number } | null;
   owned: Record<string, number>;
+  towerLevels?: Record<string, number>;
 }
 
-export function getShop(baseUrl?: string): Promise<ShopData> {
+export function getShop(baseUrl?: string, force = false): Promise<ShopData> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
-  return fetchJson(`${base}/shop`);
+  return cachedGet("shop", `${base}/shop`, 20_000, false, force);
 }
 
-export function buyShopItem(itemId: string, baseUrl?: string): Promise<{ ok: boolean; granted: { cardId?: string; kind: string }; wallet: { coins: number; gems: number } }> {
+export async function buyShopItem(itemId: string, baseUrl?: string): Promise<{ ok: boolean; granted: { cardId?: string; kind: string; isNew?: boolean; level?: number }; wallet: { coins: number; gems: number } }> {
   const base = backendUrl(baseUrl).replace(/\/$/, "");
-  return postJson(`${base}/shop/buy`, { itemId });
+  const res = await postJson<{ ok: boolean; granted: { cardId?: string; kind: string; isNew?: boolean; level?: number }; wallet: { coins: number; gems: number } }>(
+    `${base}/shop/buy`,
+    { itemId },
+  );
+  invalidateApiCache("shop");
+  invalidateApiCache("profile-");
+  return res;
 }

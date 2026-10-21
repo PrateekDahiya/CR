@@ -23,14 +23,13 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(page.getByTestId("home-root")).toBeVisible();
     await expect(page.getByTestId("home-battle")).toBeVisible();
     await expect(page.getByTestId("topbar")).toBeVisible();
-    await expect(page.getByTestId("topbar-cards")).toBeVisible();
     await expect(page.getByTestId("topbar-coins")).toBeVisible();
     await expect(page.getByTestId("topbar-gems")).toBeVisible();
     await expect(page.getByTestId("bottom-nav")).toBeVisible();
     for (const t of ["shop", "cards", "battle", "social", "ranked"]) {
       await expect(page.getByTestId(`nav-tab-${t}`)).toBeVisible();
     }
-    await expect(page.getByTestId("home-playing-deck")).toBeVisible();
+    await expect(page.getByTestId("home-deck-stack")).toBeVisible();
     // BATTLE button opens the matchmaking loader.
     await page.getByTestId("home-battle").click();
     await expect(page.getByTestId("matchmaking-loader")).toBeVisible();
@@ -58,6 +57,13 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await firstCard.click();
     await expect(page.getByTestId("card-info-overlay")).toBeVisible();
     await expect(page.getByTestId("card-info-name")).toBeVisible();
+    await expect(page.getByTestId("card-info-tabs")).toBeVisible();
+    await expect(page.getByTestId("card-info-stats")).toBeVisible();
+    await page.getByTestId("card-info-tab-description").click();
+    await expect(page.getByTestId("card-info-description")).toBeVisible();
+    await expect(page.getByTestId("card-info-description")).not.toHaveText(/No description available/);
+    await page.getByTestId("card-info-tab-stats").click();
+    await expect(page.getByTestId("card-info-stats")).toBeVisible();
     await page.getByTestId("card-info-close").click();
     await expect(page.getByTestId("card-info-overlay")).toHaveCount(0);
     // Switch to Collection tab.
@@ -79,9 +85,15 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(collectionTile.locator('[data-testid="card-level"]')).toBeVisible();
     // Cost drops render on every non-0-elixir card (same chrome as My Deck).
     await expect
-      .poll(async () => page.locator('[data-testid^="collection-card-"] [data-testid="card-cost"]').count(), {
-        timeout: 15000,
-      })
+      .poll(
+        async () =>
+          page
+            .locator(
+              '[data-testid^="collection-card-"] [data-testid="card-cost"], [data-testid^="locked-card-"] [data-testid="card-cost"]',
+            )
+            .count(),
+        { timeout: 15000 },
+      )
       .toBeGreaterThan(100);
   });
 
@@ -168,22 +180,20 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(page.getByTestId("collection-list")).toBeVisible();
   });
 
-  test("decks: every catalog card is playable (no locked cards)", async ({ page }) => {
+  test("decks: locked cards are separated and cannot be used", async ({ page }) => {
     await page.goto(`${BASE}/decks`);
     await expect(page.locator('[data-testid^="deck-card-"]')).toHaveCount(8, { timeout: 15000 });
     await page.getByTestId("deck-tab-collection").click();
     await expect(page.getByTestId("collection-list")).toBeVisible({ timeout: 15000 });
-    // No card is locked/unplayable any more.
-    await expect(page.locator('[data-testid^="collection-card-"][data-locked]')).toHaveCount(0);
-    // A non-baseline card (mega-knight) can be added like any other.
-    const target = page.locator('[data-testid="collection-card-mega-knight"]');
-    await expect(target).toBeVisible();
-    await target.click();
-    await expect(page.getByTestId("card-info-use")).toBeVisible();
-    await page.getByTestId("card-info-use").click();
-    await expect(page.getByTestId("replace-picker")).toBeVisible();
-    await page.getByTestId("replace-slot-5").click();
-    await expect(page.getByTestId("deck-card-5")).toHaveAttribute("aria-label", /mega-knight/i);
+    // Locked cards remain visible in their own, dimmed section.
+    const locked = page.locator('[data-testid^="locked-card-mega-knight"]');
+    await expect(locked).toBeVisible();
+    await expect(locked).toHaveAttribute("data-locked", "true");
+    // Opening a locked card offers no Use action.
+    await locked.click();
+    await expect(page.getByTestId("card-info-overlay")).toBeVisible();
+    await expect(page.getByTestId("card-info-use")).toHaveCount(0);
+    await page.getByTestId("card-info-close").click();
   });
 
   test("collection /collection can add and remove cards in My Deck", async ({ page }) => {
@@ -218,7 +228,9 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(page.getByTestId("collection-grid")).toBeVisible({ timeout: 15000 });
     // Wait for catalog to load (Found: 108/N badge in the header).
     await expect(page.getByText(/Found:\s*108/)).toBeVisible({ timeout: 15000 });
-    const count = await page.locator('[data-testid^="collection-card-"]').count();
+    const count = await page
+      .locator('[data-testid^="collection-card-"], [data-testid^="locked-card-"]')
+      .count();
     expect(count).toBeGreaterThanOrEqual(100);
     await expect(page.getByTestId("filter-rarity-rare")).toBeVisible();
     await expect(page.getByTestId("filter-cost-3")).toBeVisible();
@@ -251,21 +263,27 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(page.getByTestId("topbar-name")).toHaveText(/\S+/);
     await expect(page.getByTestId("topbar-trophies")).toContainText("🏆");
     // Rename through the top bar.
-    await page.getByTestId("topbar-player").click();
+    await page.getByTestId("topbar-menu").click();
+    await page.getByTestId("topbar-rename").click();
     await page.getByTestId("topbar-name-input").fill("Arena King");
     await page.getByTestId("topbar-name-save").click();
     await expect(page.getByTestId("topbar-name")).toHaveText("Arena King", { timeout: 15000 });
   });
 
-  test("shop: buying a card spends coins and grants the card", async ({ page }) => {
+  test("shop: buying a coin bundle spends gems and adds coins", async ({ page }) => {
     await page.goto(`${BASE}/shop`);
     await expect(page.getByTestId("shop-coins")).toBeVisible({ timeout: 15000 });
     const coinsBefore = Number(((await page.getByTestId("shop-coins").textContent()) ?? "").replace(/[^\d]/g, ""));
-    // Deals for cards you already own are disabled — pick an affordable one.
-    const buy = page.locator('[data-testid^="deal-buy-"]:not([disabled])').first();
+    // Starter wallet has 20 gems; the 500-coin bundle costs 5 gems.
+    const buy = page.getByTestId("bundle-buy-coins-500");
     await expect(buy).toBeEnabled();
     await buy.click();
-    await expect(page.getByTestId("shop-coins")).not.toHaveText(String(coinsBefore), { timeout: 15000 });
+    await expect
+      .poll(async () => {
+        const text = (await page.getByTestId("shop-coins").textContent()) ?? "";
+        return Number(text.replace(/[^\d]/g, ""));
+      }, { timeout: 15000 })
+      .toBeGreaterThan(coinsBefore);
   });
 
   test("decks: multiple decks, select the deck used for battle", async ({ page }) => {
@@ -291,12 +309,27 @@ test.describe("CR Clone shell (chromium, Phase 11 exact-UI)", () => {
     await expect(row).toContainText("%");
   });
 
-  test("social /social has Leaderboard + Clan tabs", async ({ page }) => {
+  test("social /social shows Clan without a duplicate leaderboard", async ({ page }) => {
     await page.goto(`${BASE}/social`);
-    await expect(page.getByTestId("social-tabs")).toBeVisible();
-    await expect(page.getByTestId("social-leaderboard")).toBeVisible();
-    await page.getByTestId("social-tab-clan").click();
     await expect(page.getByTestId("social-clan")).toBeVisible();
+    await expect(page.getByTestId("social-tabs")).toHaveCount(0);
+    await expect(page.getByTestId("social-leaderboard")).toHaveCount(0);
+    await expect(page.getByTestId("social-leaderboard-redirect")).toHaveCount(0);
+  });
+
+  test("content cache survives reloads (no duplicate content fetches)", async ({ page }) => {
+    const contentRequests: string[] = [];
+    page.on("request", (request) => {
+      if (/\/content\/(cards|catalog|levels)/.test(request.url())) contentRequests.push(request.url());
+    });
+    await page.goto(`${BASE}/collection`);
+    await expect(page.getByTestId("collection-grid")).toBeVisible({ timeout: 15000 });
+    const firstLoad = contentRequests.length;
+    expect(firstLoad).toBeGreaterThan(0);
+
+    await page.reload();
+    await expect(page.getByTestId("collection-grid")).toBeVisible({ timeout: 15000 });
+    expect(contentRequests.length).toBe(firstLoad);
   });
 
   test("lobby /lobby still has player input", async ({ page }) => {

@@ -12,6 +12,7 @@
 
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { ensurePlayer, setName, type Player } from "./players.js";
+import { saveAccount, type StoredAccount } from "./playerStore.js";
 
 export interface Account {
   playerId: string;
@@ -21,6 +22,19 @@ export interface Account {
 }
 
 const accounts = new Map<string, Account>();
+
+/** Restore persisted credentials before the HTTP listener starts. */
+export function hydrateAccounts(rows: StoredAccount[]): number {
+  for (const row of rows) {
+    accounts.set(row.username.toLowerCase(), {
+      playerId: row.playerId,
+      salt: row.salt,
+      hash: row.hash,
+      createdAtMs: row.createdAtMs,
+    });
+  }
+  return accounts.size;
+}
 
 export const USERNAME_RE = /^[A-Za-z0-9_]{3,16}$/;
 export const MIN_PASSWORD = 6;
@@ -53,11 +67,19 @@ export function register(username: string, password: string): { ok: true; player
     return { ok: false, code: "USER_EXISTS", message: "That username is already taken" };
   }
   const salt = randomBytes(16).toString("hex");
-  accounts.set(key, {
+  const account: Account = {
     playerId: username,
     salt,
     hash: hash(password, salt).toString("hex"),
     createdAtMs: Date.now(),
+  };
+  accounts.set(key, account);
+  saveAccount({
+    username: key,
+    playerId: account.playerId,
+    salt: account.salt,
+    hash: account.hash,
+    createdAtMs: account.createdAtMs,
   });
   const player = ensurePlayer(username);
   setName(username, username);
@@ -77,6 +99,47 @@ export function login(username: string, password: string): { ok: true; player: P
     return { ok: false, code: "BAD_LOGIN", message: "Incorrect password" };
   }
   return { ok: true, player };
+}
+
+export function adminUsernames(): string[] {
+  return (process.env.ADMIN_USERNAMES ?? "dahiya27")
+    .split(",")
+    .map((name) => name.trim().toLowerCase())
+    .filter((name) => name.length > 0);
+}
+
+export function isAdminUsername(username: string): boolean {
+  return adminUsernames().includes(username.trim().toLowerCase());
+}
+
+/**
+ * Ensure allowlisted admin accounts exist and match ADMIN_PASSWORD on boot.
+ * Override ADMIN_USERNAMES / ADMIN_PASSWORD in the environment for real use.
+ */
+export function ensureAdminAccount(): string | null {
+  const password = process.env.ADMIN_PASSWORD ?? "admin12345";
+  for (const username of adminUsernames()) {
+    const existing = accounts.get(username);
+    if (existing === undefined) {
+      const result = register(username, password);
+      if (result.ok) return username;
+      continue;
+    }
+    // Keep the admin password in sync with ADMIN_PASSWORD on boot so a fresh
+    // clone always has a usable admin login. Override the env for real use.
+    const salt = randomBytes(16).toString("hex");
+    existing.salt = salt;
+    existing.hash = hash(password, salt).toString("hex");
+    saveAccount({
+      username,
+      playerId: existing.playerId,
+      salt: existing.salt,
+      hash: existing.hash,
+      createdAtMs: existing.createdAtMs,
+    });
+    return username;
+  }
+  return null;
 }
 
 export function accountCount(): number {

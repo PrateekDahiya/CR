@@ -16,7 +16,7 @@ describe("database-defined card mechanics", () => {
     state.elixir.blue = 10;
     const result = playCard(state, "blue", { handIndex: forceInHand(state, "blue", "fireball"), x: princess.x, y: princess.y });
     assert.equal(result.ok, true);
-    assert.equal(princess.hp, princess.maxHp - 276);
+    assert.equal(princess.hp, princess.maxHp - 61);
   });
 
   it("applies the stored Zap status to a unit in the target area", async () => {

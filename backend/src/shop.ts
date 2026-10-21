@@ -38,16 +38,32 @@ export interface ShopItem {
  * Fixed shelf. Prices are server-owned so a client cannot invent a cheaper buy.
  * `currency: "coins"` maps to the in-game gold coin (the CR "gold" shop tab).
  */
-const SHOP_ITEMS: ShopItem[] = [
+export const SHOP_ITEMS: ShopItem[] = [
+  // Coin bundles keep the original 1 gem : 100 coins ratio. Larger tiers are
+  // required because high-level card upgrades cost tens of thousands.
   { id: "coins-500", name: "500 Coins", kind: "coins", amount: 500, price: 5, currency: "gems" },
   { id: "coins-1200", name: "1,200 Coins", kind: "coins", amount: 1200, price: 12, currency: "gems" },
   { id: "coins-2500", name: "2,500 Coins", kind: "coins", amount: 2500, price: 25, currency: "gems" },
-  { id: "gems-80", name: "80 Gems", kind: "gems", amount: 80, price: 1000, currency: "coins" },
-  { id: "gems-500", name: "500 Gems", kind: "gems", amount: 500, price: 4500, currency: "coins" },
+  { id: "coins-5000", name: "5,000 Coins", kind: "coins", amount: 5000, price: 50, currency: "gems" },
+  { id: "coins-12500", name: "12,500 Coins", kind: "coins", amount: 12500, price: 125, currency: "gems" },
+  { id: "coins-25000", name: "25,000 Coins", kind: "coins", amount: 25000, price: 250, currency: "gems" },
+  { id: "coins-50000", name: "50,000 Coins", kind: "coins", amount: 50000, price: 500, currency: "gems" },
+  { id: "coins-100000", name: "100,000 Coins", kind: "coins", amount: 100000, price: 1000, currency: "gems" },
+  { id: "gems-80", name: "80 Gems", kind: "gems", amount: 80, price: 8000, currency: "coins" },
+  { id: "gems-500", name: "500 Gems", kind: "gems", amount: 500, price: 45000, currency: "coins" },
   { id: "pack-basic", name: "Basic Pack", kind: "cards", amount: 1, price: 1000, currency: "coins", pack: true },
   { id: "pack-rare", name: "Rare Pack", kind: "cards", amount: 1, price: 2500, currency: "coins", pack: true, rare: true },
   { id: "pack-epic", name: "Epic Pack", kind: "cards", amount: 1, price: 6000, currency: "coins", pack: true, rare: true },
 ];
+
+/** Daily-deal prices by rarity (coin). */
+export const RARITY_DEAL_PRICE: Record<string, number> = {
+  common: 50_000,
+  rare: 100_000,
+  epic: 200_000,
+  legendary: 300_000,
+  champion: 400_000,
+};
 
 /** Rarity of a card id (used by pack weighting). O(1). */
 function rarityOf(cardId: string): string {
@@ -64,7 +80,7 @@ const RARITY_WEIGHTS: Record<string, number> = {
 
 /** Weighted random card from the catalog. O(n) over ~108 ids. */
 function rollCard(rareBoost: boolean): string {
-  const ids = allCardIds();
+  const ids = shopCardIds();
   const weights = ids.map((id) => {
     const base = RARITY_WEIGHTS[rarityOf(id)] ?? 1;
     const rarity = rarityOf(id);
@@ -79,31 +95,40 @@ function rollCard(rareBoost: boolean): string {
   return "knight";
 }
 
-/** Daily deals: stable per calendar day so every player sees the same shelf. */
-function dailyDeals(dayMs: number): ShopItem[] {
-  const ids = allCardIds();
+/** Cards that can be sold in the shop (tower troops are progressed separately). */
+function shopCardIds(): string[] {
+  return allCardIds().filter((id) => CARDS[id]?.type !== "tower");
+}
+
+/**
+ * Daily deals: only cards the player does NOT own, stable per calendar day.
+ * Prices are fixed by rarity (50k common, 1 lakh rare, 2 lakh epic, ...).
+ */
+export function dailyDeals(dayMs: number, owned: Record<string, number> = {}): ShopItem[] {
+  const unowned = shopCardIds().filter((id) => (owned[id] ?? 0) <= 0);
+  if (unowned.length === 0) return [];
   const day = Math.floor(dayMs / 86_400_000);
+  const start = (day * 7) % unowned.length;
+  const count = Math.min(4, unowned.length);
   const out: ShopItem[] = [];
-  for (let i = 0; i < 4; i += 1) {
-    const idx = (day * 7 + i * 13) % ids.length;
-    const cardId = ids[idx] as string;
-    const discount = 0.4 + ((day + i) % 4) * 0.15;
-    const base = 200 + CARDS[cardId].cost * 120;
+  for (let i = 0; i < count; i += 1) {
+    const cardId = unowned[(start + i) % unowned.length] as string;
+    const rarity = rarityOf(cardId);
     out.push({
       id: `deal-${cardId}`,
       name: cardId.split("-").map((w) => w[0]?.toUpperCase() + w.slice(1)).join(" "),
       kind: "cards",
       amount: 1,
       cardId,
-      price: Math.round(base * discount),
+      price: RARITY_DEAL_PRICE[rarity] ?? RARITY_DEAL_PRICE.common,
       currency: "coins",
     });
   }
   return out;
 }
 
-function findItem(id: string, nowMs: number): ShopItem | undefined {
-  return [...dailyDeals(nowMs), ...SHOP_ITEMS].find((i) => i.id === id);
+function findItem(id: string, nowMs: number, owned: Record<string, number>): ShopItem | undefined {
+  return [...dailyDeals(nowMs, owned), ...SHOP_ITEMS].find((i) => i.id === id);
 }
 
 export function mountShop(app: Express): void {
@@ -112,12 +137,14 @@ export function mountShop(app: Express): void {
     const now = Date.now();
     const pid = authPlayerId(req);
     const player = pid === null ? null : ensurePlayer(pid);
+    const owned = player === null ? {} : { ...player.cards };
     res.json({
-      deals: dailyDeals(now),
+      deals: dailyDeals(now, owned),
       items: SHOP_ITEMS,
       rewards: REWARDS,
       wallet: player === null ? null : { coins: player.coins, gems: player.gems },
-      owned: player === null ? {} : { ...player.cards },
+      owned,
+      towerLevels: player === null ? {} : { ...player.towerLevels },
     });
   });
 
@@ -129,7 +156,8 @@ export function mountShop(app: Express): void {
       return;
     }
     const itemId = String((req.body as { itemId?: unknown })?.itemId ?? "");
-    const item = findItem(itemId, Date.now());
+    const player = ensurePlayer(pid);
+    const item = findItem(itemId, Date.now(), player.cards);
     if (item === undefined) {
       res.status(404).json({ code: "NO_ITEM", message: `unknown item ${itemId}` });
       return;
@@ -145,16 +173,28 @@ export function mountShop(app: Express): void {
     }
     if (item.pack === true) {
       const cardId = rollCard(item.rare === true);
+      const isNew = !ownsCard(pid, cardId);
       grantCards(pid, [cardId], item.rare === true ? 2 : 1);
-      const player = ensurePlayer(pid);
-      res.json({ ok: true, granted: { cardId, kind: "cards" }, wallet: { coins: player.coins, gems: player.gems } });
+      res.json({
+        ok: true,
+        granted: { cardId, kind: "cards", isNew, level: player.cards[cardId] ?? 1 },
+        wallet: { coins: player.coins, gems: player.gems },
+      });
       return;
     }
     if (item.kind === "coins") adjustWallet(pid, { coins: item.amount });
     else if (item.kind === "gems") adjustWallet(pid, { gems: item.amount });
     else if (item.cardId !== undefined) grantCards(pid, [item.cardId], 1);
-    const player = ensurePlayer(pid);
-    res.json({ ok: true, granted: item, wallet: { coins: player.coins, gems: player.gems } });
+    res.json({
+      ok: true,
+      granted: {
+        ...item,
+        ...(item.kind === "cards" && item.cardId !== undefined
+          ? { isNew: true, level: player.cards[item.cardId] ?? 1 }
+          : {}),
+      },
+      wallet: { coins: player.coins, gems: player.gems },
+    });
   });
 
   /** Copy an owned card into a new deck (shop "add to deck" shortcut). O(d). */

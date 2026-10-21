@@ -23,6 +23,25 @@ body {
   .card-art .card-art-img[style*="display: none"] ~ .card-art-fallback {
     opacity: 1;
   }
+  /* Collection cards already in My Deck: emerald veil + breathing glow. */
+  .card-in-deck-glow {
+    background: linear-gradient(180deg, rgba(16, 185, 129, 0.05), rgba(16, 185, 129, 0.22));
+    box-shadow: 0 0 0 1px rgba(209, 250, 229, 0.55), 0 0 10px rgba(16, 185, 129, 0.55);
+    animation: card-in-deck-pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes card-in-deck-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 1px rgba(209, 250, 229, 0.45), 0 0 7px rgba(16, 185, 129, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 1px rgba(209, 250, 229, 0.9), 0 0 16px rgba(16, 185, 129, 0.8);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card-in-deck-glow {
+      animation: none;
+    }
+  }
   .card-info-preview {
     /* Simple two-knight walk animation mirroring the screenshot preview. */
   }

@@ -64,7 +64,6 @@ test("login rejects a wrong password and accepts the right one", async ({ page }
   await expect(page.getByTestId("topbar-name")).toHaveText(username, { timeout: 20000 });
 
   // Sign out (clear storage) and try a bad password.
-  await page.getByTestId("topbar-name").click();
   await signedOut(page);
   await page.goto(`${BASE}/login`);
   await page.getByTestId("auth-username").fill(username);
@@ -76,6 +75,16 @@ test("login rejects a wrong password and accepts the right one", async ({ page }
   await page.getByTestId("auth-password").fill("secret123");
   await page.getByTestId("auth-submit").click();
   await expect(page.getByTestId("topbar-name")).toHaveText(username, { timeout: 20000 });
+});
+
+test("top bar logout clears the session and returns to login", async ({ page }) => {
+  await page.goto(`${BASE}/`);
+  await page.getByTestId("topbar-menu").click();
+  await expect(page.getByTestId("topbar-logout")).toBeVisible();
+  await page.getByTestId("topbar-logout").click();
+  await expect(page).toHaveURL(/\/login$/, { timeout: 15000 });
+  await expect(page.getByTestId("login-page")).toBeVisible();
+  expect(await page.evaluate(() => window.localStorage.getItem("cr-player-id"))).toBeNull();
 });
 
 test("registering an existing username is rejected", async ({ page }) => {

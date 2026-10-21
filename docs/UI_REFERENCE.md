@@ -35,13 +35,40 @@
 - Lobby: vs card with player/opponent, deck preview 8 mini cards, gold Join Queue, red Leave.
 - Deck: 8 slots grid with rarity borders, avg elixir ⚡, valid green check / invalid red, Starter/Clear, tap to swap from collection row (12 cards).
 
-## 7. Implementation rules (original code only)
+## 7. Battle Log sheet (top-bar menu -> "Battle Log")
+Reference: the Clash Royale battle log (grey panel, "Battles" tab, one card per
+battle). Recreated with original markup + the project's own card art.
+- Sheet: dark blue + gold frame (project theme), title "BATTLE LOG", red square
+  close button top-right.
+- Tab bar under the header: `BATTLES` | `TOURNAMENTS` (raised, active tab is
+  the lighter one; only the active tab is filled).
+- One card per battle, top to bottom:
+  1. Result banner row: `VICTORY` / `DEFEAT` / `DRAW` on the left (blue /
+     red text), the crown score `👑 3 - 0 👑` centred-right.
+  2. Player row: my name (blue) + trophies (gold) on the left, the crossed
+     swords `⚔️` in the middle, the opponent name (pink/red) + trophies on the
+     right.
+  3. Deck rows: the deck of BOTH sides side by side, each 2 rows of 4 card
+     tiles, separated by a vertical divider. My deck uses the per-team FRONT
+     art (`/cardart/<card>-front.png`), the opponent's the BACK art.
+  4. Footer: trophy delta (`+30 🏆` / `-20 🏆`) + "3 min ago" on the left,
+     the `PRACTICE` (blue) and `WATCH` (green) buttons on the right.
+- PRACTICE starts a real practice match against the AI with the deck the
+  opponent played (`/battle?foeDeck=...`).
+- WATCH opens `/replay?matchId=...`: the recorded match played back on the
+  real arena canvas (server samples the state at 2.5 Hz, see
+  `backend/src/replays.ts`). Greyed out when the replay expired.
+- TOURNAMENTS tab: create a tournament, join one, press PLAY (the server
+  pairs two ready players into a real match), the roster with the eliminated
+  players struck through and the champion at the end.
+
+## 8. Implementation rules (original code only)
 - Canvas 2D only (no image assets): draw tiles/towers/units with rects/circles/emoji text. Colors from §3-4 hexes above.
 - Tailwind for chrome (bars/buttons/overlays), Canvas for arena. 60fps `requestAnimationFrame` interp between 10Hz `state:update` (lerp positions, serverTimeMs clock).
 - SFX via WebAudio oscillator stub (deploy pop, hit thud, win fanfare arpeggio); mute toggle persisted.
 - Responsive: Canvas scales to column width, touch + mouse both; 390x844 primary, 1280x720 centered.
 - Do NOT commit any downloaded PNG/MP3; placeholders only. Note in PR: "recreated UI, no Supercell assets".
 
-## 8. Verification (MEMORY#17 + #18)
+## 9. Verification (MEMORY#17 + #18)
 - Playwright Chromium must screenshot `/`, `/deck`, `/lobby`, `/battle` at 390x844 + 1280x720 to `docs/screenshots/phase-5-*.png` and compare checklist: portrait arena, river/bridges, 3+3 towers HP bars, timer, elixir 10 pips, 4-card hand + Next, deploy works, win overlay crowns.
 - Reviewers file ISS-UI-*** for deviations (color, pips, landscape, missing bars).

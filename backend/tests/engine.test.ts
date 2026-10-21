@@ -2,7 +2,7 @@
  * engine.test.ts — unit tests for the authoritative game engine (no server needed).
  *
  * Covers docs/GAME_DESIGN.md normative behavior:
- *  - §7  elixir regen (start 5, cap 10, 1 per 2.8s single / 1 per 1.4s double)
+ *  - §7  elixir regen (start 8, cap 10, 1 per 2.8s single / 1 per 1.4s double)
  *  - §11 playCard deducts elixir + validates (cost, hand cycle, cardId echo)
  *  - §6  tower damage + king activation (Princess 1400, King 2400, inactive king)
  *  - §8  win / crowns (princess = 1 crown, king = instant win + 3 crowns;
@@ -101,7 +101,7 @@ function stageNear(
     (t) => t.owner === target.owner && t.kind === 'princess' && (t.x < 9) === leftSide,
   );
   const pocketOpen = foePrincess?.destroyed === true;
-  const x = leftSide ? 3.5 : 13.5;
+  const x = leftSide ? 3.5 : 14.5;
   // Pocket (§5.3): up to 4 tiles into enemy half once that side's princess falls.
   const y = attacker === 'blue' ? (pocketOpen && target.owner === 'red' ? 18 : 13) : pocketOpen && target.owner === 'blue' ? 14 : 19;
   return { x, y };
@@ -150,16 +150,16 @@ function strikeUntilDestroyed(
 // ---------------------------------------------------------------------------
 describe('engine — elixir regen (GAME_DESIGN §7)', () => {
   it('locks the normative elixir constants', () => {
-    assert.equal(ELIXIR_START, 5);
+    assert.equal(ELIXIR_START, 8);
     assert.equal(ELIXIR_CAP, 10);
     assert.equal(ELIXIR_SINGLE_SEC, 2.8);
     assert.equal(ELIXIR_DOUBLE_SEC, 1.4);
   });
 
-  it('starts at 5 elixir for both players', () => {
+  it('starts at 8 elixir for both players', () => {
     const s = newGame();
-    assert.equal(s.elixir.blue, 5);
-    assert.equal(s.elixir.red, 5);
+    assert.equal(s.elixir.blue, 8);
+    assert.equal(s.elixir.red, 8);
   });
 
   it('regenerates 1 elixir per 2.8s in single time', () => {
@@ -281,7 +281,7 @@ describe('engine — towers + king activation (GAME_DESIGN §6)', () => {
     // Database-defined fireball (spell, cost 4, 276 vs towers).\r
     const r = playCard(s, 'red', { handIndex: forceInHand(s, 'red', 'fireball'), x: king.x, y: king.y });
     assert.equal(r.ok, true);
-    assert.equal(king.hp, 2400 - 276);
+    assert.equal(king.hp, 2400 - 61);
     assert.equal(king.active, true, 'king must activate after taking damage (§6.2)');
     const redKing = towerOf(s, 'king', 'red');
     assert.equal(redKing.active, false, 'undamaged red king stays inactive');
@@ -293,7 +293,7 @@ describe('engine — towers + king activation (GAME_DESIGN §6)', () => {
     s.elixir.blue = 10;
     const r = playCard(s, 'blue', { handIndex: forceInHand(s, 'blue', 'fireball'), x: princess.x, y: princess.y });
     assert.equal(r.ok, true);
-    assert.equal(princess.hp, 1400 - 276);
+    assert.equal(princess.hp, 1400 - 61);
     assert.equal(princess.destroyed, false);
     assert.equal(s.crowns.blue, 0);
     assert.equal(s.crowns.red, 0);

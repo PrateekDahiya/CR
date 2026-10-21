@@ -6,10 +6,20 @@ import {
   ensurePlayer,
   resetPlayers,
   upgradeCard,
+  upgradeTower,
 } from "../src/players.js";
 
 describe("card upgrades", () => {
   beforeEach(() => resetPlayers());
+
+  it("gives new players a full deck of owned starter cards", () => {
+    const player = ensurePlayer("starter-account");
+    assert.equal(player.decks[0].cards.length, 8);
+    for (const id of player.decks[0].cards) {
+      assert.ok((player.cards[id] ?? 0) > 0, `${id} must be owned`);
+      assert.equal(player.decks[0].levels[id], player.cards[id]);
+    }
+  });
 
   it("charges coins, raises the owned level, and updates deck snapshots", () => {
     const pid = "upgrade-ok";
@@ -57,5 +67,33 @@ describe("card upgrades", () => {
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, "MAX_LEVEL");
     assert.equal(player.cards.knight, CARD_MAX_LEVEL);
+  });
+
+  it("requires the King Tower upgrade before side towers", () => {
+    const pid = "tower-upgrade";
+    const player = ensurePlayer(pid);
+    player.coins = 1_000_000;
+    const before = player.towerLevels["tower-princess"];
+
+    const blocked = upgradeTower(pid, "tower-princess");
+    assert.equal(blocked.ok, false);
+    if (!blocked.ok) assert.equal(blocked.code, "KING_LEVEL_REQUIRED");
+
+    const king = upgradeTower(pid, "king");
+    assert.equal(king.ok, true);
+    if (king.ok) assert.equal(king.level, 2);
+
+    const result = upgradeTower(pid, "tower-princess");
+    assert.equal(result.ok, true);
+    if (result.ok) assert.equal(result.level, before + 1);
+    assert.equal(player.towerLevels["tower-princess"], before + 1);
+    // Card levels are untouched by tower progression.
+    assert.equal(player.cards["tower-princess"], undefined);
+  });
+
+  it("rejects non-tower ids for tower upgrades", () => {
+    const result = upgradeTower("tower-bad", "knight");
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, "BAD_TOWER");
   });
 });

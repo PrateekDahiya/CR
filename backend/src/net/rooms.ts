@@ -18,6 +18,8 @@
 import type { Server } from "socket.io";
 import { getCardCost } from "./validation.js";
 import { publishState } from "./redis.js";
+import { finishReplay, recordReplayFrame } from "../replays.js";
+import { DEFAULT_GAME_MODE_ID, resolveGameMode, type GameModeConfig } from "../game/modes.js";
 
 // Structural mirror of shared/types.ts (backend tsconfig rootDir=src cannot
 // import ../../../shared, so we re-declare the identical wire shape here).
@@ -32,6 +34,7 @@ export interface Tower {
   id: string;
   kind: "king" | "princess";
   owner: PlayerSide;
+  level?: number;
   hitPoints: number;
   maxHitPoints: number;
   position: Vec2;
@@ -42,10 +45,12 @@ export interface Unit {
   id: string;
   cardId: string;
   owner: PlayerSide;
+  level?: number;
   hitPoints: number;
   maxHitPoints: number;
   position: Vec2;
   targetId?: string;
+  decayOnly?: boolean;
 }
 
 export interface GameState {
@@ -54,6 +59,9 @@ export interface GameState {
   serverTimeMs: number;
   /** Wall-clock ms when the match started (lets a resumed client restore the clock). */
   startedAtMs: number;
+  /** Server-resolved game mode (registry: game/modes.ts). */
+  modeId: string;
+  mode: GameModeConfig;
   elixir: Record<PlayerSide, number>;
   towers: Tower[];
   units: Unit[];
@@ -115,11 +123,14 @@ export interface SimState {
   matchId: string;
   tick: number;
   serverTimeMs: number;
+  modeId?: string;
+  mode?: GameModeConfig;
   elixir: Record<PlayerSide, number>;
   towers: Array<{
     id: string;
     kind: "king" | "princess";
     owner: PlayerSide;
+    level?: number;
     hp: number;
     maxHp: number;
     x: number;
@@ -130,11 +141,14 @@ export interface SimState {
     id: string;
     cardId: string;
     owner: PlayerSide;
+    level?: number;
     hp: number;
     maxHp: number;
     x: number;
     y: number;
     targetId?: string;
+    decayedThisTick?: boolean;
+    hitByAttackThisTick?: boolean;
   }>;
   crowns: Record<PlayerSide, number>;
   winner?: PlayerSide | "draw";
@@ -180,6 +194,7 @@ interface EngineHooks {
       blueTowerTroopId?: string;
       redTowerTroopId?: string;
       statVersion?: number;
+      modeId?: string;
     },
   ) => SimState;
   createInitialState?: (matchId: string) => SimState;
@@ -240,20 +255,26 @@ function buildTower(
 }
 
 /** 6 towers per GAME_DESIGN.md §§5.4/6.1: Princess 1400, King 2400. */
-function buildInitialState(matchId: string, startedAtMs: number = Date.now()): GameState {
+function buildInitialState(
+  matchId: string,
+  startedAtMs: number = Date.now(),
+  mode: GameModeConfig = resolveGameMode(DEFAULT_GAME_MODE_ID),
+): GameState {
   return {
     matchId,
     tick: 0,
     serverTimeMs: startedAtMs,
     startedAtMs,
-    elixir: { blue: 5, red: 5 },
+    modeId: mode.id,
+    mode,
+    elixir: { blue: mode.startElixir, red: mode.startElixir },
     towers: [
-      buildTower("blue-king", "king", "blue", 2400, 8.5, 3.5),
+      buildTower("blue-king", "king", "blue", 2400, 9, 3.5),
       buildTower("blue-princess-left", "princess", "blue", 1400, 3.5, 6.5),
-      buildTower("blue-princess-right", "princess", "blue", 1400, 13.5, 6.5),
-      buildTower("red-king", "king", "red", 2400, 8.5, 27.5),
+      buildTower("blue-princess-right", "princess", "blue", 1400, 14.5, 6.5),
+      buildTower("red-king", "king", "red", 2400, 9, 27.5),
       buildTower("red-princess-left", "princess", "red", 1400, 3.5, 24.5),
-      buildTower("red-princess-right", "princess", "red", 1400, 13.5, 24.5),
+      buildTower("red-princess-right", "princess", "red", 1400, 14.5, 24.5),
     ],
     units: [],
     crowns: { blue: 0, red: 0 },
@@ -279,6 +300,8 @@ function syncWire(room: Room): void {
   s.tick = sim.tick;
   s.serverTimeMs = sim.serverTimeMs;
   s.startedAtMs = room.startedAtMs;
+  s.modeId = sim.modeId ?? s.modeId;
+  s.mode = sim.mode ?? s.mode;
   s.elixir.blue = sim.elixir.blue; // reuse elixir object (no alloc)
   s.elixir.red = sim.elixir.red;
   // Towers: fixed 6 — update nested objects in place.
@@ -291,6 +314,7 @@ function syncWire(room: Room): void {
         id: st.id,
         kind: st.kind,
         owner: st.owner,
+        level: st.level,
         hitPoints: st.hp,
         maxHitPoints: st.maxHp,
         position: { x: st.x, y: st.y },
@@ -301,6 +325,7 @@ function syncWire(room: Room): void {
       wt.id = st.id;
       wt.kind = st.kind;
       wt.owner = st.owner;
+      wt.level = st.level;
       wt.hitPoints = st.hp;
       wt.maxHitPoints = st.maxHp;
       wt.position.x = st.x;
@@ -326,6 +351,7 @@ function syncWire(room: Room): void {
         id: su.id,
         cardId: su.cardId,
         owner: su.owner,
+        level: su.level,
         hitPoints: su.hp,
         maxHitPoints: su.maxHp,
         position: { x: su.x, y: su.y },
@@ -335,6 +361,7 @@ function syncWire(room: Room): void {
       wu.id = su.id;
       wu.cardId = su.cardId;
       wu.owner = su.owner;
+      wu.level = su.level;
       wu.hitPoints = su.hp;
       wu.maxHitPoints = su.maxHp;
       wu.position.x = su.x;
@@ -342,6 +369,9 @@ function syncWire(room: Room): void {
     }
     if (su.targetId !== undefined) wu.targetId = su.targetId;
     else delete wu.targetId;
+    const decayOnly = su.decayedThisTick === true && su.hitByAttackThisTick !== true;
+    if (decayOnly) wu.decayOnly = true;
+    else delete wu.decayOnly;
   }
   s.units.length = n;
   s.crowns.blue = sim.crowns.blue; // reuse crowns object (no alloc)
@@ -380,11 +410,17 @@ export interface RoomSeed {
   towerTroopId?: string;
 }
 
-export function createRoom(matchId: string, blue: RoomSeed, red: RoomSeed): Room {
+export function createRoom(
+  matchId: string,
+  blue: RoomSeed,
+  red: RoomSeed,
+  modeId: string = DEFAULT_GAME_MODE_ID,
+): Room {
   const existing = rooms.get(matchId);
   if (existing !== undefined) {
     return existing;
   }
+  const mode = resolveGameMode(modeId);
   const engine = loadEngine();
   let sim: SimState | null = null;
   if (engine?.createGame !== undefined) {
@@ -398,6 +434,7 @@ export function createRoom(matchId: string, blue: RoomSeed, red: RoomSeed): Room
           redCardLevels: red.levels,
           blueTowerTroopId: blue.towerTroopId,
           redTowerTroopId: red.towerTroopId,
+          modeId: mode.id,
         }) ?? null;
     } catch {
       sim = null;
@@ -416,7 +453,7 @@ export function createRoom(matchId: string, blue: RoomSeed, red: RoomSeed): Room
       { playerId: blue.playerId, side: "blue", socketId: blue.socketId, deck: [...blue.deck], levels: blue.levels, towerTroopId: blue.towerTroopId },
       { playerId: red.playerId, side: "red", socketId: red.socketId, deck: [...red.deck], levels: red.levels, towerTroopId: red.towerTroopId },
     ],
-    state: buildInitialState(matchId, startedAtMs),
+    state: buildInitialState(matchId, startedAtMs, mode),
     sim,
     hands: {
       blue: blue.deck.slice(0, 4),
@@ -654,6 +691,10 @@ export function startTickLoop(io: Server, matchId: string): void {
       return;
     }
     const status = stepRoom(current);
+    // Replay sampling (the battle log "Watch" button). The recorder drops
+    // samples that arrive faster than its own interval, so this stays O(1)
+    // on the hot path.
+    recordReplayFrame(matchId, current.state, Date.now());
     broadcastState(io, current);
     if (status === "ended") {
       io.to(matchId).emit("match:end", {
@@ -661,6 +702,7 @@ export function startTickLoop(io: Server, matchId: string): void {
         winner: current.state.winner,
         crowns: current.state.crowns,
       });
+      finishReplay(matchId, current.state.winner, Date.now());
       stopTickLoop(matchId);
       // Bot brain (ai.ts) listens for room end and stops thinking.
       onRoomEnded?.(matchId);

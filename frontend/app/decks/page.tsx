@@ -19,6 +19,7 @@ import {
   selectPlayerDeck,
   updatePlayerDeck,
   upgradePlayerCard,
+  upgradePlayerTower,
   type ContentCard,
   type CatalogEntry,
   type DeckRecord,
@@ -28,6 +29,8 @@ import { generateRandomDeck } from "../../lib/deckGenerator";
 import { isTowerTroopId } from "../../lib/cardAliases";
 import { useDeckState, DECK_SIZE } from "../../lib/useDeck";
 import { usePlayer } from "../../lib/playerContext";
+import { loadCardLevels, overlayStatsFor, type OverlayLevelStats } from "../../lib/cardLevels";
+import { DEFAULT_TOWER_ID, loadTowerSelection, saveTowerSelection } from "../../lib/towerSelection";
 
 // /decks — My Deck strip on top, full collection grid underneath, two tabs.
 // Deck edits (add / remove / replace) run through useDeckState so this screen and
@@ -38,7 +41,13 @@ export default function DecksPage() {
   const [info, setInfo] = useState<{ name: string; slot: number | "list" } | null>(null);
   const [replace, setReplace] = useState<{ name: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [tab, setTab] = useState<"deck" | "collection">("deck");
+  const [tab, setTab] = useState<"deck" | "collection" | "towers">("deck");
+  const [query, setQuery] = useState("");
+  const [rarity, setRarity] = useState<"all" | "common" | "rare" | "epic" | "legendary" | "champion">("all");
+  const [costFilter, setCostFilter] = useState<"all" | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>("all");
+  const [sortKey, setSortKey] = useState<"name" | "elixir" | "level">("name");
+  const [selectedTower, setSelectedTower] = useState(DEFAULT_TOWER_ID);
+  const [infoStats, setInfoStats] = useState<OverlayLevelStats | undefined>(undefined);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { deck, hydrated, placeAt, useCard, removeCard, replace: loadDeckInto, saveDeck } = useDeckState();
   const { playerId, profile, refresh: refreshProfile } = usePlayer();
@@ -101,6 +110,92 @@ export default function DecksPage() {
     [catalog, cards],
   );
 
+  useEffect(() => {
+    setSelectedTower(loadTowerSelection());
+  }, []);
+
+  // Resolve popup stats from the database level rows. Re-runs when the open
+  // card or its owned level changes, so an upgrade shows the new values.
+  useEffect(() => {
+    const cardId = info?.name;
+    if (!cardId) {
+      setInfoStats(undefined);
+      return undefined;
+    }
+    let cancelled = false;
+    const level = profile?.cards?.[cardId] ?? 1;
+    loadCardLevels(cardId, backendUrl())
+      .then((levels) => {
+        if (!cancelled) setInfoStats(overlayStatsFor(levels, level, CARDS[cardId]));
+      })
+      .catch(() => {
+        if (!cancelled) setInfoStats(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [info, profile]);
+
+  const ownedNames = useMemo(() => new Set(Object.keys(profile?.cards ?? {})), [profile]);
+  const unlocked = useMemo(
+    () => collection.filter((c) => ownedNames.has(c.name)),
+    [collection, ownedNames],
+  );
+  const locked = useMemo(
+    () => collection.filter((c) => !ownedNames.has(c.name)),
+    [collection, ownedNames],
+  );
+  const towers = useMemo(() => CARD_LIST.filter((c) => c.type === "tower"), []);
+  const levelOfCard = (name: string): number => profile?.cards?.[name] ?? 1;
+  const towerLevel = (id: string): number => profile?.towerLevels?.[id] ?? 1;
+  const kingLevel = profile?.kingLevel ?? 1;
+  const towerUpgradeCost = (level: number): number =>
+    Math.round(200 * Math.pow(1.35, Math.max(0, level - 1)));
+
+  const matchesFilters = useCallback(
+    (c: CatalogEntry): boolean => {
+      const q = query.trim().toLowerCase();
+      if (q.length > 0 && !c.name.toLowerCase().includes(q)) return false;
+      if (rarity !== "all" && c.rarity !== rarity) return false;
+      if (costFilter !== "all" && c.elixir !== costFilter) return false;
+      return true;
+    },
+    [query, rarity, costFilter],
+  );
+
+  /** Matching cards first, remaining cards below (never removed). */
+  const splitFiltered = useCallback(
+    (list: CatalogEntry[]): { matched: CatalogEntry[]; rest: CatalogEntry[] } => {
+      const sorted = [...list].sort((a, b) => {
+        if (sortKey === "elixir") return a.elixir - b.elixir || a.name.localeCompare(b.name);
+        if (sortKey === "level") return levelOfCard(b.name) - levelOfCard(a.name) || a.name.localeCompare(b.name);
+        return a.name.localeCompare(b.name);
+      });
+      return {
+        matched: sorted.filter(matchesFilters),
+        rest: sorted.filter((c) => !matchesFilters(c)),
+      };
+    },
+    [matchesFilters, sortKey, profile],
+  );
+
+  // Repair a stale deck that contains cards the player no longer owns (older
+  // saves could hold locked cards): free the slot, then fill from owned cards.
+  const repairedRef = useRef(false);
+  useEffect(() => {
+    if (!hydrated || profile === null || repairedRef.current) return;
+    repairedRef.current = true;
+    const ownedIds = collection.filter((c) => ownedNames.has(c.name)).map((c) => c.name);
+    if (ownedIds.length === 0) return;
+    const next = deck.map((id) => (id && ownedNames.has(id) ? id : ""));
+    for (let i = 0; i < next.length; i += 1) {
+      if (next[i]) continue;
+      const filler = ownedIds.find((id) => !next.includes(id));
+      if (filler) next[i] = filler;
+    }
+    if (next.some((id, i) => id !== deck[i])) loadDeckInto(next);
+  }, [hydrated, profile, collection, ownedNames, deck, loadDeckInto]);
+
   // Single fact lookup for every card the deck can hold. Catalog gives the roster
   // + rarity; the shared card table (generated from the same source as the
   // engine) gives the authoritative cost/type used in battle. O(n), n = 108.
@@ -126,12 +221,6 @@ export default function DecksPage() {
     return out;
   }, [collection, cards]);
 
-  const statsByName = useMemo(() => {
-    const out: Record<string, ContentCard> = {};
-    for (const c of cards) out[c.name] = c;
-    return out;
-  }, [cards]);
-
   const slotFacts = useMemo(() => {
     const out: Record<string, DeckSlotFact> = {};
     for (const [name, f] of Object.entries(factsByName)) {
@@ -149,6 +238,10 @@ export default function DecksPage() {
   // "Use": fills the first free slot; a full deck (or moving a card already in
   // the deck) opens the slot picker so the user always chooses what is replaced.
   const requestUse = (name: string) => {
+    if (!ownedNames.has(name)) {
+      say(`${pretty(name)} is locked — unlock it in the shop first`);
+      return;
+    }
     const res = useCard(name);
     if (res.kind === "placed") {
       setInfo(null);
@@ -198,6 +291,32 @@ export default function DecksPage() {
     }
   };
 
+  const selectTower = (towerId: string) => {
+    setSelectedTower(towerId);
+    saveTowerSelection(towerId);
+    if (activeDeckId !== null) {
+      setDecks((prev) => prev.map((deck) => (deck.id === activeDeckId ? { ...deck, towerTroopId: towerId } : deck)));
+      void updatePlayerDeck(playerId, activeDeckId, { towerTroopId: towerId }, backendUrl())
+        .then(() => refreshProfile())
+        .catch(() => undefined);
+    }
+    say(`${pretty(towerId)} selected as crown tower`);
+  };
+
+  const doUpgradeTower = async (towerId: string) => {
+    if (!playerId) {
+      say("Sign in to upgrade towers");
+      return;
+    }
+    try {
+      const res = await upgradePlayerTower(playerId, towerId, backendUrl());
+      say(`${pretty(towerId)} tower upgraded to level ${res.level} (−${res.cost} coins)`);
+      await refreshProfile();
+    } catch (err) {
+      say(err instanceof Error ? err.message : "Tower upgrade failed");
+    }
+  };
+
   const avgElixir =
     deck.some(Boolean) && hydrated
       ? Math.min(
@@ -216,6 +335,10 @@ export default function DecksPage() {
         // `cr-clone-deck-v1` is the ONE client-side source for the deck used in
         // battle (loadDeckInto -> saveDeck writes it). No second key to drift.
         loadDeckInto(active.cards);
+        if (active.towerTroopId) {
+          setSelectedTower(active.towerTroopId);
+          saveTowerSelection(active.towerTroopId);
+        }
       }
     }
   }, []);
@@ -231,7 +354,13 @@ export default function DecksPage() {
     setRandomError(null);
     setRandomBusy(true);
     try {
-      const result = generateRandomDeck(CARD_LIST.map((card) => card.id));
+      const ownedPool = unlocked.map((card) => card.name);
+      if (ownedPool.length < DECK_SIZE) {
+        setRandomError("Not enough unlocked cards for a random deck.");
+        say("Unlock more cards first");
+        return;
+      }
+      const result = generateRandomDeck(ownedPool);
       if (!result.ok) {
         setRandomError(
           `Could not build a valid deck (${result.unsatisfiedRoles.join(", ") || "no roles satisfied"}). Your deck was kept.`,
@@ -271,7 +400,7 @@ export default function DecksPage() {
     } finally {
       setRandomBusy(false);
     }
-  }, [activeDeckId, decks, placeAt, playerId, pushDecks, refreshProfile, say]);
+  }, [activeDeckId, decks, placeAt, playerId, pushDecks, refreshProfile, say, unlocked]);
 
   const onCreateDeck = async () => {
     try {
@@ -323,8 +452,99 @@ export default function DecksPage() {
     saveDeck();
   }, [deck]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const filtersBar = (
+    <div className="mb-2 space-y-1" data-testid="deck-filters">
+      <input
+        type="search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search cards…"
+        data-testid="card-search"
+        className="w-full rounded-md border border-slate-600 bg-slate-900/70 px-2 py-1 text-xs text-slate-100 placeholder:text-slate-500"
+      />
+      <div className="flex flex-wrap items-center gap-1">
+        {(["all", "common", "rare", "epic", "legendary", "champion"] as const).map((r) => (
+          <button
+            key={r}
+            type="button"
+            onClick={() => setRarity(r)}
+            data-testid={`deck-filter-rarity-${r}`}
+            className={`rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase ${
+              rarity === r
+                ? "border-amber-400 bg-amber-400/25 text-amber-200"
+                : "border-slate-700 bg-slate-800/50 text-slate-200"
+            }`}
+          >
+            {r}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-1">
+        {(["all", 1, 2, 3, 4, 5, 6, 7, 8] as const).map((e) => (
+          <button
+            key={e}
+            type="button"
+            onClick={() => setCostFilter(e)}
+            data-testid={`deck-filter-cost-${e}`}
+            className={`min-w-[1.7rem] rounded-full border px-1.5 py-0.5 text-[10px] font-extrabold ${
+              costFilter === e
+                ? "border-amber-300 bg-amber-300/25 text-amber-200"
+                : "border-slate-700 bg-slate-800/50 text-slate-200"
+            }`}
+          >
+            {e === "all" ? "All" : e}
+          </button>
+        ))}
+        <select
+          value={sortKey}
+          onChange={(e) => setSortKey(e.target.value as typeof sortKey)}
+          data-testid="deck-sort"
+          className="ml-auto rounded-md border border-slate-600 bg-slate-900/70 px-1.5 py-0.5 text-[10px] font-bold text-slate-200"
+        >
+          <option value="name">Sort: Name</option>
+          <option value="elixir">Sort: Elixir</option>
+          <option value="level">Sort: Level</option>
+        </select>
+      </div>
+    </div>
+  );
+
+  const renderCardGroups = (list: CatalogEntry[], groupTestId: string, locked = false) => {
+    const { matched, rest } = splitFiltered(list);
+    const tile = (c: CatalogEntry) => (
+      <CardTile
+        key={c.name}
+        name={c.name}
+        rarity={c.rarity}
+        cost={c.elixir}
+        level={locked ? 0 : levelOf(c.name)}
+        testId={`${groupTestId}-${c.name}`}
+        inDeck={deck.includes(c.name)}
+        locked={locked}
+        onClick={() => setInfo({ name: c.name, slot: "list" })}
+      />
+    );
+    return (
+      <>
+        <div className="grid grid-cols-4 gap-2" data-testid={`matched-${groupTestId}`} data-count={matched.length}>
+          {matched.map(tile)}
+        </div>
+        {rest.length > 0 && (
+          <div className="mt-3">
+            <p className="mb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              Other cards
+            </p>
+            <div className="grid grid-cols-4 gap-2 opacity-80" data-testid={`rest-${groupTestId}`} data-count={rest.length}>
+              {rest.map(tile)}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
+
   return (
-    <PageShell active="cards" topBarCurrencies={{ cards: cards.length, coins: 1625, gems: 5 }}>
+    <PageShell active="cards" topBarCurrencies={{ cards: cards.length, coins: profile?.coins ?? 0, gems: profile?.gems ?? 0 }}>
       <div className="px-3 py-3">
         {/* Deck list: create, rename, select (the selected deck is used in battle). */}
         <section
@@ -454,7 +674,7 @@ export default function DecksPage() {
 
         {/* Tabs: Deck + Collection (both in-place, no separate /deck route) */}
         <div className="mb-2 flex gap-2" data-testid="deck-tabs">
-          {(["deck", "collection"] as const).map((t) => (
+          {(["deck", "collection", "towers"] as const).map((t) => (
             <button
               key={t}
               type="button"
@@ -466,44 +686,130 @@ export default function DecksPage() {
                   : "border-slate-700 bg-gradient-to-b from-slate-600 to-slate-800 text-slate-200"
               }`}
             >
-              {t === "deck" ? "My Deck" : "Collection"}
+              {t === "deck" ? "My Deck" : t === "collection" ? "Collection" : "Towers"}
             </button>
           ))}
         </div>
 
         {tab === "deck" ? (
-          <div className="rounded-xl border border-slate-600/50 bg-[#12224a]/60 p-3 text-center">
-            <p className="text-xs font-semibold text-slate-300">
-              Tap a card in My Deck to see its stats.
+          <section data-testid="unlocked-cards">
+            <h3 className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-emerald-300">
+              Unlocked cards ({unlocked.length})
+            </h3>
+            <p className="mb-2 text-[10px] text-slate-400">
+              Tap an unlocked card to add it. <span className="text-rose-300">Remove</span> from My Deck above.
             </p>
-            <p className="mt-1 text-xs font-semibold text-slate-400">
-              <span className="text-amber-300">Use</span> adds it to a free slot — if the deck is
-              full you pick the card it replaces.
-            </p>
-            <p className="mt-1 text-xs font-semibold text-slate-400">
-              <span className="text-rose-300">Remove</span> takes it out and frees the slot.
-            </p>
-          </div>
-        ) : (
+            {filtersBar}
+            {renderCardGroups(unlocked, "unlocked-card")}
+          </section>
+        ) : tab === "collection" ? (
           <section data-testid="collection-list">
-            <div className="grid grid-cols-4 gap-2" data-count={collection.length}>
-              {collection.map((c) => (
-                <CardTile
-                  key={c.name}
-                  name={c.name}
-                  rarity={c.rarity}
-                  cost={c.elixir}
-                  level={levelOf(c.name)}
-                  testId={`collection-card-${c.name}`}
-                  inDeck={deck.includes(c.name)}
-                  onClick={() => setInfo({ name: c.name, slot: "list" })}
-                />
-              ))}
-            </div>
+            {filtersBar}
+            <h3 className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-emerald-300">
+              Unlocked ({unlocked.length})
+            </h3>
+            {renderCardGroups(unlocked, "collection-card")}
+            <h3 className="mb-1 mt-4 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+              Locked ({locked.length})
+            </h3>
+            {renderCardGroups(locked, "locked-card", true)}
             <p className="mt-3 text-center text-[11px] text-slate-400">
               Source: <span data-testid="collection-source">mysql</span> • {collection.length} cards (
-              {collection.filter((c) => c.playable).length} playable) — tap a card to add it to My Deck
+              {collection.filter((c) => c.playable).length} playable)
             </p>
+          </section>
+        ) : (
+          <section data-testid="towers-tab">
+            <h3 className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-cyan-300">
+              Crown Towers
+            </h3>
+            <p className="mb-2 text-[10px] text-slate-400">
+              The King Tower sets the cap. Side towers can only be upgraded up to the King level.
+            </p>
+
+            {/* King Tower: always the standard King, upgraded first. */}
+            <div
+              data-testid="tower-row-king"
+              className="mb-2 flex items-center gap-2 rounded-lg border border-amber-500/70 bg-amber-500/10 p-2"
+            >
+              <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-lg border-2 border-amber-400 bg-gradient-to-b from-amber-300 to-amber-600">
+                {/* Real blue King Tower art (same asset the arena uses). */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/towers/king-blue-active.png"
+                  alt="King Tower"
+                  data-testid="king-tower-art"
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-extrabold text-white">King Tower</p>
+                <p className="text-[10px] font-bold text-amber-200">Level {kingLevel} · sets the side-tower cap</p>
+              </div>
+              <button
+                type="button"
+                data-testid="tower-upgrade-king"
+                onClick={() => void doUpgradeTower("king")}
+                disabled={kingLevel >= 16}
+                className="rounded-md border border-amber-700 bg-gradient-to-b from-amber-300 to-amber-500 px-2 py-1 text-[10px] font-extrabold uppercase text-amber-950 active:translate-y-0.5 disabled:opacity-50"
+              >
+                {kingLevel >= 16 ? "Max" : `Upgrade ${towerUpgradeCost(kingLevel)}`}
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {towers.map((tower) => {
+                const lvl = towerLevel(tower.id);
+                const selected = selectedTower === tower.id;
+                const capped = lvl >= kingLevel;
+                const cost = towerUpgradeCost(lvl);
+                return (
+                  <div
+                    key={tower.id}
+                    data-testid={`tower-row-${tower.id}`}
+                    className={`flex items-center gap-2 rounded-lg border p-2 ${
+                      selected ? "border-amber-400 bg-amber-400/10" : "border-slate-600 bg-slate-800/40"
+                    }`}
+                  >
+                    <CardTile
+                      name={tower.id}
+                      rarity={tower.rarity}
+                      cost={tower.cost}
+                      level={lvl}
+                      showLevel={false}
+                      size="sm"
+                      testId={`tower-card-${tower.id}`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-extrabold text-white">{pretty(tower.id)}</p>
+                      <p className="text-[10px] font-bold text-sky-300">
+                        Level {lvl} / {kingLevel}
+                      </p>
+                      {capped && lvl < 16 && (
+                        <p className="text-[9px] font-bold text-rose-300">Upgrade King Tower first</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      data-testid={`tower-select-${tower.id}`}
+                      onClick={() => selectTower(tower.id)}
+                      className="rounded-md border border-amber-600 bg-gradient-to-b from-amber-300 to-amber-500 px-2 py-1 text-[10px] font-extrabold uppercase text-amber-950 active:translate-y-0.5"
+                    >
+                      {selected ? "Selected" : "Select"}
+                    </button>
+                    <button
+                      type="button"
+                      data-testid={`tower-upgrade-${tower.id}`}
+                      onClick={() => void doUpgradeTower(tower.id)}
+                      disabled={lvl >= 16 || capped}
+                      className="rounded-md border border-purple-700 bg-gradient-to-b from-purple-400 to-purple-700 px-2 py-1 text-[10px] font-extrabold uppercase text-white active:translate-y-0.5 disabled:opacity-50"
+                    >
+                      {lvl >= 16 ? "Max" : capped ? "King first" : `Upgrade ${cost}`}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </section>
         )}
       </div>
@@ -513,7 +819,7 @@ export default function DecksPage() {
             const f = factsByName[info.name];
             if (!f) return null;
             const inDeck = deck.includes(info.name);
-            const stats = statsByName[info.name];
+            const isOwned = ownedNames.has(info.name);
             return (
               <CardInfoOverlay
                 name={f.name}
@@ -523,22 +829,12 @@ export default function DecksPage() {
                 level={levelOf(f.name)}
                 upgradeCost={upgradeCostOf(f.name)}
                 maxLevel={levelOf(f.name) >= 16}
-                stats={
-                  stats
-                    ? {
-                        hitPoints: stats.hp,
-                        dps: stats.dps,
-                        speedLabel: stats.speedLabel,
-                        rangeTiles: stats.rangeTiles,
-                        targets: stats.targets,
-                        unitCount: stats.unitCount,
-                      }
-                    : undefined
-                }
+                stats={infoStats}
+              description={CARDS[f.name]?.description}
                 onClose={() => setInfo(null)}
-                onUse={() => requestUse(info.name)}
-                onRemove={inDeck ? () => doRemove(info.slot, info.name) : undefined}
-                onUpgrade={() => void doUpgrade(info.name)}
+                onUse={isOwned ? () => requestUse(info.name) : undefined}
+                onRemove={isOwned && inDeck ? () => doRemove(info.slot, info.name) : undefined}
+                onUpgrade={isOwned ? () => void doUpgrade(info.name) : undefined}
                 inDeck={inDeck}
               />
             );
