@@ -5,6 +5,32 @@
 
 ## Pending
 
+### 2026-10-21 - Real movement and attack animations for all 108 cards
+Status: pending (next session - the handover prompt is in `docs/card-art/NEXT_SESSION_PROMPT.md`)
+Source: "i want to make the cards movement and attack animation even better can
+you find a free website from where we can pick sprites and use them or a free
+ai image generator which can help us? provide me prompt to provide in new
+session to continue this"
+Notes: The next session replaces the warped single-render strips with real
+animation: one **4x5 sprite sheet per card** (row 1 red walk front, row 2 red
+attack front, row 3 blue walk back, row 4 blue attack back, 96x96 cells). The
+user's image prompt (wizard, red fire / blue ice, strict front/back views) is
+the template - see `docs/card-art/NEXT_SESSION_PROMPT.md`.
+Sources researched and documented in `docs/card-art/SOURCES_AND_TOOLS.md`:
+free sprite packs (Quaternius/Kenney/a_klingon CC0, OpenGameArt CC0, Pixel
+Frog, KayKit), 3D -> sheet renderers (Pixor, Blender Sprite Sheet Generator,
+Mixamo), still -> sheet tools (Ludo.ai, Spritesheets.ai, GenioPlus) and the
+free AI generators (local ComfyUI/Krita AI Diffusion = the only unlimited,
+private, scriptable and licence-clean option; Pollinations for a free
+scripted API; Gemini Nano Banana / Ideogram for the best character
+consistency). Licence traps recorded: Recraft, Freepik, Leonardo, Playground,
+Tensor.Art and Mage.Space are NOT safe for shipped art on their free tiers,
+and the wiki card renders remain the one legal risk in the repo.
+Planned format: `frontend/public/sprites/<card>-<view>.png` becomes 10 frames
+(5 walk + 5 attack), sliced by a new `scripts/make_card_sprites_from_sheet.py`
+from `docs/card-art/sheets/<card>.png`, with the current 8-frame strips kept
+as the fallback.
+
 ### 2026-10-21 - Battle log polish (battles/tournaments tabs, Practice/Watch, deck rows)
 Status: implemented
 Source: "the remaining battle-log polish (battles/tournaments tabs, Practice/Watch
