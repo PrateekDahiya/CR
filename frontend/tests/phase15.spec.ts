@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { CARD_LIST, getCard } from "../lib/cards";
-import { SIEGE_CARD_IDS, TOWER_TROOP_IDS, isTowerTroopId, unitGlyph } from "../lib/cardAliases";
+import { SIEGE_CARD_IDS, BURROW_CARD_IDS, TOWER_TROOP_IDS, isTowerTroopId, unitGlyph } from "../lib/cardAliases";
 import { isDeployValid } from "../lib/battle/useBattle";
 import { validateGeneratedDeck } from "../lib/deckValidation";
 import { generateRandomDeck } from "../lib/deckGenerator";
@@ -43,6 +43,38 @@ test.describe("15.1 siege placement (client mirrors server)", () => {
   test("ordinary buildings are still own-half only", () => {
     expect(isDeployValid(3.5, 20, "blue", "cannon")).toBe(false);
     expect(isDeployValid(3.5, 5, "blue", "cannon")).toBe(true);
+  });
+});
+
+test.describe("burrow placement (client mirrors server)", () => {
+  test("the burrow list matches the database", () => {
+    const fromDb = Object.entries(MECHANICS)
+      .filter(([, record]) => record.movement === "burrow")
+      .map(([id]) => id)
+      .sort();
+    expect(Array.from(BURROW_CARD_IDS).sort()).toEqual(fromDb);
+  });
+
+  test("the Miner and the Goblin Drill may be dropped on the enemy half", () => {
+    for (const id of ["miner", "goblin-drill"]) {
+      expect(isDeployValid(3.5, 24, "blue", id), `${id} forward deploy`).toBe(true);
+      expect(isDeployValid(9, 28, "blue", id), `${id} deep deploy`).toBe(true);
+      expect(isDeployValid(3.5, 4, "red", id), `${id} red forward deploy`).toBe(true);
+    }
+  });
+
+  test("burrowers are still barred from the river and off-arena", () => {
+    for (const id of ["miner", "goblin-drill"]) {
+      expect(isDeployValid(3.5, 15.5, "blue", id)).toBe(false);
+      expect(isDeployValid(3.5, 16, "blue", id)).toBe(false);
+      expect(isDeployValid(-1, 24, "blue", id)).toBe(false);
+      expect(isDeployValid(3.5, 33, "blue", id)).toBe(false);
+    }
+  });
+
+  test("ordinary troops are still own-half only", () => {
+    expect(isDeployValid(3.5, 20, "blue", "giant")).toBe(false);
+    expect(isDeployValid(3.5, 5, "blue", "giant")).toBe(true);
   });
 });
 

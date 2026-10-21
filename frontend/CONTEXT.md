@@ -87,6 +87,15 @@ docker run -p 3000:3000 cr-frontend
 - Meta UI: `app/leaderboard/page.tsx` (exact-CR gold table, season, testids leaderboard-list/row-*) + `lib/api.ts` postGuest/getProfile/getLeaderboard (O(1)/O(n log n) server sort).
 - Backend REST live: /auth/guest, /profile/:id, /leaderboard, /deck, /matches/report, /season (memory fallback db:false, Postgres via Prisma when DATABASE_URL set).
 
+## Placement classes (2026-10-21, branch card-mechanics)
+- `lib/battle/useBattle.ts` `isDeployValid` mirrors the server's placement
+  classes: own half (default), `siege` (`mortar`, `x-bow` - may be placed
+  forward), `burrow` (`miner`, `goblin-drill` - may be dropped anywhere except
+  the river) and spells (cast anywhere).
+- The class lists live in `lib/cardAliases.ts` (`SIEGE_CARD_IDS`,
+  `BURROW_CARD_IDS`) and are asserted against `infra/mysql/card_mechanics.json`
+  by `tests/phase15.spec.ts`, so the client cannot drift from the server.
+
 ## Battle log polish (2026-10-21, branch card-mechanics)
 - `components/ui/BattleLogPanel.tsx` is now the Clash Royale layout: a
   `BATTLES` / `TOURNAMENTS` tab bar, one card per battle (result banner,

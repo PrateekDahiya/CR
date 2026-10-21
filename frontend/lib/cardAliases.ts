@@ -39,6 +39,17 @@ export const SIEGE_CARD_IDS: ReadonlySet<string> = new Set(["mortar", "x-bow"]);
 export const siegeCardIds: ReadonlySet<string> = SIEGE_CARD_IDS;
 
 /**
+ * Cards whose database mechanics declare `movement: "burrow"`.
+ *
+ * Burrowers (the Miner, the Goblin Drill) may be dropped anywhere in the
+ * arena - they travel underground - so the client must accept the enemy half
+ * exactly like the server does (`engine.ts` `isBurrowPlacement`).
+ */
+export const BURROW_CARD_IDS: ReadonlySet<string> = new Set(["miner", "goblin-drill"]);
+
+export const burrowCardIds: ReadonlySet<string> = BURROW_CARD_IDS;
+
+/**
  * Cards that are tower-troop profiles, never hand cards. They must be excluded
  * from deck building and rejected by the server.
  */

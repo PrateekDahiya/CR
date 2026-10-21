@@ -148,6 +148,7 @@ CREATE TABLE IF NOT EXISTS card_spawn_templates (
   unit_count TINYINT NOT NULL DEFAULT 1,
   flying TINYINT(1) NOT NULL DEFAULT 0,
   attack_pattern VARCHAR(16) NOT NULL DEFAULT 'single',
+  duration_ms INT NOT NULL DEFAULT 0,
   on_deploy JSON NOT NULL,
   on_attack JSON NOT NULL,
   on_hit JSON NOT NULL,

@@ -782,7 +782,7 @@
     "version": 1,
     "attack": "none",
     "targeting": "none",
-    "movement": "ground",
+    "movement": "burrow",
     "onDeploy": [
       {
         "kind": "spawn",

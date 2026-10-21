@@ -20,7 +20,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { matchCycle, rotateCard } from "../cardCycle";
-import { siegeCardIds } from "../cardAliases";
+import { siegeCardIds, burrowCardIds } from "../cardAliases";
 import {
   connect,
   disconnect,
@@ -185,6 +185,10 @@ export function isDeployValid(
   // reach a tower. This MUST mirror the server rule in `engine.ts playCard`;
   // `siegeCardIds` is asserted against the database by the phase-15 test.
   if (card?.type === "building" && siegeCardIds.has(cardId as string)) return true;
+  // Burrowers (the Miner, the Goblin Drill) travel underground and may be
+  // dropped anywhere in the arena, including the enemy half. This MUST mirror
+  // the server rule in `engine.ts playCard` (`isBurrowPlacement`).
+  if (burrowCardIds.has(cardId as string)) return true;
   if (side === "blue") {
     if (y >= 0 && y <= 14) return true;
     // pocket-4 band Blue<=20 on the taken lane side only
