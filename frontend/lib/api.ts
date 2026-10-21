@@ -17,24 +17,28 @@ import type { GameModeConfig } from "../../shared/types";
 export const DEFAULT_BACKEND_URL = "http://localhost:4000";
 export const DEFAULT_AI_URL = "http://localhost:8000";
 
-function env(name: string): string | undefined {
-  try {
-    const v =
-      typeof process !== "undefined"
-        ? (process.env?.[name] as string | undefined)
-        : undefined;
-    return typeof v === "string" && v.length > 0 ? v : undefined;
-  } catch {
-    return undefined;
-  }
+/**
+ * The public env vars must be read with a STATIC `process.env.NEXT_PUBLIC_*`
+ * access: Next.js replaces those exact expressions with the value at build
+ * time. A dynamic lookup (`process.env[name]`) cannot be inlined, so the
+ * browser kept falling back to `http://localhost:4000` - which works on the
+ * dev machine but breaks for every other device (a phone on the ngrok
+ * tunnel, a deployed build).
+ */
+function backendEnv(): string | undefined {
+  return process.env.NEXT_PUBLIC_BACKEND_URL;
+}
+
+function aiEnv(): string | undefined {
+  return process.env.NEXT_PUBLIC_AI_URL;
 }
 
 export function backendUrl(explicit?: string): string {
-  return explicit ?? env("NEXT_PUBLIC_BACKEND_URL") ?? DEFAULT_BACKEND_URL;
+  return explicit ?? backendEnv() ?? DEFAULT_BACKEND_URL;
 }
 
 export function aiUrl(explicit?: string): string {
-  return explicit ?? env("NEXT_PUBLIC_AI_URL") ?? DEFAULT_AI_URL;
+  return explicit ?? aiEnv() ?? DEFAULT_AI_URL;
 }
 
 export interface HealthResponse {
