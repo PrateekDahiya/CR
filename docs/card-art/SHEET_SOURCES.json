@@ -1,0 +1,2270 @@
+{
+ "cards": {
+  "barbarians": {
+   "sheet": "docs/card-art/sheets/barbarians.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [
+    "1H_Axe",
+    "Barbarian_Cape"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Melee_Attack_Chop",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "archers": {
+   "sheet": "docs/card-art/sheets/archers.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "rogue_hooded",
+   "gear": [
+    "Rogue_Cape"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Ranged_Shoot",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "bomber": {
+   "sheet": "docs/card-art/sheets/bomber.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "skeleton_minion",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Throw",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "goblins": {
+   "sheet": "docs/card-art/sheets/goblins.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "rogue_hooded",
+   "gear": [
+    "Knife"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Melee_Attack_Stab",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "knight": {
+   "sheet": "docs/card-art/sheets/knight.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "knight",
+   "gear": [
+    "1H_Sword",
+    "Knight_Helmet",
+    "Knight_Cape"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Melee_Attack_Slice_Horizontal",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "skeletons": {
+   "sheet": "docs/card-art/sheets/skeletons.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "skeleton_warrior",
+   "gear": [
+    "Skeleton_Warrior_Helmet"
+   ],
+   "weapon": "Skeleton_Blade",
+   "walk": "Walking_A",
+   "attack": "1H_Melee_Attack_Slice_Horizontal",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "giant": {
+   "sheet": "docs/card-art/sheets/giant.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Melee_Attack_Chop",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "mini-pekka": {
+   "sheet": "docs/card-art/sheets/mini-pekka.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "knight",
+   "gear": [
+    "Knight_Helmet"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "2H_Melee_Attack_Spin",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "musketeer": {
+   "sheet": "docs/card-art/sheets/musketeer.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "rogue",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Ranged_Shoot",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "wizard": {
+   "sheet": "docs/card-art/sheets/wizard.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "mage",
+   "gear": [
+    "2H_Staff",
+    "Mage_Hat",
+    "Mage_Cape"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Spellcast_Long",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "valkyrie": {
+   "sheet": "docs/card-art/sheets/valkyrie.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [
+    "2H_Axe",
+    "Barbarian_Hat"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "2H_Melee_Attack_Spin",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "baby-dragon": {
+   "sheet": "docs/card-art/sheets/baby-dragon.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "mage",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Spellcasting",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "golem": {
+   "sheet": "docs/card-art/sheets/golem.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Unarmed_Melee_Attack_Punch_B",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "inferno-dragon": {
+   "sheet": "docs/card-art/sheets/inferno-dragon.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "mage",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Spellcasting",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "cannon": {
+   "sheet": "docs/card-art/sheets/cannon.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "fireball": {
+   "sheet": "docs/card-art/sheets/fireball.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "bats": {
+   "sheet": "docs/card-art/sheets/bats.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "skeleton_minion",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Unarmed_Melee_Attack_Punch_A",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "royal-giant": {
+   "sheet": "docs/card-art/sheets/royal-giant.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [
+    "Barbarian_Hat"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Throw",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "battle-ram": {
+   "sheet": "docs/card-art/sheets/battle-ram.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "2H_Melee_Attack_Chop",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "balloon": {
+   "sheet": "docs/card-art/sheets/balloon.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "skeleton_minion",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Unarmed_Melee_Attack_Punch_A",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "princess": {
+   "sheet": "docs/card-art/sheets/princess.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "rogue_hooded",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Ranged_Shoot",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "miner": {
+   "sheet": "docs/card-art/sheets/miner.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Melee_Attack_Chop",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "elite-barbarians": {
+   "sheet": "docs/card-art/sheets/elite-barbarians.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [
+    "2H_Axe",
+    "Barbarian_Cape"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "2H_Melee_Attack_Chop",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "goblin-gang": {
+   "sheet": "docs/card-art/sheets/goblin-gang.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "rogue_hooded",
+   "gear": [
+    "Knife",
+    "Rogue_Cape"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Melee_Attack_Slice_Diagonal",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "fire-spirit": {
+   "sheet": "docs/card-art/sheets/fire-spirit.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "mage",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Spellcasting",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "ice-spirit": {
+   "sheet": "docs/card-art/sheets/ice-spirit.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "mage",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Spellcasting",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "firecracker": {
+   "sheet": "docs/card-art/sheets/firecracker.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "rogue",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Throw",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "minions": {
+   "sheet": "docs/card-art/sheets/minions.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "skeleton_minion",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Unarmed_Melee_Attack_Punch_A",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "minion-horde": {
+   "sheet": "docs/card-art/sheets/minion-horde.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "skeleton_minion",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Unarmed_Melee_Attack_Punch_B",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "royal-recruits": {
+   "sheet": "docs/card-art/sheets/royal-recruits.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "knight",
+   "gear": [
+    "2H_Sword",
+    "Knight_Helmet"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "2H_Melee_Attack_Chop",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "rascals": {
+   "sheet": "docs/card-art/sheets/rascals.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "rogue",
+   "gear": [
+    "1H_Crossbow"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Ranged_Shooting",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "spear-goblins": {
+   "sheet": "docs/card-art/sheets/spear-goblins.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "rogue_hooded",
+   "gear": [],
+   "weapon": "arrow",
+   "walk": "Walking_A",
+   "attack": "Throw",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "skeleton-barrel": {
+   "sheet": "docs/card-art/sheets/skeleton-barrel.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "skeleton_minion",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Unarmed_Melee_Attack_Punch_A",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "dart-goblin": {
+   "sheet": "docs/card-art/sheets/dart-goblin.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "rogue_hooded",
+   "gear": [],
+   "weapon": "crossbow_1handed",
+   "walk": "Walking_A",
+   "attack": "1H_Ranged_Shoot",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "elixir-golem": {
+   "sheet": "docs/card-art/sheets/elixir-golem.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Unarmed_Melee_Attack_Punch_A",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "flying-machine": {
+   "sheet": "docs/card-art/sheets/flying-machine.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "skeleton_minion",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Unarmed_Melee_Attack_Kick",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "goblin-demolisher": {
+   "sheet": "docs/card-art/sheets/goblin-demolisher.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "rogue_hooded",
+   "gear": [
+    "Knife"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Throw",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "hog-rider": {
+   "sheet": "docs/card-art/sheets/hog-rider.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [
+    "1H_Axe"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Melee_Attack_Slice_Horizontal",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "ice-golem": {
+   "sheet": "docs/card-art/sheets/ice-golem.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Unarmed_Melee_Attack_Punch_B",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "royal-hogs": {
+   "sheet": "docs/card-art/sheets/royal-hogs.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Melee_Attack_Stab",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "zappies": {
+   "sheet": "docs/card-art/sheets/zappies.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "skeleton_minion",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Unarmed_Melee_Attack_Punch_A",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "bowler": {
+   "sheet": "docs/card-art/sheets/bowler.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Throw",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "dark-prince": {
+   "sheet": "docs/card-art/sheets/dark-prince.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "knight",
+   "gear": [
+    "2H_Sword",
+    "Knight_Helmet",
+    "Knight_Cape"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "2H_Melee_Attack_Spin",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "electro-dragon": {
+   "sheet": "docs/card-art/sheets/electro-dragon.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "mage",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Spellcasting",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "giant-skeleton": {
+   "sheet": "docs/card-art/sheets/giant-skeleton.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "skeleton_warrior",
+   "gear": [
+    "Skeleton_Warrior_Helmet"
+   ],
+   "weapon": "Skeleton_Blade",
+   "walk": "Walking_A",
+   "attack": "2H_Melee_Attack_Chop",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "goblin-giant": {
+   "sheet": "docs/card-art/sheets/goblin-giant.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "rogue_hooded",
+   "gear": [
+    "Knife"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Melee_Attack_Chop",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "executioner": {
+   "sheet": "docs/card-art/sheets/executioner.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [
+    "2H_Axe",
+    "Barbarian_Hat"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "2H_Melee_Attack_Chop",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "pekka": {
+   "sheet": "docs/card-art/sheets/pekka.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "knight",
+   "gear": [
+    "Knight_Helmet"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "2H_Melee_Attack_Spin",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "guards": {
+   "sheet": "docs/card-art/sheets/guards.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "skeleton_warrior",
+   "gear": [],
+   "weapon": "Skeleton_Blade",
+   "walk": "Walking_A",
+   "attack": "1H_Melee_Attack_Stab",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "prince": {
+   "sheet": "docs/card-art/sheets/prince.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "knight",
+   "gear": [
+    "2H_Sword",
+    "Knight_Helmet",
+    "Knight_Cape"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "2H_Melee_Attack_Spin",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "skeleton-army": {
+   "sheet": "docs/card-art/sheets/skeleton-army.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "skeleton_warrior",
+   "gear": [],
+   "weapon": "Skeleton_Blade",
+   "walk": "Walking_A",
+   "attack": "1H_Melee_Attack_Slice_Horizontal",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "witch": {
+   "sheet": "docs/card-art/sheets/witch.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "mage",
+   "gear": [
+    "Spellbook_open",
+    "Mage_Hat",
+    "Mage_Cape"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Spellcast_Long",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "fisherman": {
+   "sheet": "docs/card-art/sheets/fisherman.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [],
+   "weapon": "arrow",
+   "walk": "Walking_A",
+   "attack": "1H_Melee_Attack_Stab",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "bandit": {
+   "sheet": "docs/card-art/sheets/bandit.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "rogue",
+   "gear": [
+    "Knife",
+    "Rogue_Cape"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Melee_Attack_Stab",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "electro-wizard": {
+   "sheet": "docs/card-art/sheets/electro-wizard.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "mage",
+   "gear": [
+    "2H_Staff",
+    "Mage_Hat"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Spellcasting",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "lava-hound": {
+   "sheet": "docs/card-art/sheets/lava-hound.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Melee_Attack_Chop",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "ice-wizard": {
+   "sheet": "docs/card-art/sheets/ice-wizard.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "mage",
+   "gear": [
+    "2H_Staff",
+    "Mage_Hat"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Spellcast_Long",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "lumberjack": {
+   "sheet": "docs/card-art/sheets/lumberjack.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [
+    "2H_Axe"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "2H_Melee_Attack_Chop",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "mega-knight": {
+   "sheet": "docs/card-art/sheets/mega-knight.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "knight",
+   "gear": [
+    "2H_Sword",
+    "Knight_Helmet",
+    "Knight_Cape"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "2H_Melee_Attack_Spin",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "magic-archer": {
+   "sheet": "docs/card-art/sheets/magic-archer.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "rogue_hooded",
+   "gear": [
+    "Rogue_Cape"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Ranged_Shoot",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "mother-witch": {
+   "sheet": "docs/card-art/sheets/mother-witch.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "mage",
+   "gear": [
+    "Spellbook_open",
+    "Mage_Hat",
+    "Mage_Cape"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Spellcast_Long",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "night-witch": {
+   "sheet": "docs/card-art/sheets/night-witch.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "mage",
+   "gear": [
+    "1H_Wand",
+    "Mage_Hat"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Spellcasting",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "phoenix": {
+   "sheet": "docs/card-art/sheets/phoenix.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "mage",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Spellcast_Raise",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "ram-rider": {
+   "sheet": "docs/card-art/sheets/ram-rider.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "2H_Melee_Attack_Spin",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "archer-queen": {
+   "sheet": "docs/card-art/sheets/archer-queen.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "rogue_hooded",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Ranged_Shooting",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "sparky": {
+   "sheet": "docs/card-art/sheets/sparky.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "mage",
+   "gear": [
+    "Mage_Hat",
+    "1H_Wand"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Spellcast_Raise",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "royal-ghost": {
+   "sheet": "docs/card-art/sheets/royal-ghost.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "mage",
+   "gear": [
+    "2H_Staff",
+    "Mage_Hat"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Spellcasting",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "boss-bandit": {
+   "sheet": "docs/card-art/sheets/boss-bandit.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "rogue",
+   "gear": [
+    "Knife",
+    "Knife_Offhand",
+    "Rogue_Cape"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Dualwield_Melee_Attack_Slice",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "golden-knight": {
+   "sheet": "docs/card-art/sheets/golden-knight.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "knight",
+   "gear": [
+    "2H_Sword",
+    "Knight_Helmet",
+    "Knight_Cape"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "2H_Melee_Attack_Spin",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "little-prince": {
+   "sheet": "docs/card-art/sheets/little-prince.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "rogue_hooded",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Ranged_Shoot",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "goblinstein": {
+   "sheet": "docs/card-art/sheets/goblinstein.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "rogue_hooded",
+   "gear": [
+    "Knife",
+    "Rogue_Cape"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Melee_Attack_Chop",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "mighty-miner": {
+   "sheet": "docs/card-art/sheets/mighty-miner.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "barbarian",
+   "gear": [],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "1H_Melee_Attack_Chop",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "monk": {
+   "sheet": "docs/card-art/sheets/monk.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "mage",
+   "gear": [
+    "Mage_Cape"
+   ],
+   "weapon": null,
+   "walk": "Walking_A",
+   "attack": "Unarmed_Melee_Attack_Punch_A",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "skeleton-king": {
+   "sheet": "docs/card-art/sheets/skeleton-king.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "kaykit-cc0-3d-render",
+   "model": "skeleton_warrior",
+   "gear": [
+    "Skeleton_Warrior_Helmet"
+   ],
+   "weapon": "Skeleton_Staff",
+   "walk": "Walking_A",
+   "attack": "Spellcast_Long",
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "furnace": {
+   "sheet": "docs/card-art/sheets/furnace.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "tesla": {
+   "sheet": "docs/card-art/sheets/tesla.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "mortar": {
+   "sheet": "docs/card-art/sheets/mortar.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "barbarian-hut": {
+   "sheet": "docs/card-art/sheets/barbarian-hut.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "goblin-hut": {
+   "sheet": "docs/card-art/sheets/goblin-hut.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "goblin-cage": {
+   "sheet": "docs/card-art/sheets/goblin-cage.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "bomb-tower": {
+   "sheet": "docs/card-art/sheets/bomb-tower.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "inferno-tower": {
+   "sheet": "docs/card-art/sheets/inferno-tower.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "elixir-collector": {
+   "sheet": "docs/card-art/sheets/elixir-collector.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "tombstone": {
+   "sheet": "docs/card-art/sheets/tombstone.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "goblin-drill": {
+   "sheet": "docs/card-art/sheets/goblin-drill.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "x-bow": {
+   "sheet": "docs/card-art/sheets/x-bow.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "arrows": {
+   "sheet": "docs/card-art/sheets/arrows.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "giant-snowball": {
+   "sheet": "docs/card-art/sheets/giant-snowball.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "zap": {
+   "sheet": "docs/card-art/sheets/zap.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "barbarian-barrel": {
+   "sheet": "docs/card-art/sheets/barbarian-barrel.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "goblin-barrel": {
+   "sheet": "docs/card-art/sheets/goblin-barrel.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "earthquake": {
+   "sheet": "docs/card-art/sheets/earthquake.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "royal-delivery": {
+   "sheet": "docs/card-art/sheets/royal-delivery.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "freeze": {
+   "sheet": "docs/card-art/sheets/freeze.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "clone": {
+   "sheet": "docs/card-art/sheets/clone.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "rocket": {
+   "sheet": "docs/card-art/sheets/rocket.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "goblin-curse": {
+   "sheet": "docs/card-art/sheets/goblin-curse.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "lightning": {
+   "sheet": "docs/card-art/sheets/lightning.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "poison": {
+   "sheet": "docs/card-art/sheets/poison.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "tornado": {
+   "sheet": "docs/card-art/sheets/tornado.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "rage": {
+   "sheet": "docs/card-art/sheets/rage.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "void": {
+   "sheet": "docs/card-art/sheets/void.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "the-log": {
+   "sheet": "docs/card-art/sheets/the-log.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "graveyard": {
+   "sheet": "docs/card-art/sheets/graveyard.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "tower-princess": {
+   "sheet": "docs/card-art/sheets/tower-princess.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "dagger-duchess": {
+   "sheet": "docs/card-art/sheets/dagger-duchess.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "cannoneer": {
+   "sheet": "docs/card-art/sheets/cannoneer.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  },
+  "royal-chef": {
+   "sheet": "docs/card-art/sheets/royal-chef.png",
+   "size": [
+    480,
+    384
+   ],
+   "source": "procedural-3d-primitives",
+   "model": null,
+   "gear": [],
+   "weapon": null,
+   "walk": null,
+   "attack": null,
+   "licence": "CC0-1.0 (KayKit character packs) / original procedural geometry",
+   "tool": "Blender 4.5 LTS (EEVEE)",
+   "date": "2026-10-21",
+   "quality": {
+    "empty": [],
+    "unstable": []
+   }
+  }
+ },
+ "generated": "2026-10-21"
+}

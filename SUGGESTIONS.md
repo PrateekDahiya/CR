@@ -256,6 +256,19 @@ Notes: Home deck summary now renders the win-condition card art beside the
 label, with the existing `home-win-condition` test id retained.
 Verification: Home screenshot reviewed; 19 Playwright shell tests passed.
 
+### 2026-10-21 - Real movement and attack animations for all 108 cards
+Status: implemented (branch card-mechanics)
+Source: "Replace the warped single-render strips with REAL movement and attack
+animations for all 108 catalogue cards" - one 4x5 sprite sheet per card (red
+walk / red attack / blue walk / blue attack, 480x384, 96x96 cells).
+Notes: the sheets are rendered from the CC0 KayKit 3D models (real walk and
+attack clips, so the character cannot drift between frames) and cut into the
+10 frame strips the engine loads (0-4 walk, 5-9 attack). The per-card recipe
+lives in `scripts/card-sheets/spec.py` and was checked card by card against
+the original card renders with `scripts/card-sheets/compare_sheets.py`.
+Verification: `/animations` + `/battle` screenshots, the card-art Playwright
+spec (10 frame layout, real animation, fallback chain) and the audit script.
+
 
 ---
 ### How to add
