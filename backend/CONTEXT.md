@@ -166,9 +166,19 @@ npm start
   statuses, the pull knockback, the effect delays, the champion ability
   action) are tracked in `docs/CARD_MECHANICS_PLAN.md` §8 and asserted as the
   current behaviour by the matrix.
-- **Placement classes** are read from the mechanics row (`engine.ts`
-  `isSiegePlacement` / `isBurrowPlacement`): siege buildings (Mortar, X-Bow)
-  may be placed forward, burrowers (Miner, Goblin Drill) may be dropped
-  anywhere except the river, everything else is own-half only. The Goblin
-  Drill used to be declared `movement: "ground"` and could not reach the enemy
-  half; the data now declares `burrow`.
+- **Placement classes** are read from the mechanics row: siege buildings
+  (Mortar, X-Bow) may be placed forward, burrowers (Miner, Goblin Drill) may
+  be dropped anywhere except the river, everything else is own-half only. The
+  Goblin Drill used to be declared `movement: "ground"` and could not reach the
+  enemy half; the data now declares `burrow`.
+- **One placement rule for both layers** (`cards.ts` `placementClassOf` →
+  `"spell" | "anywhere" | "own-half"`): the net layer
+  (`net/validation.ts` `validatePosition`) and the engine
+  (`engine.ts` `playCard`) now read the SAME rule. They used to disagree: the
+  net layer knew only "own half", so it rejected a burrow drop on the
+  opponent's half with `BAD_POSITION: position outside your deploy zone`
+  before the engine (which allows it) ever saw the play - the Miner and the
+  Goblin Drill could not be dropped on the enemy side at all. The engine's
+  `isSiegePlacement` / `isBurrowPlacement` stay exported for the callers that
+  need the single class. Regression tests: `tests/validation.test.ts`
+  ("the net layer agrees with the engine on the placement class").

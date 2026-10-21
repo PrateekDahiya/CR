@@ -110,6 +110,37 @@ export function isBuilding(id: string): boolean {
   return CARDS[id]?.type === "building";
 }
 
+/**
+ * The placement class of a card - THE single source of truth for "where may
+ * this card be dropped?".
+ *
+ *   "spell"     cast anywhere in the arena
+ *   "anywhere"  dropped on either half, but never on the river: the burrowers
+ *                (the Miner, the Goblin Drill) travel underground and the
+ *                siege buildings (the Mortar, the X-Bow) push forward
+ *   "own-half"  the default: your own half only
+ *
+ * The net layer (`validatePosition`) and the engine (`playCard`) MUST use the
+ * same rule - when they disagreed the Miner was rejected on the opponent's
+ * half by the net layer before the engine ever saw the play.
+ */
+export type PlacementClass = "spell" | "anywhere" | "own-half";
+
+export function placementClassOf(id: string): PlacementClass {
+  const card = CARDS[id];
+  if (card === undefined) return "own-half";
+  if (card.type === "spell") return "spell";
+  const movement = card.mechanics?.movement;
+  if (movement === "burrow") return "anywhere";
+  if (movement === "siege" && card.type === "building") return "anywhere";
+  return "own-half";
+}
+
+/** True when the card may be dropped on either half (burrow / siege). */
+export function isAnywherePlacement(id: string): boolean {
+  return placementClassOf(id) === "anywhere";
+}
+
 export function isTowerTroop(id: string): boolean {
   return CARDS[id]?.type === "tower" || CARDS[id]?.mechanics?.towerTroop === true;
 }

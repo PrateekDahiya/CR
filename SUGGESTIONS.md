@@ -269,6 +269,21 @@ the original card renders with `scripts/card-sheets/compare_sheets.py`.
 Verification: `/animations` + `/battle` screenshots, the card-art Playwright
 spec (10 frame layout, real animation, fallback chain) and the audit script.
 
+### 2026-10-21 - The Miner could not be deployed on the opponent's half
+Status: implemented (branch card-mechanics)
+Source: "i am not able to deploy minor on opponent side, check what is the
+issue"
+Notes: the net layer (`net/validation.ts` `validatePosition`) knew only the
+"own half" rule and rejected the drop with `BAD_POSITION: position outside
+your deploy zone` BEFORE the engine (which allows burrowers anywhere) saw the
+play. The placement class now lives in ONE place - `game/cards.ts`
+`placementClassOf` ("spell" | "anywhere" | "own-half") - and both the net
+layer and the engine read it. The Goblin Drill (burrow) and the Mortar / X-Bow
+(siege) were broken the same way.
+Verification: 6 new regression tests in `backend/tests/validation.test.ts`,
+460/460 backend tests, 112/112 Playwright tests, a live browser run that drops
+the Miner on the enemy half (`docs/screenshots/miner-deploy.png`).
+
 
 ---
 ### How to add
