@@ -1,0 +1,866 @@
+{
+ "archer-queen": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   248,
+   256
+  ]
+ },
+ "archers": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   315,
+   256
+  ]
+ },
+ "arrows": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   266,
+   256
+  ]
+ },
+ "baby-dragon": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   210,
+   256
+  ]
+ },
+ "balloon": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   154,
+   256
+  ]
+ },
+ "bandit": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   241
+  ]
+ },
+ "barbarian-barrel": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   225,
+   256
+  ]
+ },
+ "barbarian-hut": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   253
+  ]
+ },
+ "barbarians": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   164
+  ]
+ },
+ "bats": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   200
+  ]
+ },
+ "battle-ram": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   219
+  ]
+ },
+ "bomb-tower": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   256
+  ]
+ },
+ "bomber": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   180,
+   256
+  ]
+ },
+ "boss-bandit": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   254,
+   256
+  ]
+ },
+ "bowler": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   267,
+   256
+  ]
+ },
+ "cannon": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   199
+  ]
+ },
+ "cannoneer": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   202,
+   256
+  ]
+ },
+ "clone": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   318,
+   256
+  ]
+ },
+ "dagger-duchess": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   257,
+   256
+  ]
+ },
+ "dark-prince": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   271,
+   256
+  ]
+ },
+ "dart-goblin": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   218
+  ]
+ },
+ "earthquake": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   280,
+   256
+  ]
+ },
+ "electro-dragon": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   303,
+   256
+  ]
+ },
+ "electro-wizard": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   217
+  ]
+ },
+ "elite-barbarians": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   225,
+   256
+  ]
+ },
+ "elixir-collector": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   240
+  ]
+ },
+ "elixir-golem": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   201,
+   256
+  ]
+ },
+ "executioner": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   188
+  ]
+ },
+ "fire-spirit": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   239,
+   256
+  ]
+ },
+ "fireball": {
+  "status": "ok",
+  "source": "legacy-tile",
+  "size": [
+   263,
+   256
+  ]
+ },
+ "firecracker": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   310,
+   256
+  ]
+ },
+ "fisherman": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   242
+  ]
+ },
+ "flying-machine": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   236,
+   256
+  ]
+ },
+ "freeze": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   239
+  ]
+ },
+ "furnace": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   281,
+   256
+  ]
+ },
+ "giant": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   229
+  ]
+ },
+ "giant-skeleton": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   311,
+   256
+  ]
+ },
+ "giant-snowball": {
+  "status": "ok",
+  "source": "legacy-tile",
+  "size": [
+   263,
+   256
+  ]
+ },
+ "goblin-barrel": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   220,
+   256
+  ]
+ },
+ "goblin-cage": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   312,
+   256
+  ]
+ },
+ "goblin-curse": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   222
+  ]
+ },
+ "goblin-demolisher": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   256
+  ]
+ },
+ "goblin-drill": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   263,
+   256
+  ]
+ },
+ "goblin-gang": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   255
+  ]
+ },
+ "goblin-giant": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   221
+  ]
+ },
+ "goblin-hut": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   225
+  ]
+ },
+ "goblins": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   303,
+   256
+  ]
+ },
+ "goblinstein": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   290,
+   256
+  ]
+ },
+ "golden-knight": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   264,
+   256
+  ]
+ },
+ "golem": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   217
+  ]
+ },
+ "graveyard": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   231
+  ]
+ },
+ "guards": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   221
+  ]
+ },
+ "hog-rider": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   305,
+   256
+  ]
+ },
+ "ice-golem": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   220
+  ]
+ },
+ "ice-spirit": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   271,
+   256
+  ]
+ },
+ "ice-wizard": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   216
+  ]
+ },
+ "inferno-dragon": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   246,
+   256
+  ]
+ },
+ "inferno-tower": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   175,
+   256
+  ]
+ },
+ "knight": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   220,
+   256
+  ]
+ },
+ "lava-hound": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   232,
+   256
+  ]
+ },
+ "lightning": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   282,
+   256
+  ]
+ },
+ "little-prince": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   288,
+   256
+  ]
+ },
+ "lumberjack": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   234
+  ]
+ },
+ "magic-archer": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   234
+  ]
+ },
+ "mega-knight": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   238
+  ]
+ },
+ "mighty-miner": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   237,
+   256
+  ]
+ },
+ "miner": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   236,
+   256
+  ]
+ },
+ "mini-pekka": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   311,
+   256
+  ]
+ },
+ "minion-horde": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   261,
+   256
+  ]
+ },
+ "minions": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   248
+  ]
+ },
+ "monk": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   234,
+   256
+  ]
+ },
+ "mortar": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   256
+  ]
+ },
+ "mother-witch": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   214
+  ]
+ },
+ "musketeer": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   162,
+   256
+  ]
+ },
+ "night-witch": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   219
+  ]
+ },
+ "pekka": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   236
+  ]
+ },
+ "phoenix": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   253
+  ]
+ },
+ "poison": {
+  "status": "ok",
+  "source": "legacy-tile",
+  "size": [
+   263,
+   256
+  ]
+ },
+ "prince": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   206,
+   256
+  ]
+ },
+ "princess": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   198,
+   256
+  ]
+ },
+ "rage": {
+  "status": "ok",
+  "source": "legacy-tile",
+  "size": [
+   263,
+   256
+  ]
+ },
+ "ram-rider": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   294,
+   256
+  ]
+ },
+ "rascals": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   178
+  ]
+ },
+ "rocket": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   245,
+   256
+  ]
+ },
+ "royal-chef": {
+  "status": "ok",
+  "source": "card-tile",
+  "size": [
+   261,
+   256
+  ]
+ },
+ "royal-delivery": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   187
+  ]
+ },
+ "royal-ghost": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   249,
+   256
+  ]
+ },
+ "royal-giant": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   216
+  ]
+ },
+ "royal-hogs": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   312,
+   256
+  ]
+ },
+ "royal-recruits": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   204
+  ]
+ },
+ "skeleton-army": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   223,
+   256
+  ]
+ },
+ "skeleton-barrel": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   176,
+   256
+  ]
+ },
+ "skeleton-king": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   268,
+   256
+  ]
+ },
+ "skeletons": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   292,
+   256
+  ]
+ },
+ "sparky": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   247
+  ]
+ },
+ "spear-goblins": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   211
+  ]
+ },
+ "tesla": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   187,
+   256
+  ]
+ },
+ "the-log": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   181
+  ]
+ },
+ "tombstone": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   193,
+   256
+  ]
+ },
+ "tornado": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   232,
+   256
+  ]
+ },
+ "tower-princess": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   186,
+   256
+  ]
+ },
+ "valkyrie": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   254
+  ]
+ },
+ "void": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   227
+  ]
+ },
+ "witch": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   231
+  ]
+ },
+ "wizard": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   213,
+   256
+  ]
+ },
+ "x-bow": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   300,
+   256
+  ]
+ },
+ "zap": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   224,
+   256
+  ]
+ },
+ "zappies": {
+  "status": "ok",
+  "source": "render",
+  "size": [
+   320,
+   179
+  ]
+ }
+}

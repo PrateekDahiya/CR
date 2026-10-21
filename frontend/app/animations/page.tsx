@@ -11,11 +11,17 @@ const STATES = [
   { state: "death" as const, now: 0 },
 ];
 
+const TEAMS = [
+  { team: "red" as const, label: "front" },
+  { team: "blue" as const, label: "back" },
+];
+
 function CardPreview({ id, name, type }: { id: string; name: string; type: string }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
-    preloadCardSprite(id);
+    preloadCardSprite(id, "red");
+    preloadCardSprite(id, "blue");
     let timer = 0;
     const draw = () => {
       const canvas = ref.current;
@@ -25,14 +31,16 @@ function CardPreview({ id, name, type }: { id: string; name: string; type: strin
       c.clearRect(0, 0, canvas.width, canvas.height);
       c.fillStyle = "#0f1b3a";
       c.fillRect(0, 0, canvas.width, canvas.height);
-      for (let i = 0; i < STATES.length; i++) {
-        const col = i % 2;
-        const row = Math.floor(i / 2);
-        c.save();
-        c.translate(4 + col * 68 + 32, 4 + row * 68 + 32);
-        drawCardSprite(c, id, STATES[i].state, STATES[i].now, 56, 1);
-        c.restore();
-      }
+      TEAMS.forEach((row, rowIndex) => {
+        STATES.forEach((entry, column) => {
+          const cx = 8 + column * 60 + 30;
+          const cy = 8 + rowIndex * 60 + 30;
+          c.save();
+          c.translate(cx, cy);
+          drawCardSprite(c, id, entry.state, entry.now, 52, 1, 1, row.team);
+          c.restore();
+        });
+      });
     };
     draw();
     timer = window.setInterval(draw, 250);
@@ -43,9 +51,9 @@ function CardPreview({ id, name, type }: { id: string; name: string; type: strin
     <div
       data-testid={`anim-card-${id}`}
       className="rounded-lg border border-slate-600 bg-slate-900/70 p-1"
-      title={`${name} (${type})`}
+      title={`${name} (${type}) - red front / blue back`}
     >
-      <canvas ref={ref} width={140} height={140} className="block h-[140px] w-[140px]" />
+      <canvas ref={ref} width={248} height={128} className="block h-[128px] w-[248px]" />
       <div className="truncate text-center text-[9px] font-bold text-white/90">{name}</div>
     </div>
   );
@@ -58,12 +66,13 @@ export default function AnimationsPage() {
         <div>
           <h1 className="text-lg font-extrabold">Animation Lab</h1>
           <p className="text-[10px] text-slate-300">
-            {CARD_LIST.length} cards - idle / walk / attack / death strips
+            {CARD_LIST.length} cards - idle / walk / attack / death, red front view on top, blue back view
+            below
           </p>
         </div>
-        <span className="text-[10px] text-slate-400">/sprites/&lt;card&gt;.png (6 frames)</span>
+        <span className="text-[10px] text-slate-400">/sprites/&lt;card&gt;-&lt;view&gt;.png (8 frames)</span>
       </header>
-      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8" data-testid="anim-gallery">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4" data-testid="anim-gallery">
         {CARD_LIST.map((card) => (
           <CardPreview key={card.id} id={card.id} name={card.name} type={card.type} />
         ))}

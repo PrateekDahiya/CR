@@ -5,6 +5,18 @@
 
 ## Pending
 
+### 2026-10-21 - Battle log polish (battles/tournaments tabs, Practice/Watch, deck rows)
+Status: pending (next session)
+Source: "the remaining battle-log polish (battles/tournaments tabs, Practice/Watch
+buttons, deck rows per battle like the Clash Royale reference screenshot)"
+Notes: The Battle Log sheet exists (`backend/src/battleLog.ts`,
+`GET /battle-log/:playerId`) and already has a Practice button, but it still
+needs the Clash Royale reference layout: separate **Battles** and
+**Tournaments** tabs, a **Watch** button next to Practice, and one row per
+battle showing both decks (the reference screenshot shows the deck of each
+side under the result banner). Backend: add the tournament list endpoint and
+the deck of both players to the battle-log payload.
+
 ### 2026-10-20 - Princess/side tower art like the king towers
 Status: implemented (see notes for the part that still needs the artist)
 Source: "i think you should find similar images for side towers that you got for king towers it is much better"
@@ -34,34 +46,52 @@ Notes: The King Tower row in Decks > Towers now renders
 `/towers/king-blue-active.png` instead of the crown glyph.
 
 ### 2026-10-20 - Better card movement / walk animation
-Status: scheduled (next session - see the card asset task below)
+Status: implemented (folded into the card asset task below)
 Source: "make the game cards movement , movement animation better search web for better animations add to suggestions"
-Notes: Research better 2D walk/movement animation sources for the deployed
-troops (more frames, smoother cycles, per-card directionality) and swap them
-into the strip pipeline. Keep the current fallbacks working so a missing strip
-never breaks a match.
+Notes: Folded into the per-team card asset task: the strips are now cut from
+the real wiki character renders (instead of the small card tiles) and the walk
+is a 4 frame cycle (was 2), so the movement is smooth enough to read at arena
+size. See the card asset task below.
 
 ### 2026-10-20 - Card assets for both teams (front + back views, with movement)
-Status: scheduled (next session)
+Status: implemented (local worktree; commit not requested)
 Source: "i want to start a new session and make it continue with the pending
 task in suggestions and updade the task inside suggestion to search for each
 card asset online front-view and back-view both for red side and blue side
 respectively with moving animation for both red and blue just like we did for
 towers"
-Notes: Same treatment the towers got, extended to every card:
-  - For each of the 108 catalogue cards, fetch an online asset for BOTH
-    orientations: the FRONT view (red team) and the BACK view (blue team),
-    exactly like the towers (red = front view, blue = back view).
-  - Each view needs a movement animation (idle / walk / attack / death),
-    i.e. real 2D strips, not a single static image.
-  - The renderer must pick the view by team: red uses the front art, blue the
-    back art, and the direction must flip with the unit's facing.
-  - Fallbacks must stay intact: a missing card asset falls back to the
-    current static art / glyph, never breaking a match.
-  - Working dir: the same worktree (branch `card-mechanics`). The tower
-    pipeline in `scripts/make_tower_art.py` +
-    `scripts/prepare_edited_tower_art.py` is the reference for the layout,
-    and `frontend/lib/battle/spriteAnim.ts` is the strip loader to extend.
+Notes: Done for all 108 catalogue cards:
+- `scripts/fetch_card_art.py` downloads the online sources from the Clash
+  Royale wiki (the high resolution character render of every card plus the
+  in-game `Preview.gif` clip of 59 cards) into `docs/card-art/sources/`,
+  writes `docs/card-art/sources.json` and builds two contact sheets.
+- `scripts/make_card_art.py` builds the two team views into
+  `frontend/public/cardart/<card>-front.png` (red, character seen from the
+  front) and `<card>-back.png` (blue, seen from behind). The wiki publishes no
+  back view for troops, so the blue view is derived like the princess tower
+  was: mirrored + the red team hue rotated to the blue team hue.
+- `scripts/make_card_sprites.py` cuts a real 8 frame 2D strip per card AND
+  per view (idle, idle, walk x4, attack, death) into
+  `frontend/public/sprites/<card>-<view>.png`. The walk is a smooth per-row
+  warp of the artwork (the legs swing, the torso stays), so the art is never
+  torn apart.
+- `frontend/lib/battle/spriteAnim.ts` loads the strip of the unit's team
+  (red -> front, blue -> back) and flips it with the unit's facing.
+  `frontend/components/battle/ArenaCanvas.tsx` passes the team and uses the
+  per-team static art as the fallback. The fallback chain is
+  team strip -> old neutral strip -> `/cardart/<card>-<view>.png` ->
+  `/cards/<card>.png` -> emoji glyph, so a missing asset never breaks a match.
+- `/animations` now shows every card with the red front view on the top row
+  and the blue back view below it.
+- `docs/card-art/README.md` lists the files that still need hand editing (13
+  cards whose blue view is a recoloured mirror, 5 cards whose source is a
+  card tile instead of a render, and the 19 spells), and
+  `scripts/prepare_edited_card_art.py` installs hand edited art.
+Verification: `docs/screenshots/card-art-arena.png`,
+`card-art-red-side.png`, `card-art-blue-side.png`,
+`card-art-same-card.png` and `card-art-animations.png`;
+`frontend/tests/card-art.spec.ts` (3 tests) plus the existing suite, `tsc`
+for frontend and backend, the backend tests and `next build` all pass.
 
 ### 2026-10-20 - Verify the elixir pump + elixir-gain animation
 Status: implemented

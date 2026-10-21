@@ -40,6 +40,7 @@ import ElixirBar from "../../components/battle/ElixirBar";
 import Hand from "../../components/battle/Hand";
 import NextCardPanel from "../../components/battle/NextCardPanel";
 import { getCard, type CardInfo } from "../../lib/cards";
+import { preloadCardSprite } from "../../lib/battle/spriteAnim";
 import {
   isDeployValid,
   pocketSidesFromTowers,
@@ -188,6 +189,14 @@ export default function BattlePage() {
   useEffect(() => {
     setTowerTroopId(loadTowerSelection());
   }, []);
+  // Warm up the 2D strips for the deck (both team views) so the first frame of
+  // a unit is already animated instead of the static fallback.
+  useEffect(() => {
+    for (const id of deck) {
+      preloadCardSprite(id, "red");
+      preloadCardSprite(id, "blue");
+    }
+  }, [deck]);
   // Only deck cards plus the selected tower profile may be sent to the server;
   // other owned cards would fail server level validation.
   const battleLevels = useMemo(() => {

@@ -263,12 +263,16 @@ function emojiFor(cardId: string): string {
 }
 
 /**
- * Real card art for deployed units: /cards/<slug>.png (same art the deck and
- * collection use). Images are cached per card id and drawn once decoded, so the
- * per-frame cost stays O(1) per unit (one drawImage).
+ * Real card art for deployed units.
  *
- * O(u) draws for u visible units; the cache is bounded by the 108-card catalog.
- * Missing art falls back to the emoji glyph (onError marks the entry).
+ * Every card has two views (like the towers): the red team plays the front
+ * art, the blue team the back art. The per-team art lives in
+ * `/cardart/<card>-<view>.png`; the old shared card tile in `/cards/<card>.png`
+ * is still used when a card has no per-team art yet.
+ *
+ * Images are cached per card id and drawn once decoded, so the per-frame cost
+ * stays O(1) per unit (one drawImage). Missing art falls back to the emoji
+ * glyph (onError marks the entry).
  */
 const artCache = new Map<string, HTMLImageElement | "missing">();
 
@@ -325,20 +329,30 @@ function princessTowerArt(
   return img;
 }
 
-function artFor(cardId: string): HTMLImageElement | null {
+function artFor(cardId: string, owner: "red" | "blue" = "red"): HTMLImageElement | null {
   // Spawned children use singular ids (`barbarian`) while the art uses the
   // deck-card slug (`barbarians`); resolve before loading or the child renders
   // as a fallback glyph instead of its art.
   const resolved = resolveCardArtId(cardId);
-  const hit = artCache.get(resolved);
+  const view = owner === "blue" ? "back" : "front";
+  const key = `${resolved}:${view}`;
+  const hit = artCache.get(key);
   if (hit !== undefined) return hit === "missing" ? null : hit;
   const slug = resolved.replace(/[^a-z0-9-]/gi, "-").toLowerCase();
   const img = new Image();
   img.decoding = "async";
   img.onload = () => undefined; // decoded -> drawImage works
-  img.onerror = () => artCache.set(resolved, "missing");
-  img.src = `/cards/${slug}.png`;
-  artCache.set(resolved, img);
+  img.onerror = () => {
+    // No per-team art for this card: fall back to the shared card tile.
+    const legacy = new Image();
+    legacy.decoding = "async";
+    legacy.onload = () => undefined;
+    legacy.onerror = () => artCache.set(key, "missing");
+    legacy.src = `/cards/${slug}.png`;
+    artCache.set(key, legacy);
+  };
+  img.src = `/cardart/${slug}-${view}.png`;
+  artCache.set(key, img);
   return img;
 }
 
@@ -1130,10 +1144,10 @@ export default function ArenaCanvas({
         // static-art fallback keeps a circular clip so it never shows a square.
         let spriteDrawn = false;
         upright(drawCx, drawCy, () => {
-          spriteDrawn = drawCardSprite(c, u.cardId, state, now, r * 2.08, facing);
+          spriteDrawn = drawCardSprite(c, u.cardId, state, now, r * 2.08, facing, 1, u.owner);
         });
         if (!spriteDrawn) {
-          const art = artFor(u.cardId);
+          const art = artFor(u.cardId, u.owner);
           c.save();
           c.beginPath();
           c.arc(drawCx, drawCy, Math.max(1, r - 1), 0, Math.PI * 2);
@@ -1355,7 +1369,7 @@ export default function ArenaCanvas({
           const gy = (g.y + 0.5) * TH;
           const size = TW * 1.35;
           upright(gx, gy, () => {
-            if (!drawCardSprite(c, g.cardId, "death", g.born, size, 1, 1 - age)) {
+            if (!drawCardSprite(c, g.cardId, "death", g.born, size, 1, 1 - age, g.owner)) {
               c.globalAlpha = 1 - age;
               c.fillStyle = g.owner === "blue" ? "#93c5fd" : "#fca5a5";
               c.beginPath();

@@ -86,3 +86,18 @@ docker run -p 3000:3000 cr-frontend
 ## Phase 7 update (2026-10-17, branch feature/phase-7-persistence)
 - Meta UI: `app/leaderboard/page.tsx` (exact-CR gold table, season, testids leaderboard-list/row-*) + `lib/api.ts` postGuest/getProfile/getLeaderboard (O(1)/O(n log n) server sort).
 - Backend REST live: /auth/guest, /profile/:id, /leaderboard, /deck, /matches/report, /season (memory fallback db:false, Postgres via Prisma when DATABASE_URL set).
+
+## Per-team card art (2026-10-21, branch card-mechanics)
+- Every card has TWO views, like the towers: `/public/cardart/<card>-front.png`
+  (red team, character seen from the front) and `<card>-back.png` (blue team,
+  seen from behind). Built by `scripts/make_card_art.py` from the wiki sources
+  in `docs/card-art/sources/`.
+- The 2D strips live in `/public/sprites/<card>-<view>.png` (8 frames, 96x96:
+  idle x2, walk x4, attack, death) and are cut by
+  `scripts/make_card_sprites.py`. `/public/sprites/` is gitignored.
+- `lib/battle/spriteAnim.ts` loads the strip of the unit's TEAM and flips it
+  with the unit's facing. Fallback chain: team strip -> old neutral strip ->
+  `/cardart/<card>-<view>.png` -> `/cards/<card>.png` -> emoji glyph.
+- `/animations` shows all 108 cards with the red front view on top and the
+  blue back view below. `tests/card-art.spec.ts` guards both views and the
+  fallback chain.
